@@ -1,0 +1,35 @@
+# =========================
+# Data (never commit)
+# =========================
+data/
+data/**
+!data/README.md
+
+# =========================
+# Large medical images
+# =========================
+*.nii
+*.nii.gz
+*.dcm
+*.mhd
+*.raw
+*.nrrd
+
+# =========================
+# Model artifacts
+# =========================
+models/
+checkpoints/
+*.pt
+*.pth
+*.h5
+*.onnx
+
+# =========================
+# Environment / OS
+# =========================
+.env
+.venv/
+__pycache__/
+*.pyc
+.DS_Store

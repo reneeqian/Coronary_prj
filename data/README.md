@@ -1,49 +1,46 @@
-# Coronary CT Data Contract
+# Dataset Overview — COCA (Coronary Calcium CT)
 
-## 1. Data Overview
-This project uses cardiac CT angiography (CTA) volumes for coronary artery segmentation.
+## Dataset Name
+COCA — Coronary Calcium CT Dataset
 
-- Image format: NIfTI (.nii.gz)
-- Label format: NIfTI (.nii.gz)
-- One label per image volume
+## Source
+- Provider: Stanford AIMI
+- Dataset page: https://stanfordaimi.azurewebsites.net/datasets/e8ca74dc-8dd4-4340-815a-60b41f6cb2aa
+- Access method: Azure Blob Storage (time-limited SAS URL)
+- Download tool: AzCopy v10
+- Download date: 2026-01-16
 
-## 2. Directory Structure
+## Imaging Modality
+- Non-contrast cardiac CT
+- Includes gated cardiac CT and non-gated chest CT
 
+## Labels
+- Binary coronary artery calcium (CAC) masks
+- Label values:
+  - `0`: background
+  - `1`: calcified coronary plaque
+
+## Local Storage Layout
+```
+data/
 raw/
-  images/    # Raw CT volumes
-  labels/    # Raw segmentation masks
+coca/
+images/ # Raw CT volumes (.nii / .nii.gz)
+labels/ # Raw CAC masks (.nii / .nii.gz)
 
 processed/
-  images/    # Preprocessed volumes
-  labels/    # Preprocessed masks
+images/ # Preprocessed volumes
+labels/ # Preprocessed masks
+```
 
-## 3. Spatial Assumptions
+## Intended Use
+This dataset is used for **research and educational purposes** to demonstrate:
+- Medical imaging data ingestion
+- Explicit data contracts
+- Validation and traceability in medical AI pipelines
 
-- Input orientation: arbitrary
-- Pipeline enforces: RAS orientation
-- Target voxel spacing: 1.0 x 1.0 x 1.0 mm
-- Dimensionality: 3D volumes (Z, Y, X)
+This project is **not intended for clinical use**.
 
-## 4. Intensity Handling
-
-- Intensity units: Hounsfield Units (HU)
-- Clip range: [-1000, 1000]
-- Normalization: z-score per volume
-
-## 5. Label Semantics
-
-- 0: background
-- 1: coronary arteries
-
-## 6. Dataset Split
-
-- Patient-level split
-- Train / validation / test: 70 / 15 / 15
-- Fixed random seed
-
-## 7. Validation Rules
-
-The data pipeline will:
-- Reject samples with missing labels
-- Resample volumes with incorrect spacing
-- Enforce consistent orientation
+## License
+Dataset usage is governed by the Stanford AIMI Research Use Agreement:  
+https://stanfordaimi.azurewebsites.net/datasets/e8ca74dc-8dd4-4340-815a-60b41f6cb2aa
