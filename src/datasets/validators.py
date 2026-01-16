@@ -14,7 +14,9 @@ All dataset samples MUST pass through these checks before reaching a model.
 """
 
 from __future__ import annotations
+from cProfile import label
 
+from matplotlib import image
 import numpy as np
 import nibabel as nib
 import SimpleITK as sitk
@@ -25,7 +27,10 @@ import SimpleITK as sitk
 # =========================
 
 def validate_ndim(image: np.ndarray, label: np.ndarray) -> None:
-    """Ensure image and label are 3D volumes."""
+    """
+    VR-01: The system shall reject image and label volumes that are not 3D. 
+    Derived from DR-01.
+    """
     if image.ndim != 3:
         raise ValueError(f"Expected 3D image, got {image.ndim}D")
     if label.ndim != 3:
@@ -33,7 +38,10 @@ def validate_ndim(image: np.ndarray, label: np.ndarray) -> None:
 
 
 def validate_shape_match(image: np.ndarray, label: np.ndarray) -> None:
-    """Ensure image and label shapes match exactly."""
+    """
+    VR-02: The system shall reject samples where image and label shapes differ.
+    Derived from DR-02.
+    """
     if image.shape != label.shape:
         raise ValueError(
             f"Image/label shape mismatch: image={image.shape}, label={label.shape}"
@@ -41,13 +49,19 @@ def validate_shape_match(image: np.ndarray, label: np.ndarray) -> None:
 
 
 def validate_finite(image: np.ndarray) -> None:
-    """Ensure image contains no NaN or infinite values."""
+    """
+    VR-03: The system shall reject images containing NaN or infinite values.
+    Derived from DR-03.
+    """
     if not np.isfinite(image).all():
         raise ValueError("Image contains NaN or Inf values")
 
 
 def validate_label_values(label: np.ndarray, allowed_values=(0, 1)) -> None:
-    """Ensure label contains only expected class values."""
+    """
+    VR-04: The system shall reject labels containing values outside the allowed class set.
+    Derived from DR-04.
+    """
     unique_vals = np.unique(label)
     invalid = set(unique_vals) - set(allowed_values)
     if invalid:
@@ -115,7 +129,9 @@ def resample_to_spacing(
 # =========================
 
 def assert_postconditions(image: np.ndarray, label: np.ndarray) -> None:
-    """Final guarantees after preprocessing."""
+    """
+    VR-05: The system shall guarantee dataset postconditions prior to model input.
+    """
     assert image.shape == label.shape, "Postcondition failed: shape mismatch"
     assert image.ndim == 3, "Postcondition failed: image not 3D"
     assert image.dtype in (np.float32, np.float64), "Unexpected image dtype"
@@ -131,9 +147,9 @@ def enforce_data_contract(
     label: np.ndarray,
 ) -> None:
     """
-    Apply all validation and assertion checks.
+    Applies all Validation Requirements (VR-01 through VR-05).
 
-    Call this after all preprocessing steps.
+    This function represents the enforcement boundary of the dataset data contract.
     """
     validate_ndim(image, label)
     validate_shape_match(image, label)
