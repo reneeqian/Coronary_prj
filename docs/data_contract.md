@@ -84,3 +84,13 @@ This data contract informs:
 
 Each validator is expected to trace back to at least one data requirement
 derived from this contract.
+
+```
+CanonicalCACSlice
+├── image              # 2D numpy array (HU)
+├── spacing_mm         # (sx, sy)
+├── slice_index        # int
+├── has_cac            # bool
+├── rois               # optional list of polygons
+├── source_id          # patient / study id
+```
