@@ -93,7 +93,7 @@ Annotations are groups by slice index:
 ```python
 Dict[int, List[CACAnnotation]]
 ```
-## 6 Patient Sample Contract
+## 6. Patient Sample Contract
 The ingestor shall produce one logical sample per patient:
 ```python
 PatientSample:
@@ -105,14 +105,23 @@ PatientSample:
 ```
 Downstream components must not depend on COCA-specific formats.
 
-## 7 Validation Expectations
+## 7. Known Dataset Limitations
+
+- Variable voxel spacing across scans
+- Inconsistent scan coverage of the heart
+- Potential label noise and inter-annotator variability
+- Mixed gated and non-gated acquisitions
+
+These limitations are explicitly tolerated and handled through validation logic.
+
+## 8. Validation Expectations
 The ingestor shall fail loudly if:
 * Patient directory is missing
 * No DICOM files are found
 * XML annotations are missing or unreadable
 * Annotation slice indices exceed volume bounds
 
-## 8. Intended Use
+## 9. Intended Use
 This contract supports:
 * Research and educational workflows
 * Medical AI software engineering demonstrations
