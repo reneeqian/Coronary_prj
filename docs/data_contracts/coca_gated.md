@@ -30,15 +30,18 @@ Non-gated chest CT scans are explicitly **out of scope** and covered by a separa
 The ingestor assumes the following structure:
 
 ```
-COCA_ROOT/
-└── cocacoronarycalciumandchestcts-2/
-└── Gated_release_final/
+dataset_root/
 ├── patient/
-│ └── {patient_id}/
-│ └── {series_name}/
-│ └── *.dcm
-└── calcium_xml/
-└── {patient_id}.xml
+│   ├── 0/
+│   │   └── Pro_Gated_CS_3.0_I30f_3_70%/
+│   │       ├── *.dcm
+│   ├── 1/
+│   │   └── Pro_Gated_CS_3.0_I30f_3_70%/
+│   │       ├── *.dcm
+├── calcium_xml/
+│   ├── 0.xml
+│   ├── 1.xml
+
 ```
 
 - `{patient_id}` is a numeric identifier
@@ -93,6 +96,20 @@ Annotations are groups by slice index:
 ```python
 Dict[int, List[CACAnnotation]]
 ```
+
+### Annotation Representation
+
+COCA gated annotations are provided as vector-based ROIs in XML format.
+
+The COCA gated ingestor shall:
+- Parse XML-based polygon annotations
+- Preserve slice index and pixel coordinates
+- Populate the `vectors` field of the canonical `AnnotationBundle`
+- Leave `masks` empty
+
+Rasterized masks are not provided by the dataset and are not generated
+during ingestion.
+
 ## 6. Patient Sample Contract
 The ingestor shall produce one logical sample per patient:
 ```python

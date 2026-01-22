@@ -1,225 +1,182 @@
-"""
-COCA Gated CT Ingestor
+# src/ingestors/coca_gated_ingestor.py
 
-Transforms raw COCA gated CT studies into a CanonicalCACVolume.
-
-This module is intentionally explicit and stage-based to support:
-- Traceability
-- Validation
-- Dataset evolution
-"""
-
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Dict, List, Tuple, Optional
-import os
+from pathlib import Path
+from typing import Tuple, Dict, List, Iterator
 import numpy as np
-import xml.etree.ElementTree as ET
+from lxml import etree
 import pydicom
 
+from src.ingestors.base_ingestor import BaseIngestor
+from src.datasets.coronary_ct_dataset import PatientSample
+from src.annotations.annotation_bundle import AnnotationBundle  # if/when created
 
-# ---------------------------------------------------------------------
-# Base Interfaces
-# ---------------------------------------------------------------------
-
-class BaseIngestor(ABC):
-    @abstractmethod
-    def ingest(self, study_path: str):
-        pass
-
-
-# ---------------------------------------------------------------------
-# Canonical Data Structures
-# ---------------------------------------------------------------------
-
-@dataclass
-class CACAnnotation:
-    """
-    Slice-level CAC annotation.
-    """
-    slice_index: int
-    contours_px: List[np.ndarray]   # each contour is shape (N, 2)
-    artery_name: Optional[str] = None
-
-
-@dataclass
-class CanonicalCACVolume:
-    """
-    Canonical internal representation of a CAC CT volume.
-    """
-    image_volume: np.ndarray                  # shape (Z, Y, X)
-    spacing_mm: Tuple[float, float, float]    # (dz, dy, dx)
-    orientation: str
-    annotations: Dict[int, List[CACAnnotation]]
-    patient_id: str
-    dataset_id: str
-    acquisition_type: str
-    metadata: dict
-
-
-# ---------------------------------------------------------------------
-# COCA Gated Ingestor
-# ---------------------------------------------------------------------
 
 class COCAGatedIngestor(BaseIngestor):
     """
-    Ingestor for COCA gated CT datasets.
+    Ingestor for COCA gated cardiac CT dataset.
+
+    Responsibilities:
+    - Load gated CT DICOM series into a 3D volume
+    - Load slice-wise CAC polygon annotations
+    - Produce one PatientSample per patient
     """
 
-    DATASET_ID = "COCA"
-    ACQUISITION_TYPE = "gated"
+    def __init__(self, *,
+                 enforce_sorted_slices: bool = True,
+                 load_metadata: bool = True):
+        self.enforce_sorted_slices = enforce_sorted_slices
+        self.load_metadata = load_metadata
 
-    # ----------------------------
+    # -------------------------
     # Public API
-    # ----------------------------
+    # -------------------------
 
-    def ingest(self, study_path: str) -> CanonicalCACVolume:
+    def ingest_dataset(self, dataset_root: Path) -> Iterator[PatientSample]:
         """
-        Main ingestion entry point.
+        Iterate over all patients in the dataset directory.
         """
-        dicom_files, annotation_files = self._discover_files(study_path)
+        self.dataset_root = Path(dataset_root)
 
-        volume, dicom_meta = self._load_dicom_volume(dicom_files)
-        spacing = self._extract_spacing(dicom_meta)
-        orientation = self._canonicalize_orientation(volume, dicom_meta)
+        for patient_dir in self._iter_patient_dirs(self.dataset_root):
+            yield self.ingest_patient(patient_dir)
 
-        annotations = self._parse_annotations(annotation_files)
+    def ingest_patient(self, patient_dir: Path) -> PatientSample:
+        """
+        Ingest a single COCA gated patient.
+        """
+        patient_dir = Path(patient_dir)
+        patient_id = patient_dir.name
 
-        self._validate(volume, spacing, annotations)
+        series_dir = self._resolve_gated_series_dir(patient_dir)
 
-        patient_id = dicom_meta.get("PatientID", "unknown")
+        volume, spacing, metadata = self._load_image_volume(series_dir)
 
-        return CanonicalCACVolume(
-            image_volume=volume,
-            spacing_mm=spacing,
-            orientation=orientation,
-            annotations=annotations,
+        annotations = self._load_annotations(
+            dataset_root=self.dataset_root,
             patient_id=patient_id,
-            dataset_id=self.DATASET_ID,
-            acquisition_type=self.ACQUISITION_TYPE,
-            metadata=dicom_meta,
         )
 
-    # ----------------------------
-    # Pipeline Stages
-    # ----------------------------
+        return PatientSample(
+            image_volume=volume,
+            annotations=annotations,
+            spacing=spacing,
+            metadata=metadata,
+            patient_id=patient_id,
+        )
 
-    def _discover_files(self, study_path: str):
+    # -------------------------
+    # Internal helpers
+    # -------------------------
+
+    def _iter_patient_dirs(self, dataset_root: Path) -> List[Path]:
         """
-        Locate DICOM and annotation files within a study directory.
+        Return patient root directories (e.g. dataset_root/patient/0).
         """
-        dicom_files = []
-        annotation_files = []
+        patient_root = dataset_root / "patient"
 
-        for root, _, files in os.walk(study_path):
-            for fname in files:
-                path = os.path.join(root, fname)
-                if fname.lower().endswith(".dcm"):
-                    dicom_files.append(path)
-                elif fname.lower().endswith(".xml"):
-                    annotation_files.append(path)
+        if not patient_root.exists():
+            raise FileNotFoundError(f"Patient root not found: {patient_root}")
 
+        return sorted(
+            p for p in patient_root.iterdir()
+            if p.is_dir()
+        )
+
+    def _resolve_gated_series_dir(self, patient_dir: Path) -> Path:
+        """
+        Resolve the gated CT series directory for a patient.
+
+        Assumes exactly one gated series directory exists.
+        """
+        series_dirs = [p for p in patient_dir.iterdir() if p.is_dir()]
+
+        if len(series_dirs) == 0:
+            raise FileNotFoundError(f"No series directory found in {patient_dir}")
+
+        if len(series_dirs) > 1:
+            raise RuntimeError(
+                f"Multiple series directories found in {patient_dir}: {series_dirs}"
+            )
+
+        return series_dirs[0]
+
+    def _load_image_volume(
+        self,
+        series_dir: Path,
+    ) -> Tuple[np.ndarray, Tuple[float, float, float], dict]:
+        dicom_files = sorted(series_dir.glob("*.dcm"))
         if not dicom_files:
-            raise ValueError("No DICOM files found in study")
+            raise FileNotFoundError(f"No DICOM files found in {series_dir}")
 
-        return dicom_files, annotation_files
+        slices = [pydicom.dcmread(f) for f in dicom_files]
 
-    def _load_dicom_volume(self, dicom_files):
-        """
-        Load and stack DICOM slices into a 3D volume.
-        """
-        slices = []
-        metas = []
+        try:
+            slices.sort(key=lambda ds: int(ds.InstanceNumber))
+        except Exception as e:
+            raise RuntimeError("Failed to sort DICOMs by InstanceNumber") from e
 
-        for path in dicom_files:
-            ds = pydicom.dcmread(path)
-            slices.append(ds.pixel_array.astype(np.float32))
-            metas.append(ds)
+        volume = np.stack([ds.pixel_array for ds in slices]).astype(np.float32)
 
-        # Sort by InstanceNumber
-        order = np.argsort([int(m.InstanceNumber) for m in metas])
-        volume = np.stack([slices[i] for i in order], axis=0)
+        slope = float(getattr(slices[0], "RescaleSlope", 1.0))
+        intercept = float(getattr(slices[0], "RescaleIntercept", 0.0))
+        volume = volume * slope + intercept
 
-        meta = {
-            "PatientID": getattr(metas[0], "PatientID", "unknown"),
-            "SeriesInstanceUID": getattr(metas[0], "SeriesInstanceUID", None),
-            "SliceThickness": float(metas[0].SliceThickness),
-            "PixelSpacing": tuple(map(float, metas[0].PixelSpacing)),
-            "NumSlices": volume.shape[0],
+        dy, dx = map(float, slices[0].PixelSpacing)
+        dz = float(slices[0].SliceThickness)
+
+        spacing = (dz, dy, dx)
+
+        metadata = {
+            "manufacturer": getattr(slices[0], "Manufacturer", None),
+            "series_description": getattr(slices[0], "SeriesDescription", None),
+            "slice_count": len(slices),
         }
 
-        return volume, meta
+        return volume, spacing, metadata
 
-    def _extract_spacing(self, meta) -> Tuple[float, float, float]:
-        """
-        Extract voxel spacing in mm.
-        """
-        dz = meta["SliceThickness"]
-        dy, dx = meta["PixelSpacing"]
-        return (dz, dy, dx)
+    def _load_annotations(
+        self,
+        dataset_root: Path,
+        patient_id: str,
+    ) -> AnnotationBundle:
+        xml_path = dataset_root / "calcium_xml" / f"{patient_id}.xml"
 
-    def _canonicalize_orientation(self, volume, meta) -> str:
-        """
-        Canonicalize orientation.
+        if not xml_path.exists():
+            return AnnotationBundle(vector_rois=None)
 
-        NOTE:
-        For COCA gated CT, orientation is assumed axial.
-        This is a deliberate stub for future affine-based handling.
-        """
-        return "RAS"
+        tree = etree.parse(str(xml_path))
+        root = tree.getroot()
 
-    def _parse_annotations(self, annotation_files) -> Dict[int, List[CACAnnotation]]:
-        """
-        Parse CAC annotations from XML files.
-        """
-        annotations: Dict[int, List[CACAnnotation]] = {}
+        vector_rois: Dict[int, list] = {}
 
-        for path in annotation_files:
-            tree = ET.parse(path)
-            root = tree.getroot()
+        for image_dict in root.findall(".//dict"):
+            keys = [k.text for k in image_dict.findall("key")]
+            if "ImageIndex" not in keys:
+                continue
 
-            for roi in root.findall(".//ROI"):
-                slice_idx = int(roi.findtext("SliceIndex"))
-                artery = roi.findtext("Artery")
+            image_index = int(image_dict.findall("integer")[0].text)
 
-                contour_points = []
-                for pt in roi.findall(".//Point"):
-                    x = float(pt.get("x"))
-                    y = float(pt.get("y"))
-                    contour_points.append([x, y])
+            for roi_dict in image_dict.findall("dict"):
+                strings = roi_dict.findall("string")
+                if not strings:
+                    continue
 
-                contour = np.array(contour_points)
+                label = strings[0].text
 
-                ann = CACAnnotation(
-                    slice_index=slice_idx,
-                    contours_px=[contour],
-                    artery_name=artery,
-                )
+                contour = []
+                for elem in roi_dict.iter():
+                    if elem.tag == "string" and elem.text.startswith("("):
+                        x, y = elem.text.strip("()").split(",")
+                        contour.append([float(x), float(y)])
 
-                annotations.setdefault(slice_idx, []).append(ann)
+                if contour:
+                    roi = VectorROI(
+                        slice_index=image_index,
+                        contour_px=np.array(contour),
+                        label="CAC",
+                        metadata={"artery": label},
+                    )
+                    vector_rois.setdefault(image_index, []).append(roi)
 
-        return annotations
+        return AnnotationBundle(vector_rois=vector_rois)
 
-    # ----------------------------
-    # Validation
-    # ----------------------------
-
-    def _validate(self, volume, spacing, annotations):
-        """
-        Lightweight internal validation.
-        """
-        if volume.ndim != 3:
-            raise ValueError("Image volume must be 3D")
-
-        if not np.isfinite(volume).all():
-            raise ValueError("Image contains non-finite values")
-
-        if len(spacing) != 3:
-            raise ValueError("Spacing must be (dz, dy, dx)")
-
-        num_slices = volume.shape[0]
-        for slice_idx in annotations.keys():
-            if slice_idx < 0 or slice_idx >= num_slices:
-                raise ValueError(
-                    f"Annotation slice index out of bounds: {slice_idx}"
-                )
