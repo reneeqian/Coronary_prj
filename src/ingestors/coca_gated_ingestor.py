@@ -7,46 +7,44 @@ from lxml import etree
 import pydicom
 
 from src.ingestors.base_ingestor import BaseIngestor
-from src.datasets.coronary_ct_dataset import PatientSample
-from src.annotations.annotation_bundle import AnnotationBundle  # if/when created
+from src.datasets.patient_sample import PatientSample
+from src.annotations.annotation_bundle import AnnotationBundle, VectorROI  # if/when created
 
 
 class COCAGatedIngestor(BaseIngestor):
-    """
-    Ingestor for COCA gated cardiac CT dataset.
 
-    Responsibilities:
-    - Load gated CT DICOM series into a 3D volume
-    - Load slice-wise CAC polygon annotations
-    - Produce one PatientSample per patient
-    """
-
-    def __init__(self, *,
-                 enforce_sorted_slices: bool = True,
-                 load_metadata: bool = True):
+    def __init__(
+        self,
+        dataset_root: Path,
+        *,
+        enforce_sorted_slices: bool = True,
+        load_metadata: bool = True,
+    ):
+        self.dataset_root = Path(dataset_root)
         self.enforce_sorted_slices = enforce_sorted_slices
         self.load_metadata = load_metadata
+
 
     # -------------------------
     # Public API
     # -------------------------
 
-    def ingest_dataset(self, dataset_root: Path) -> Iterator[PatientSample]:
-        """
-        Iterate over all patients in the dataset directory.
-        """
-        self.dataset_root = Path(dataset_root)
+    def ingest_dataset(self) -> Iterator[PatientSample]:
+        patient_root = self.dataset_root / "patient"
 
-        for patient_dir in self._iter_patient_dirs(self.dataset_root):
-            yield self.ingest_patient(patient_dir)
+        for p in sorted(patient_root.iterdir()):
+            if p.is_dir():
+                yield self.ingest_patient(p.name)
 
-    def ingest_patient(self, patient_dir: Path) -> PatientSample:
+
+    def ingest_patient(self, patient_id: str) -> PatientSample:
         """
         Ingest a single COCA gated patient.
         """
-        patient_dir = Path(patient_dir)
-        patient_id = patient_dir.name
-
+        patient_dir = self.dataset_root / "patient" / patient_id
+        if not patient_dir.exists():
+            raise FileNotFoundError(f"Patient directory not found: {patient_dir}")
+        
         series_dir = self._resolve_gated_series_dir(patient_dir)
 
         volume, spacing, metadata = self._load_image_volume(series_dir)
@@ -139,6 +137,7 @@ class COCAGatedIngestor(BaseIngestor):
         dataset_root: Path,
         patient_id: str,
     ) -> AnnotationBundle:
+
         xml_path = dataset_root / "calcium_xml" / f"{patient_id}.xml"
 
         if not xml_path.exists():
@@ -149,34 +148,77 @@ class COCAGatedIngestor(BaseIngestor):
 
         vector_rois: Dict[int, list] = {}
 
-        for image_dict in root.findall(".//dict"):
-            keys = [k.text for k in image_dict.findall("key")]
-            if "ImageIndex" not in keys:
+        # Root plist dict
+        plist_dict = root.find("dict")
+        if plist_dict is None:
+            return AnnotationBundle(vector_rois=None)
+
+        children = list(plist_dict)
+
+        # Find Images array
+        images_array = None
+        for i, elem in enumerate(children):
+            if elem.tag == "key" and elem.text == "Images":
+                images_array = children[i + 1]
+                break
+
+        if images_array is None:
+            return AnnotationBundle(vector_rois=None)
+
+        # Iterate image dicts
+        for image_dict in images_array.findall("dict"):
+            elems = list(image_dict)
+
+            # --- ImageIndex ---
+            image_index = None
+            for i, e in enumerate(elems):
+                if e.tag == "key" and e.text == "ImageIndex":
+                    image_index = int(elems[i + 1].text)
+                    break
+
+            if image_index is None:
                 continue
 
-            image_index = int(image_dict.findall("integer")[0].text)
+            # --- ROIs array ---
+            rois_array = None
+            for i, e in enumerate(elems):
+                if e.tag == "key" and e.text == "ROIs":
+                    rois_array = elems[i + 1]
+                    break
 
-            for roi_dict in image_dict.findall("dict"):
-                strings = roi_dict.findall("string")
-                if not strings:
+            if rois_array is None:
+                continue
+
+            for roi_dict in rois_array.findall("dict"):
+                roi_elems = list(roi_dict)
+
+                name = None
+                points_px = None
+
+                for i, e in enumerate(roi_elems):
+                    if e.tag == "key" and e.text == "Name":
+                        name = roi_elems[i + 1].text
+                    if e.tag == "key" and e.text == "Point_px":
+                        points_px = roi_elems[i + 1]
+
+                if points_px is None or len(points_px) == 0:
                     continue
 
-                label = strings[0].text
-
                 contour = []
-                for elem in roi_dict.iter():
-                    if elem.tag == "string" and elem.text.startswith("("):
-                        x, y = elem.text.strip("()").split(",")
-                        contour.append([float(x), float(y)])
+                for pt in points_px.findall("string"):
+                    x, y = pt.text.strip("()").split(",")
+                    contour.append([float(x), float(y)])
 
-                if contour:
-                    roi = VectorROI(
-                        slice_index=image_index,
-                        contour_px=np.array(contour),
-                        label="CAC",
-                        metadata={"artery": label},
-                    )
-                    vector_rois.setdefault(image_index, []).append(roi)
+                if not contour:
+                    continue
+
+                roi = VectorROI(
+                    slice_index=image_index,
+                    contour_px=np.asarray(contour),
+                    label="CAC",
+                    metadata={"artery": name},
+                )
+
+                vector_rois.setdefault(image_index, []).append(roi)
 
         return AnnotationBundle(vector_rois=vector_rois)
-

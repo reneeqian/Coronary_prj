@@ -5,20 +5,27 @@ import matplotlib.pyplot as plt
 import sys
 from pathlib import Path
 
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]  # adjust if needed
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.ingestors.coca_gated_ingestor import COCAGatedIngestor
 from src.annotations.annotation_bundle import AnnotationBundle
-from src.datasets.coronary_ct_dataset import PatientSample
+from src.datasets.patient_sample import PatientSample
+from src.validators.patient_sample_validator import validate_patient_sample
 
-
-#%%
 # -------------------------
 # Configuration
 # -------------------------
 
-DATASET_ROOT = Path("/data/raw/coca/cocacoronarycalciumandchestcts-2/Gated_release_final")  # <-- CHANGE THIS
+DATASET_ROOT = (
+    PROJECT_ROOT
+    / "data"
+    / "raw"
+    / "coca"
+    / "cocacoronarycalciumandchestcts-2"
+    / "Gated_release_final"
+)
 PATIENT_ID = "0"                               # <-- CHANGE IF NEEDED
 MAX_PATIENTS_TO_SHOW = 1
 
@@ -68,6 +75,9 @@ def visualize_patient_sample(sample: PatientSample):
     if annotations.vector_rois:
         z = sorted(annotations.vector_rois.keys())[0]
 
+    print("Annotated slices:", sorted(annotations.vector_rois.keys())[:10])
+    print("Volume depth:", volume.shape[0])
+
     visualize_slice_with_rois(
         volume=volume,
         annotation_bundle=annotations,
@@ -79,35 +89,38 @@ def visualize_patient_sample(sample: PatientSample):
 # -------------------------
 # Main debug routine
 # -------------------------
-#%%
-def main():
-    ingestor = COCAGatedIngestor()
+# %%
+print(DATASET_ROOT)
+ingestor = COCAGatedIngestor(dataset_root=DATASET_ROOT)
 
-    print("=== Ingesting single patient ===")
-    patient_dir = DATASET_ROOT / "patient" / PATIENT_ID
-    sample = ingestor.ingest_patient(patient_dir)
+print("=== Ingesting single patient ===")
+patient_dir = DATASET_ROOT / "patient" / PATIENT_ID
+sample = ingestor.ingest_patient(PATIENT_ID)
 
-    assert isinstance(sample, PatientSample)
-    assert sample.image_volume.ndim == 3
+assert isinstance(sample, PatientSample)
+assert sample.image_volume.ndim == 3
 
-    print(
-        f"Patient {sample.patient_id}: "
-        f"volume shape={sample.image_volume.shape}, "
-        f"spacing={sample.spacing}"
-    )
+print(
+    f"Patient {sample.patient_id}: "
+    f"volume shape={sample.image_volume.shape}, "
+    f"spacing={sample.spacing}"
+)
 
+
+visualize_patient_sample(sample)
+
+# %%
+print("\n=== Ingesting dataset (limited) ===")
+for i, sample in enumerate(ingestor.ingest_dataset()):
+    print(f"Ingested patient {sample.patient_id}")
+    
     visualize_patient_sample(sample)
 
-    print("\n=== Ingesting dataset (limited) ===")
-    for i, sample in enumerate(ingestor.ingest_dataset(DATASET_ROOT)):
-        print(f"Ingested patient {sample.patient_id}")
-        visualize_patient_sample(sample)
-
-        if i + 1 >= MAX_PATIENTS_TO_SHOW:
-            break
+    if i + 1 >= MAX_PATIENTS_TO_SHOW:
+        break
 
 
-if __name__ == "__main__":
-    main()
-
+# %%
+sample = ingestor.ingest_patient("0")
+validate_patient_sample(sample)
 # %%
