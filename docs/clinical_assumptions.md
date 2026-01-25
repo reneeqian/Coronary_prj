@@ -14,7 +14,7 @@ This system is intended for **research and educational use only** and is not a d
 
 Coronary artery calcium is a marker of atherosclerotic plaque burden and is commonly assessed using non-contrast cardiac CT imaging. CAC burden has established associations with cardiovascular risk and is frequently quantified using Agatston scoring in clinical practice.
 
-This project focuses on software infrastructure to support CAC-related research workflows, not on replicating or validating clinical scoring methodologies.
+This project focuses on software infrastructure to support CAC-related research workflows, not on replicating or validating clinical scoring methodologies. This project does not implement Agatston scoring or other clinical CAC quantification methods unless explicitly stated.
 
 ---
 
@@ -60,4 +60,12 @@ This project focuses on software infrastructure to support CAC-related research 
 
 ### CA-7: Non-coronary Calcifications
 
-- The system does not distinguish coronary calcifications from other high-density
+- The system does not distinguish coronary calcifications from other high-attenuation structures
+  such as valvular calcification, aortic calcification, or extracardiac calcifications.
+- Any anatomical specificity depends entirely on the provided annotations or downstream modeling.
+
+### CA-8: Cardiac Motion and Gating
+
+- Each input volume is treated as a static 3D representation.
+- No assumptions are made about cardiac phase consistency beyond what is implicit in gated acquisitions.
+- The system does not perform motion correction or temporal reconciliation.

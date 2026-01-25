@@ -82,20 +82,23 @@ The ingestor shall extract and expose:
 - Zero or more ROIs may exist per slice
 - ROIs are polygonal contours in pixel coordinates
 
-### 5.2 Internal Annotation Representation
+### 5.2 Canonical Annotation Mapping
 
-Annotations shall be standardized into the following internal structure:
+COCA gated annotations are mapped into the canonical `VectorROI` representation.
 
-```python
-CACAnnotation:
-  slice_index: int
-  contours_px: List[np.ndarray]  # shape (N, 2)
-  artery_name: Optional[str]
-```
-Annotations are groups by slice index:
-```python
-Dict[int, List[CACAnnotation]]
-```
+For each annotated slice:
+- One or more polygonal ROIs are extracted
+- Each ROI is represented as a `VectorROI` with:
+  - `slice_index` taken from `ImageIndex`
+  - `contour_px` parsed from `Point_px`
+  - `label` set to `"CAC"`
+  - `metadata["artery"]` populated from the XML `Name` field (if present)
+
+Vector ROIs are grouped by slice index and populated into
+`AnnotationBundle.vector_rois`.
+
+No segmentation masks are generated during ingestion.
+
 
 ### Annotation Representation
 
@@ -104,23 +107,19 @@ COCA gated annotations are provided as vector-based ROIs in XML format.
 The COCA gated ingestor shall:
 - Parse XML-based polygon annotations
 - Preserve slice index and pixel coordinates
-- Populate the `vectors` field of the canonical `AnnotationBundle`
+- Populate the `vector_rois` field of the canonical `AnnotationBundle`
 - Leave `masks` empty
 
 Rasterized masks are not provided by the dataset and are not generated
 during ingestion.
 
 ## 6. Patient Sample Contract
-The ingestor shall produce one logical sample per patient:
-```python
-PatientSample:
-  image_volume: np.ndarray
-  annotations: Dict[int, List[CACAnnotation]]
-  spacing: Tuple[float, float, float]
-  metadata: dict
-  patient_id: str | int
-```
-Downstream components must not depend on COCA-specific formats.
+
+The ingestor shall produce one canonical `PatientSample` as defined in
+`canonical_data_contract.md`.
+
+Dataset-specific details (directory structure, XML formats, series naming)
+must not propagate beyond ingestion.
 
 ## 7. Known Dataset Limitations
 

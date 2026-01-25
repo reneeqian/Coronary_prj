@@ -76,7 +76,7 @@ All requirements are expected to be traceable to at least one implementation or 
 The system shall ingest cardiac CT image volumes from a specified root directory.
 
 **FR-01.2**  
-The system shall support volumetric image formats commonly used in public CT datasets (e.g., NIfTI).
+The system shall support volumetric image formats commonly used in public CT datasets.
 
 **FR-01.3**  
 The system shall fail gracefully with informative errors when required directories or files are missing.
@@ -89,10 +89,7 @@ The system shall fail gracefully with informative errors when required directori
 The system shall enforce a predefined directory structure for processed datasets.
 
 **FR-02.2**  
-The system shall validate the presence of required image and label subdirectories.
-
-**FR-02.3**  
-The system shall detect and report empty datasets.
+The system shall validate the presence and non-emptiness of required image and label subdirectories.
 
 ---
 
@@ -167,7 +164,7 @@ Label volumes shall contain only predefined discrete class values representing c
 ---
 
 ### DR-05: Dataset Readiness Guarantee  
-All dataset samples shall satisfy defined postconditions prior to model consumption.
+All dataset samples shall satisfy defined postconditions prior to downstream model consumption.
 
 **Derived From:** System Safety and Reproducibility Goals
 

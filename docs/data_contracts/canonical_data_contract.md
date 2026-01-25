@@ -10,7 +10,7 @@ This contract:
 - Preserves raw annotation geometry and semantics
 - Enables flexible downstream use (classification, segmentation, scoring, visualization)
 
-All dataset-specific ingestors (e.g., COCA gated, COCA non-gated, future datasets) MUST adapt their raw inputs into this canonical representation.
+All dataset-specific ingestors (e.g., COCA gated, COCA non-gated, future datasets) MUST adapt their raw inputs into this canonical representation. This contract does not define preprocessing, normalization, augmentation, or model input formats.
 
 ---
 
