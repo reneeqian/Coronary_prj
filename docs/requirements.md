@@ -4,7 +4,9 @@
 
 This document defines the functional, data, validation, and non-functional requirements for a software pipeline that ingests cardiac CT data and supports coronary artery calcium (CAC) detection for research and educational purposes.
 
-The primary objective is to demonstrate robust **medical AI software engineering practices**, including data contracts, validation, traceability, and reproducibility, rather than clinical deployment or model optimization.
+The primary objective is to demonstrate robust **medical AI software engineering practices**, including data contracts, validation, traceability, and reproducibility, rather than clinical deployment or model optimization. 
+
+Traceability ends at the tensor adapter boundary.
 
 ---
 
@@ -20,6 +22,16 @@ The system shall **not**:
 - Provide diagnostic output
 - Make clinical claims
 - Be used for patient care
+
+### 2.1 Traceability Scope
+
+The traceability matrix covers requirements for the coronary_prj system
+from data ingestion through validated PatientSample objects.
+
+Conversion of PatientSample objects into framework-specific tensor
+representations, along with training and optimization logic, is handled
+by the medimg_training module and is out of scope for this document.
+
 
 ---
 
