@@ -176,7 +176,7 @@ All dataset samples shall satisfy defined postconditions prior to downstream mod
 The system shall reject image or label inputs that are not three-dimensional.
 
 **Satisfies:** DR-01  
-**Implemented By:** `validate_ndim()`
+**Implemented By:** 
 
 ---
 
