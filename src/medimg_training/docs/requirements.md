@@ -49,16 +49,16 @@ These abstractions shall operate solely on in-memory `PatientSample` objects.
 
 ---
 
-## 4. Validation Requirements
+## 4. Data Validation Requirements
 
-### VR-1: Input Completeness Validation
+### DR-1: Input Completeness Validation
 The system shall validate that all required fields needed for tensor conversion are present in a `PatientSample`.
 
 Missing or malformed inputs shall raise explicit, actionable errors.
 
 ---
 
-### VR-2: Tensor Integrity Validation
+### DR-2: Tensor Integrity Validation
 The system shall validate tensor properties required for training, including:
 - Expected dimensionality
 - Data type consistency

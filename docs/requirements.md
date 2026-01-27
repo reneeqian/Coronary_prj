@@ -54,7 +54,8 @@ The following table defines the requirement prefixes used throughout this projec
 |------:|------------------|-------------|---------|
 | **FR** | Functional Requirement | Defines system behavior, capabilities, or workflows. | `FR-01: The system shall load coronary CT volumes from disk.` |
 | **DR** | Data Requirement | Defines constraints, assumptions, and guarantees on input data and labels. | `DR-02: Input CT volumes shall be 3D arrays.` |
-| **VR** | Validation Requirement | Defines runtime or test-time checks that enforce requirements. | `VR-03: The system shall reject labels containing invalid values.` |
+| **VRF** | Verification Requirement | Defines test-time checks that verify requirements. | `VAL-03: The system shall reject labels containing invalid values.` |
+| **VAL** | Validation Requirement | Reserved for V&V validation against intended use. |
 | **MR** | Model Requirement | Defines constraints on model inputs, outputs, and training assumptions. | `MR-01: The model shall accept single-channel CT volumes.` |
 | **NFR** | Non-Functional Requirement | Defines performance, reliability, maintainability, or reproducibility constraints. | `NFR-01: Dataset loading shall complete within 2 seconds per case.` |
 
@@ -143,93 +144,97 @@ The system shall produce deterministic dataset ordering when configured to do so
 
 ## 5. Data Requirements (DR)
 
-### DR-01: Volumetric CT Representation  
-CT images shall be represented as three-dimensional volumetric arrays corresponding to anatomical cardiac imaging.
+The following data requirements define the PatientSample data contract enforced by the coronary_prj system.
+All downstream components may assume these requirements hold once a PatientSample has passed validation.
+
+### DR-01: Volumetric CT Representation 
+
+**DR-01.1**  
+A PatientSample shall contain an image_volume represented as a NumPy array.
+
+**DR-01.2**  
+The image_volume shall be three-dimensional with shape (z, y, x).
 
 **Derived From:** CA-2  
-**Rationale:** Coronary anatomy is spatial and volumetric.
+**Rationale:** Cardiac CT data is inherently volumetric.
 
 ---
 
-### DR-02: Image–Label Spatial Consistency  
-Each image volume shall have a corresponding label volume with identical spatial dimensions.
+### DR-02: Valid Image Spatial Dimensions
 
-**Derived From:** CA-3  
-**Rationale:** Enables voxel-wise learning and validation.
+**DR-02.1**. 
+The spatial dimensions (y, x) of the image volume shall be greater than zero.
 
----
-
-### DR-03: Numerical Integrity of Image Data  
-Image volumes shall contain only finite numerical values.
-
-**Derived From:** CA-4  
-**Rationale:** Prevents numerical instability in preprocessing and modeling.
+**Rationale:** Prevents degenerate or malformed image data.
 
 ---
 
-### DR-04: Valid Label Semantics  
-Label volumes shall contain only predefined discrete class values representing coronary calcium annotations.
+### DR-03: Image Spacing Definition
 
-**Derived From:** CA-5  
-**Rationale:** Prevents annotation corruption and class ambiguity.
+**DR-03.1**  
+A PatientSample shall define voxel spacing as a tuple (z, y, x).
 
----
+**DR-03.2**  
+All spacing values shall be strictly greater than zero.
 
-### DR-05: Dataset Readiness Guarantee  
-All dataset samples shall satisfy defined postconditions prior to downstream model consumption.
-
-**Derived From:** System Safety and Reproducibility Goals
+**Rationale:** Spatial reasoning and annotation alignment depend on valid spacing.
 
 ---
 
-## 6. Validation Requirements (VR)
+### DR-04: Patient Identifier Integrity
 
-### VR-01: Enforce 3D Volume Dimensionality  
-The system shall reject image or label inputs that are not three-dimensional.
+**DR-04.1**  
+Each PatientSample shall define a non-empty patient_id.
 
-**Satisfies:** DR-01  
-**Implemented By:** 
-
----
-
-### VR-02: Enforce Image–Label Shape Matching  
-The system shall reject samples where image and label volumes differ in shape.
-
-**Satisfies:** DR-02  
-**Implemented By:** `validate_shape_match()`
+**Rationale:** Required for traceability, logging, and dataset bookkeeping
 
 ---
 
-### VR-03: Enforce Finite Image Values  
-The system shall reject image volumes containing NaN or infinite values.
+### DR-05: Annotation Presence Policy
 
-**Satisfies:** DR-03  
-**Implemented By:** `validate_finite()`
+**DR-05.1**  
+A PatientSample may optionally include annotations.
 
----
+**DR-05.2**  
+If annotations are required by the consuming workflow, the system shall reject samples without annotations.
 
-### VR-04: Enforce Allowed Label Values  
-The system shall reject label volumes containing values outside the defined class set.
-
-**Satisfies:** DR-04  
-**Implemented By:** `validate_label_values()`
+**Rationale:** Supports both labeled and unlabeled datasets while preserving explicit intent.
 
 ---
 
-### VR-05: Enforce Dataset Postconditions  
-The system shall assert dataset postconditions prior to model input.
+### DR-06: Annotation Slice Validity
 
-**Satisfies:** DR-05  
-**Implemented By:** `assert_postconditions()`
+**DR-06.1**  
+All annotation slice indices shall be integers.
+
+**DR-06.2**  
+All annotation slice indices shall lie within the bounds of the image volume depth.
+
+**Rationale:** Prevents spatial misalignment between annotations and image data.
 
 ---
 
-### VR-06: Enforce Unified Data Contract Boundary  
-The system shall enforce all validation requirements through a single dataset boundary.
+### DR-07: Annotation Geometry Validity
 
-**Satisfies:** DR-01 through DR-05  
-**Implemented By:** `enforce_data_contract()`
+**DR-07.1**  
+All vector ROI contours shall be defined as (N, 2) arrays of pixel coordinates.
 
+**DR-07.2**  
+All ROI coordinates shall lie within the spatial bounds of the image volume.
+
+**Rationale:** Ensures annotations are geometrically valid and renderable.
+
+---
+
+### DR-08: Unified Data Contract Boundary
+
+**DR-08.1**  
+All data requirements (DR-01 through DR-07) shall be enforced at the PatientSample validation boundary.
+
+**DR-08.2**  
+Downstream systems may assume all validated PatientSample objects satisfy these requirements.
+
+**Rationale:** Establishes a single, authoritative data contract.
 ---
 
 ## 7. Non-Functional Requirements

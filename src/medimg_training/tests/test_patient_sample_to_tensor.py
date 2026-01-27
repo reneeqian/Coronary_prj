@@ -1,4 +1,5 @@
 from pathlib import Path
+import torch
 import sys
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

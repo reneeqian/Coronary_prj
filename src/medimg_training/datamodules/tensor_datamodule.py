@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import Dataset
 
 
-class TensorDataset(Dataset):
+class TensorDatamodule(Dataset):
     """
     Torch Dataset wrapping pre-converted tensor samples.
 
@@ -25,8 +25,18 @@ class TensorDataset(Dataset):
                 key=lambda x: str(x.get("patient_id", ""))
             )
 
-        self.samples = tensor_samples
+        for sample in tensor_samples:
+            if not isinstance(sample, dict):
+                raise TypeError("Each sample must be a dict")
 
+        if not isinstance(tensor_samples, list):
+            raise TypeError("tensor_samples must be a list")
+
+        if len(tensor_samples) == 0:
+            raise ValueError("tensor_samples must not be empty")
+
+        self.samples = tensor_samples
+        
     def __len__(self) -> int:
         return len(self.samples)
 
