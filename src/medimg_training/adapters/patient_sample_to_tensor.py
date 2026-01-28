@@ -117,18 +117,26 @@ class PatientSampleTensorAdapter:
         Placeholder target builder.
 
         For now:
-        - If annotations exist → binary presence label
-        - Else → None
+        - Dense annotations → positive label
+        - Vector annotations → positive label if any ROIs exist
+        - No annotations → None or error if required
         """
         ann = sample.annotations
 
-        if ann is None or not ann.vector_rois:
+        # --- No annotations ---
+        if ann is None:
             return None
 
-        # Example: CAC present / not present
-        target = torch.tensor(1, dtype=torch.long)
+        # --- Dense mask annotations ---
+        if isinstance(ann, np.ndarray):
+            # Any non-zero pixel = positive label
+            return torch.tensor([ann.any()], dtype=torch.float32)
 
-        if self.device is not None:
-            target = target.to(self.device)
+        # --- Vector annotations ---
+        if hasattr(ann, "vector_rois"):
+            if not ann.vector_rois:
+                return None
+            return torch.tensor([True], dtype=torch.float32)
 
-        return target
+        # --- Unsupported annotation type (should never happen if contract enforced) ---
+        raise TypeError(f"Unsupported annotation type: {type(ann)}")

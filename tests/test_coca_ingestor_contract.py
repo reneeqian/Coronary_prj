@@ -1,3 +1,6 @@
+# Requirements (CAC)
+# CAC-FR-01.1	The system shall ingest cardiac CT image volumes from a specified root directory.
+
 from pathlib import Path
 import sys
 import numpy as np
@@ -33,7 +36,10 @@ def test_coca_ingestor_produces_valid_patient_sample():
     )
 
     if dataset_root.exists():
-        report.info("Using real COCA dataset", context=str(dataset_root))
+        report.info(
+            message="Using real COCA dataset", 
+            requirement_id="CAC-FR-01.1",
+            context=str(dataset_root))
         ingestor = COCAGatedIngestor(dataset_root=dataset_root)
         sample = ingestor.ingest_patient("0")
     else:

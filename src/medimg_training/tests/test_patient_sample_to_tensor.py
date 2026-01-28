@@ -1,15 +1,34 @@
 from pathlib import Path
 import torch
 import sys
+import pytest
+import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.ingestors.coca_gated_ingestor import COCAGatedIngestor
 from medimg_training.adapters.patient_sample_to_tensor import PatientSampleTensorAdapter
+from medimg_training.dataobjects.patient_sample import PatientSample
+
+@pytest.fixture
+def sample():
+    return PatientSample(
+        patient_id="TEST-001",
+        image_volume=np.zeros((16, 64, 64), dtype=np.float32),
+        spacing=(1.0, 1.0, 1.0),
+        annotations=np.zeros((16, 64, 64), dtype=np.int64),
+    )
+
+def make_invalid_sample():
+    return PatientSample(
+        patient_id="INVALID-001",
+        image_volume=None,  # invalid
+        spacing=(1.0, 1.0, 1.0),
+        annotations=None,
+    )
 
 
-def test_tensor_adapter_output_shapes():
+def test_tensor_adapter_output_shapes(sample):
     adapter = PatientSampleTensorAdapter(require_annotations=True)
     out = adapter(sample)
 

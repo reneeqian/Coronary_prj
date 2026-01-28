@@ -39,6 +39,20 @@ class EvidenceReport:
             lines.append(f"{prefix} {i.message}{ctx}")
         return "\n".join(lines)
     
+    def to_string(self) -> str:
+        """
+        Human-readable string representation suitable for exceptions.
+        """
+        lines = [f"Evidence report for {self.subject}"]
+
+        for i in self.issues:
+            prefix = f"[{i.level}]"
+            req = f" [{i.requirement_id}]" if i.requirement_id else ""
+            ctx = f" ({i.context})" if i.context else ""
+            lines.append(f"{prefix}{req} {i.message}{ctx}")
+
+        return "\n".join(lines)
+    
     def print_summary(self) -> None:
         print("\n=== Evidence Report ===")
         print(f"Subject: {self.subject}")

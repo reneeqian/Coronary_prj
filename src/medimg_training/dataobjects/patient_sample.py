@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Any, Optional
 import numpy as np
 
@@ -15,10 +15,7 @@ class PatientSample:
     annotations: AnnotationBundle
 
     patient_id: str
-    metadata: Dict[str, Any]
-
-    def __post_init__(self):
-        assert self.image_volume.ndim == 3
+    metadata: Dict[str, Any] = field(default_factory=dict)
         
     def __repr__(self) -> str:
         lines = [

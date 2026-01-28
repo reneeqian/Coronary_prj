@@ -10,8 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]  # adjust if needed
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.ingestors.coca_gated_ingestor import COCAGatedIngestor
-from medimg_training.data_adapters.patient_sample_tensor_adapter import PatientSampleTensorAdapter
-from
+from medimg_training.adapters.patient_sample_to_tensor import PatientSampleTensorAdapter
 
 DATASET_ROOT = (
     PROJECT_ROOT
