@@ -12,8 +12,8 @@ from typing import Optional
 import numpy as np
 
 from medimg_training.evidence.evidence_report import EvidenceReport
-from medimg_training.src.dataobjects.patient_sample import PatientSample
-from medimg_training.src.dataobjects.annotation_bundle import VectorROI
+from medimg_training.dataobjects.patient_sample import PatientSample
+from medimg_training.dataobjects.annotation_bundle import VectorROI
 
 def enforce_patient_sample_contract(
     sample: PatientSample,
