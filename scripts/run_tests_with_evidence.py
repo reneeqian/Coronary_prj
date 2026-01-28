@@ -2,7 +2,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-EVIDENCE_DIR = Path("evidence_runs") / datetime.now().strftime("%Y%m%d_%H%M%S")
+EVIDENCE_DIR = Path("artifacts/evidence_runs") / datetime.now().strftime("%Y%m%d_%H%M%S")
 EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
 
 print(f"[Runner] Evidence output → {EVIDENCE_DIR}")
@@ -13,7 +13,7 @@ env = {
 }
 
 result = subprocess.run(
-    ["pytest", "-s", "tests", "medimg_training/tests"],
+    ["pytest", "-s", "tests", "src/medimg_training/tests"],
     env=env,
 )
 
