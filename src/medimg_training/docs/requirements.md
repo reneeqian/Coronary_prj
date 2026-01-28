@@ -13,7 +13,7 @@ This module **does not own clinical semantics, data ingestion, or dataset curati
 ## 2. System Scope
 
 ### In Scope
-- Conversion of validated `PatientSample` objects to tensors
+- Conversion of valid `PatientSample` objects to tensors
 - PyTorch `Dataset` / DataModule abstractions
 - Training-time validation of tensor shape, dtype, and presence
 - Infrastructure to support model training and evaluation
@@ -49,22 +49,22 @@ These abstractions shall operate solely on in-memory `PatientSample` objects.
 
 ---
 
-## 4. Data Validation Requirements
+## 4. Data Contract Enforcement Requirements
 
-### DR-1: Input Completeness Validation
-The system shall validate that all required fields needed for tensor conversion are present in a `PatientSample`.
+### DR-1: Input Completeness Enforcement
+The system shall enforce that all required fields needed for tensor conversion are present in a `PatientSample`.
 
 Missing or malformed inputs shall raise explicit, actionable errors.
 
 ---
 
-### DR-2: Tensor Integrity Validation
-The system shall validate tensor properties required for training, including:
+### DR-2: Tensor Integrity Enforcement
+The system shall enforce tensor properties required for training, including:
 - Expected dimensionality
 - Data type consistency
 - Batch compatibility
 
-Validation failures shall be detected prior to model execution.
+Enforcement failures shall be detected prior to model execution.
 
 ---
 
@@ -88,6 +88,6 @@ No test shall require access to external storage or real datasets.
 
 Each requirement in this document shall be traceable to:
 - One or more implementation artifacts
-- One or more validation or test artifacts
+- One or more enforcement or test artifacts
 
 Traceability shall be maintained independently of any consuming project.

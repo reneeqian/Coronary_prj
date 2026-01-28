@@ -1,9 +1,12 @@
 from dataclasses import dataclass, field
 from typing import List
 from datetime import datetime
+from pathlib import Path
+import json
+import os
 
 @dataclass
-class ValidationIssue:
+class EvidenceIssue:
     level: str                  # ERROR | WARN | INFO
     message: str
     requirement_id: str | None  # <-- ADD
@@ -11,26 +14,25 @@ class ValidationIssue:
 
 
 @dataclass
-class ValidationReport:
+class EvidenceReport:
     subject: str
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    issues: List[ValidationIssue] = field(default_factory=list)
+    issues: List[EvidenceIssue] = field(default_factory=list)
 
     def error(self, message: str, requirement_id: str, context: str | None = None):
-        self.issues.append(ValidationIssue("ERROR", message, requirement_id, context))
+        self.issues.append(EvidenceIssue("ERROR", message, requirement_id, context))
 
     def warn(self, message: str, requirement_id: str, context: str | None = None):
-        self.issues.append(ValidationIssue("WARNING", message, requirement_id, context))
+        self.issues.append(EvidenceIssue("WARNING", message, requirement_id, context))
 
     def info(self, message: str, requirement_id: str, context: str | None = None):
-        self.issues.append(ValidationIssue("INFO", message, requirement_id, context))
-
+        self.issues.append(EvidenceIssue("INFO", message, requirement_id, context))
     @property
     def has_errors(self) -> bool:
         return any(i.level == "ERROR" for i in self.issues)
 
     def summary(self) -> str:
-        lines = [f"Validation report for {self.subject}"]
+        lines = [f"Evidence report for {self.subject}"]
         for i in self.issues:
             prefix = f"[{i.level}]"
             ctx = f" ({i.context})" if i.context else ""
@@ -38,7 +40,7 @@ class ValidationReport:
         return "\n".join(lines)
     
     def print_summary(self) -> None:
-        print("\n=== Validation Report ===")
+        print("\n=== Evidence Report ===")
         print(f"Subject: {self.subject}")
 
         errors = [i for i in self.issues if i.level == "ERROR"]
@@ -70,7 +72,7 @@ class ValidationReport:
                 if i.context:
                     print(f"     ↳ {i.context}")
 
-        print("\n=== End Validation Report ===\n")
+        print("\n=== End Evidence Report ===\n")
         
         
     def to_dict(self) -> dict:
@@ -90,7 +92,7 @@ class ValidationReport:
         }
 
     def to_markdown(self) -> str:
-        lines = [f"# Validation Report: {self.subject}", ""]
+        lines = [f"# Evidence Report: {self.subject}", ""]
         for i in self.issues:
             ctx = f" ({i.context})" if i.context else ""
             req = f" [Req: {i.requirement_id}]" if i.requirement_id else ""
@@ -106,3 +108,12 @@ class ValidationReport:
             path.write_text(self.to_markdown())
         else:
             raise ValueError(f"Unsupported report format: {path}")
+
+    def auto_save(self, name: str):
+        root = os.getenv("EVIDENCE_OUTPUT_DIR")
+        if not root:
+            return
+
+        ts = datetime.now().strftime("%H%M%S_%f")
+        path = Path(root) / f"{name}_{ts}.json"
+        self.save(path)

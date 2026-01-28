@@ -7,41 +7,41 @@
 # CAC-DR-06: ROI slice indices must be valid
 # CAC-DR-07: ROI contours must be in-bounds
 
-
+from pathlib import Path
 from typing import Optional
 import numpy as np
 
-from src.medimg_training.validators.validation_report import ValidationReport
-from src.datasets.patient_sample import PatientSample
-from src.annotations.annotation_bundle import VectorROI
+from medimg_training.evidence.evidence_report import EvidenceReport
+from medimg_training.src.dataobjects.patient_sample import PatientSample
+from medimg_training.src.dataobjects.annotation_bundle import VectorROI
 
-def validate_patient_sample(
+def enforce_patient_sample_contract(
     sample: PatientSample,
     *,
     require_annotations: bool = False,
-    report: ValidationReport | None = None,
-) -> ValidationReport:
+    report: EvidenceReport | None = None,
+) -> EvidenceReport:
     """
-    Validate structural and semantic correctness of a PatientSample.
+    Check structural and semantic correctness of a PatientSample.
     
         Implements data requirements CAC-DR-01 through CAC-DR-08.
     """
     if report is None:
-        report = ValidationReport(subject=f"PatientSample:{sample.patient_id}")
+        report = EvidenceReport(subject=f"PatientSample:{sample.patient_id}")
 
 
-    print(f"[Validator] Validating PatientSample {sample.patient_id}...")
+    print(f"[Checker] Checking PatientSample {sample.patient_id}...")
 
-    _validate_volume(sample, report)
-    _validate_spacing(sample, report)
-    _validate_patient_id(sample, report)
-    _validate_annotations(sample, report, require_annotations=require_annotations)
+    _check_volume(sample, report)
+    _check_spacing(sample, report)
+    _check_patient_id(sample, report)
+    _check_annotations(sample, report, require_annotations=require_annotations)
     
-    print("[Validator] Validation complete")
+    print("[Checker] Checking complete")
 
     return report
 
-def _validate_volume(sample: PatientSample, report: ValidationReport) -> None:
+def _check_volume(sample: PatientSample, report: EvidenceReport) -> None:
     vol = sample.image_volume
 
     if not isinstance(vol, np.ndarray):
@@ -72,7 +72,7 @@ def _validate_volume(sample: PatientSample, report: ValidationReport) -> None:
         )
 
 
-def _validate_spacing(sample: PatientSample, report: ValidationReport) -> None:
+def _check_spacing(sample: PatientSample, report: EvidenceReport) -> None:
     spacing = sample.spacing
 
     if spacing is None:
@@ -102,7 +102,7 @@ def _validate_spacing(sample: PatientSample, report: ValidationReport) -> None:
             context=str(spacing),
         )
 
-def _validate_patient_id(sample: PatientSample, report: ValidationReport) -> None:
+def _check_patient_id(sample: PatientSample, report: EvidenceReport) -> None:
     if not sample.patient_id:
         report.error(
             message="patient_id must be set",
@@ -115,9 +115,9 @@ def _validate_patient_id(sample: PatientSample, report: ValidationReport) -> Non
             context=sample.patient_id,
         )
         
-def _validate_annotations(
+def _check_annotations(
     sample: PatientSample,
-    report: ValidationReport,
+    report: EvidenceReport,
     *,
     require_annotations: bool,
 ) -> None:
@@ -160,17 +160,17 @@ def _validate_annotations(
             continue
 
         for roi in rois:
-            _validate_vector_roi(
+            _check_vector_roi(
                 roi=roi,
                 volume=vol,
                 report=report,
                 slice_idx=slice_idx,
             )
 
-def _validate_vector_roi(
+def _check_vector_roi(
     roi: VectorROI,
     volume: np.ndarray,
-    report: ValidationReport,
+    report: EvidenceReport,
     slice_idx: int,
 ) -> None:
     contour = roi.contour_px

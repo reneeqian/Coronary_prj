@@ -12,7 +12,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.ingestors.coca_gated_ingestor import COCAGatedIngestor
 from src.annotations.annotation_bundle import AnnotationBundle
 from src.datasets.patient_sample import PatientSample
-from src.validators.patient_sample_validator import validate_patient_sample
+from src.contracts.patient_sample_contract import check_patient_sample_contract
 
 # -------------------------
 # Configuration
@@ -122,5 +122,5 @@ for i, sample in enumerate(ingestor.ingest_dataset()):
 
 # %%
 sample = ingestor.ingest_patient("0")
-validate_patient_sample(sample)
+check_patient_sample_contract(sample)
 # %%

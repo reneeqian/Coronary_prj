@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, Any, Optional
 import numpy as np
 
-from src.annotations.annotation_bundle import AnnotationBundle
+from medimg_training.src.dataobjects.annotation_bundle import AnnotationBundle
 
 
 @dataclass

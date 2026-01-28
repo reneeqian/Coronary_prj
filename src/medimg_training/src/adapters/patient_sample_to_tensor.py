@@ -5,8 +5,8 @@ from typing import Dict, Optional
 import numpy as np
 import torch
 
-from src.datasets.patient_sample import PatientSample
-from src.validators.patient_sample_validator import validate_patient_sample
+from src.dataobjects.patient_sample import PatientSample
+from src.validators.patient_sample_contract import validate_patient_sample
 
 
 class PatientSampleTensorAdapter:

@@ -7,9 +7,8 @@ from lxml import etree
 import pydicom
 
 from src.ingestors.base_ingestor import BaseIngestor
-from src.datasets.patient_sample import PatientSample
-from src.annotations.annotation_bundle import AnnotationBundle, VectorROI  # if/when created
-
+from src.medimg_training.src.dataobjects.patient_sample import PatientSample
+from src.medimg_training.src.dataobjects.annotation_bundle import AnnotationBundle, VectorROI  # if/when created
 
 class COCAGatedIngestor(BaseIngestor):
 

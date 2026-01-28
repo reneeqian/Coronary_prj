@@ -2,9 +2,9 @@
 
 ## 1. Purpose
 
-This document defines the functional, data, validation, and non-functional requirements for a software pipeline that ingests cardiac CT data and supports coronary artery calcium (CAC) detection for research and educational purposes.
+This document defines the functional, data, and non-functional requirements for a software pipeline that ingests cardiac CT data and supports coronary artery calcium (CAC) detection for research and educational purposes.
 
-The primary objective is to demonstrate robust **medical AI software engineering practices**, including data contracts, validation, traceability, and reproducibility, rather than clinical deployment or model optimization. 
+The primary objective is to demonstrate robust **medical AI software engineering practices**, including data contracts, enforcement, traceability, and reproducibility, rather than clinical deployment or model optimization. 
 
 Traceability ends at the tensor adapter boundary.
 
@@ -16,7 +16,7 @@ The system shall:
 - Ingest publicly available non-contrast cardiac CT datasets
 - Enforce explicit data contracts on input structure and semantics
 - Provide a reproducible dataset abstraction suitable for downstream machine learning workflows
-- Support validation and testing of data integrity
+- Support enforcing and testing of data integrity
 
 The system shall **not**:
 - Provide diagnostic output
@@ -25,12 +25,9 @@ The system shall **not**:
 
 ### 2.1 Traceability Scope
 
-The traceability matrix covers requirements for the coronary_prj system
-from data ingestion through validated PatientSample objects.
+The traceability matrix covers requirements for the coronary_prj system from data ingestion through enforcing PatientSample data contract and record evidence.
 
-Conversion of PatientSample objects into framework-specific tensor
-representations, along with training and optimization logic, is handled
-by the medimg_training module and is out of scope for this document.
+Conversion of PatientSample objects into framework-specific tensor representations, along with training and optimization logic, is handled by the medimg_training module and is out of scope for this document.
 
 
 ---
@@ -54,7 +51,7 @@ The following table defines the requirement prefixes used throughout this projec
 |------:|------------------|-------------|---------|
 | **FR** | Functional Requirement | Defines system behavior, capabilities, or workflows. | `FR-01: The system shall load coronary CT volumes from disk.` |
 | **DR** | Data Requirement | Defines constraints, assumptions, and guarantees on input data and labels. | `DR-02: Input CT volumes shall be 3D arrays.` |
-| **VRF** | Verification Requirement | Defines test-time checks that verify requirements. | `VAL-03: The system shall reject labels containing invalid values.` |
+| **VRF** | Verification Requirement | Defines test-time checks that verify requirements. | `VRF-03: The system shall reject labels containing invalid values.` |
 | **VAL** | Validation Requirement | Reserved for V&V validation against intended use. |
 | **MR** | Model Requirement | Defines constraints on model inputs, outputs, and training assumptions. | `MR-01: The model shall accept single-channel CT volumes.` |
 | **NFR** | Non-Functional Requirement | Defines performance, reliability, maintainability, or reproducibility constraints. | `NFR-01: Dataset loading shall complete within 2 seconds per case.` |
@@ -73,7 +70,7 @@ Where:
 
 Requirements may trace to:
 - Clinical assumptions (`CA-*`)
-- Dataset validators
+- Dataset contracts and enforcers
 - Unit or integration tests
 - Documentation artifacts
 
@@ -96,23 +93,23 @@ The system shall fail gracefully with informative errors when required directori
 
 ---
 
-### FR-02: Dataset Structure Validation
+### FR-02: Dataset Structure Enforcement
 
 **FR-02.1**  
 The system shall enforce a predefined directory structure for processed datasets.
 
 **FR-02.2**  
-The system shall validate the presence and non-emptiness of required image and label subdirectories.
+The system shall enforce the presence and non-emptiness of required image and label subdirectories.
 
 ---
 
-### FR-03: Metadata and Image Integrity Validation
+### FR-03: Metadata and Image Integrity Enforcement
 
 **FR-03.1**  
 The system shall verify that image volumes are readable and non-corrupt.
 
 **FR-03.2**  
-The system shall validate that image volumes contain valid numeric data.
+The system shall enforce that image volumes contain valid numeric data.
 
 **FR-03.3**  
 The system shall verify that image intensity values fall within expected CT Hounsfield Unit ranges.
@@ -145,7 +142,7 @@ The system shall produce deterministic dataset ordering when configured to do so
 ## 5. Data Requirements (DR)
 
 The following data requirements define the PatientSample data contract enforced by the coronary_prj system.
-All downstream components may assume these requirements hold once a PatientSample has passed validation.
+All downstream components may assume these requirements hold once a PatientSample has passed enforcement.
 
 ### DR-01: Volumetric CT Representation 
 
@@ -229,10 +226,10 @@ All ROI coordinates shall lie within the spatial bounds of the image volume.
 ### DR-08: Unified Data Contract Boundary
 
 **DR-08.1**  
-All data requirements (DR-01 through DR-07) shall be enforced at the PatientSample validation boundary.
+All data requirements (DR-01 through DR-07) shall be enforced at the PatientSample contract boundary.
 
 **DR-08.2**  
-Downstream systems may assume all validated PatientSample objects satisfy these requirements.
+Downstream systems may assume all enforced PatientSample objects satisfy these requirements.
 
 **Rationale:** Establishes a single, authoritative data contract.
 ---
@@ -245,7 +242,7 @@ Downstream systems may assume all validated PatientSample objects satisfy these 
 The codebase shall follow modular design principles.
 
 **NFR-01.2**  
-Dataset validation logic shall be isolated from dataset iteration logic.
+Dataset contract enforcement logic shall be isolated from dataset iteration logic.
 
 ---
 
@@ -255,7 +252,7 @@ Dataset validation logic shall be isolated from dataset iteration logic.
 Each requirement shall be traceable to at least one implementation artifact.
 
 **NFR-02.2**  
-Each requirement shall be verifiable via tests or validation checks.
+Each requirement shall be verifiable via tests or contract enforcement checks.
 
 ---
 
@@ -280,7 +277,7 @@ Limitations of the pipeline shall be explicitly stated in documentation.
 ## 9. Verification Strategy
 
 Verification of requirements shall be performed through:
-- Dataset validators
+- Dataset contract enforcement
 - Unit tests
 - Script-based sanity checks
 
