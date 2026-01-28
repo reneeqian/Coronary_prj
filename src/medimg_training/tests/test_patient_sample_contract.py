@@ -1,8 +1,8 @@
 import numpy as np
 
-from src.dataobjects.patient_sample import PatientSample
-from src.contracts.patient_sample_contract import enforce_patient_sample_contract
-from evidence.evidence_report import EvidenceReport
+from medimg_training.dataobjects.patient_sample import PatientSample
+from medimg_training.contracts.patient_sample_contract import enforce_patient_sample_contract
+from medimg_training.evidence.evidence_report import EvidenceReport
 
 
 def test_patient_sample_contract_with_dummy_data():

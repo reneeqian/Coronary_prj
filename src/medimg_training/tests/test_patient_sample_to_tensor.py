@@ -6,7 +6,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.ingestors.coca_gated_ingestor import COCAGatedIngestor
-from src.medimg_training.src.adapters.patient_sample_to_tensor import PatientSampleTensorAdapter
+from medimg_training.adapters.patient_sample_to_tensor import PatientSampleTensorAdapter
 
 
 def test_tensor_adapter_output_shapes():

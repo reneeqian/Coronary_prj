@@ -5,8 +5,8 @@ from typing import Dict, Optional
 import numpy as np
 import torch
 
-from src.dataobjects.patient_sample import PatientSample
-from src.validators.patient_sample_contract import validate_patient_sample
+from medimg_training.dataobjects.patient_sample import PatientSample
+from medimg_training.contracts.patient_sample_contract import enforce_patient_sample_contract
 
 
 class PatientSampleTensorAdapter:
@@ -41,7 +41,7 @@ class PatientSampleTensorAdapter:
             metadata: dict
         """
         # --- Validate ---
-        report = validate_patient_sample(
+        report = enforce_patient_sample_contract(
             sample,
             require_annotations=self.require_annotations,
         )

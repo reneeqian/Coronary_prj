@@ -1,6 +1,6 @@
 import pytest
 import torch
-from medimg_training.src.datamodules.tensor_datamodule import TensorDatamodule 
+from medimg_training.datamodules.tensor_datamodule import TensorDatamodule 
 
 def test_tensor_dataset_length():
     samples = [{"x": torch.randn(1)}, {"x": torch.randn(1)}]
