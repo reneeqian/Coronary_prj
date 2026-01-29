@@ -75,7 +75,7 @@ Purpose:
 - Enforcement is performed at defined system boundaries
 - Downstream components assume inputs satisfy enforced contracts
 
-### PatientSample Contract Enforcement
+### `PatientSample` Contract Enforcement
 
 All `PatientSample` invariants are enforced by a single boundary function:
 
@@ -109,12 +109,13 @@ Tests verify enforcement behavior; enforcement does not depend on tests.
 
 ---
 
-## 5. medical_image_ai_toolkit (Framework Code)
+## 5. `medical_image_ai_toolkit` (Framework Code)
+
 ### Scope
 
 May include:
 - Trainers
-- Datasets
+- Datamodules
 - Adapters
 - Task abstractions
 - Losses, metrics, logging utilities
@@ -137,7 +138,7 @@ Responsibilities:
 - Load data lazily
 - Capture training artifacts
 
-## 6. coronary_prj (Project Code)
+## 6. `coronary_prj` (Project Code)
 
 Responsibilities:
 - Dataset ingestion wiring (e.g. COCA)
@@ -183,17 +184,6 @@ Artifact capture is required to support:
 - Training architecture defined but not yet executed
 
 Next step: smoke-test training run with visual outputs
-
-10. Change Policy
-
-Any change that affects:
-- Data contracts
-- Module boundaries
-- Training responsibilities
-
-Must:
-- Update this document
-- Trigger a new Design History (DHF-lite) entry
 
 
 ---
@@ -245,3 +235,108 @@ flowchart TD
     H --> I
     B --> I
 ```
+
+## 9. Experiment Abstractions: Splits and Tasks
+
+This project distinguishes between experiment policy and experiment execution.
+
+To support reproducibility, validation, and future extraction of the framework into a standalone package, the concepts of dataset splits and learning tasks are formalized as first-class abstractions with explicit interfaces and validation rules.
+
+### Design Principle
+
+- The framework defines and enforces the shape and invariants of splits and tasks
+- The project selects, configures, and instantiates concrete splits and tasks
+- The trainer executes only validated splits and tasks
+
+This mirrors the system’s approach to data contracts:
+*policy is flexible, contracts are enforced.*
+
+### `SplitStrategy`
+
+A SplitStrategy defines a deterministic policy for assigning patient identities to logical dataset subsets (e.g. train, val, test).
+
+Responsibilities
+
+A SplitStrategy must:
+- Operate at the patient_id level
+- Be deterministic and reproducible
+- Avoid patient leakage across splits
+- Expose sufficient metadata to be captured as a training artifact
+
+Framework Role (medical_image_ai_toolkit)
+
+The framework provides:
+- A formal SplitStrategy interface
+- Validation of split invariants (e.g. determinism, exclusivity)
+- Optional reusable base implementations (e.g. deterministic hash-based splits)
+
+The framework does not encode dataset- or project-specific cohort logic.
+
+Project Role (coronary_prj)
+
+The project is responsible for:
+- Selecting a SplitStrategy
+- Providing configuration parameters (e.g. seeds, ratios)
+- Defining dataset-specific inclusion or exclusion rules
+
+The trainer accepts a SplitStrategy as configuration input and records its identity and parameters as part of the training run artifacts.
+
+### `TaskDefinition`
+
+A TaskDefinition specifies the learning objective applied to the dataset.
+
+A task defines:
+- How labels or targets are derived from a validated PatientSample
+- The expected model outputs
+- The loss function
+- Applicable metrics
+
+Responsibilities
+
+A TaskDefinition must:
+- Declare its input and output expectations
+- Define a loss compatible with the declared outputs
+- Provide metrics appropriate to the task type
+- Be internally self-consistent and screenable
+
+Framework Role (medical_image_ai_toolkit)
+
+The framework provides:
+- A formal TaskDefinition interface
+- Validation of task consistency (e.g. output–loss compatibility)
+- Optional abstract task types (e.g. classification, regression, segmentation)
+
+The framework does not encode label semantics or clinical meaning.
+
+Project Role (coronary_prj)
+
+The project is responsible for:
+- Implementing concrete task definitions
+- Encoding dataset- and domain-specific label semantics
+- Selecting the task for a given training run
+
+### Trainer Responsibilities
+
+The MedicalImageTrainer:
+- Accepts a SplitStrategy and TaskDefinition as configuration
+- Validates them against framework-defined expectations
+- Refuses execution if validation fails
+- Captures split and task identity, configuration, and validation results as part of training artifacts
+
+The trainer does not contain:
+- Dataset-specific logic
+- Task semantics
+- Split policy decisions
+
+## !!!Change Policy!!!
+
+Any change that affects:
+- Data contracts
+- Module boundaries
+- Training responsibilities
+- `SplitStrategy` interfaces or invariants
+- `TaskDefinition` interfaces or validation rules
+
+Must:
+- Update this document
+- Trigger a new Design History (DHF-lite) entry
