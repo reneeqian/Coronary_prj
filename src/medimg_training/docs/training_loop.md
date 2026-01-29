@@ -24,3 +24,18 @@ Each batch is expected to be a dictionary containing:
   - loss functions
   - metrics
   - model heads
+
+# Training Runs
+
+Each model training run produces a unique set of artifacts stored under:
+
+artifacts/training_runs/<run_id>/
+
+Each run directory contains:
+- metadata.json: dataset identity, split strategy, and code version
+- config.yaml: training hyperparameters
+- splits.json: patient IDs assigned to train/validation
+- metrics.json: training and validation metrics
+- model.pt: serialized model weights
+
+All training runs are immutable once created.

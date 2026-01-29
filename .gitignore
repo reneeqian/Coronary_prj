@@ -6,6 +6,11 @@ data/**
 !data/README.md
 
 # =========================
+# Artifacts (never commit)
+# =========================
+artifacts/
+
+# =========================
 # Large medical images
 # =========================
 *.nii

@@ -39,3 +39,25 @@ image:
 target:
 - Type: torch.Tensor | None
 - Shape: task-dependent
+
+
+┌────────────────────────────┐
+│ Coronary_prj (APPLICATION) │
+│ - dataset choice           │
+│ - split policy             │
+│ - run intent               │
+│ - artifact location        │
+└────────────▲───────────────┘
+             │
+┌────────────┴───────────────┐
+│ medimg_training (LIBRARY)  │
+│ - contracts                │
+│ - trainers                 │
+│ - adapters                 │
+│ - abstract training flow   │
+└────────────▲───────────────┘
+             │
+┌────────────┴───────────────┐
+│ Data on disk (lazy)        │
+│ - patient_id → load sample │
+└────────────────────────────┘
