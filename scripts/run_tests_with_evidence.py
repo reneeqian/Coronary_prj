@@ -13,7 +13,7 @@ env = {
 }
 
 result = subprocess.run(
-    ["pytest", "-s", "tests", "src/medimg_training/tests"],
+    ["pytest", "-s", "tests", "src/medical_image_ai_toolkit/tests"],
     env=env,
 )
 

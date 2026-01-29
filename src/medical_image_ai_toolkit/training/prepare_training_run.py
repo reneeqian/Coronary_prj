@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import Iterable
-from medimg_training.training.run_metadata import TrainingRunMetadata
-from medimg_training.training.artifact_manager import TrainingArtifactManager
-from medimg_training.training.splits import HashPatientIDSplit
-from medimg_training.training.split_writer import save_splits
+from medical_image_ai_toolkit.training.run_metadata import TrainingRunMetadata
+from medical_image_ai_toolkit.training.artifact_manager import TrainingArtifactManager
+from medical_image_ai_toolkit.training.splits import HashPatientIDSplit
+from medical_image_ai_toolkit.training.split_writer import save_splits
 
 
 def prepare_training_run(

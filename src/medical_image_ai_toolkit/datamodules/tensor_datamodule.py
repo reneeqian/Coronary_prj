@@ -1,4 +1,4 @@
-# medimg_training/datamodules/tensor_datamodule.py
+# medical_image_ai_toolkit/datamodules/tensor_datamodule.py
 
 from typing import List, Dict, Any
 import torch

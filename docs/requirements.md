@@ -27,7 +27,7 @@ The system shall **not**:
 
 The traceability matrix covers requirements for the coronary_prj system from data ingestion through enforcing PatientSample data contract and record evidence.
 
-Conversion of PatientSample objects into framework-specific tensor representations, along with training and optimization logic, is handled by the medimg_training module and is out of scope for this document.
+Conversion of PatientSample objects into framework-specific tensor representations, along with training and optimization logic, is handled by the medical_image_ai_toolkit module and is out of scope for this document.
 
 
 ---

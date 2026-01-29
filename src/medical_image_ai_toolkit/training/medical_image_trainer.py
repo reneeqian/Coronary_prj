@@ -7,7 +7,7 @@ import json
 import datetime
 import torch
 
-from medimg_training.evidence.evidence_report import EvidenceReport
+from medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
 
 
 class MedicalImageTrainer:

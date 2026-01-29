@@ -1,8 +1,8 @@
-# medimg_training – Requirements
+# medical_image_ai_toolkit – Requirements
 
 ## 1. Purpose
 
-`medimg_training` is a reusable training infrastructure module for medical imaging research.
+`medical_image_ai_toolkit` is a reusable training infrastructure module for medical imaging research.
 
 It provides PyTorch-compatible abstractions for converting validated domain-agnostic data objects into tensors and exposing them through training-ready interfaces.
 
@@ -29,21 +29,21 @@ This module **does not own clinical semantics, data ingestion, or dataset curati
 ## 3. Functional Requirements
 
 ### FR-1: PatientSample Input Contract
-`medimg_training` shall accept `PatientSample` objects as its primary input data unit.
+`medical_image_ai_toolkit` shall accept `PatientSample` objects as its primary input data unit.
 
 The module shall not accept raw files, paths, or unstructured dictionaries as training inputs.
 
 ---
 
 ### FR-2: Tensor Adaptation
-`medimg_training` shall convert `PatientSample` objects into PyTorch tensors using adapter components (e.g., `patient_sample_to_tensor`).
+`medical_image_ai_toolkit` shall convert `PatientSample` objects into PyTorch tensors using adapter components (e.g., `patient_sample_to_tensor`).
 
 Tensor conversion logic shall be isolated from training logic.
 
 ---
 
 ### FR-3: Torch Dataset Abstraction
-`medimg_training` shall expose PyTorch-compatible `Dataset` (and/or DataModule) abstractions for use in model training loops.
+`medical_image_ai_toolkit` shall expose PyTorch-compatible `Dataset` (and/or DataModule) abstractions for use in model training loops.
 
 These abstractions shall operate solely on in-memory `PatientSample` objects.
 
@@ -71,7 +71,7 @@ Enforcement failures shall be detected prior to model execution.
 ## 5. Non-Functional Requirements
 
 ### NFR-1: Domain Agnosticism
-`medimg_training` shall not encode domain-specific or clinical assumptions.
+`medical_image_ai_toolkit` shall not encode domain-specific or clinical assumptions.
 
 All domain semantics shall be enforced upstream.
 

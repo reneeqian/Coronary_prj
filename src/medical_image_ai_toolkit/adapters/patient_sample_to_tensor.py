@@ -5,8 +5,8 @@ from typing import Dict, Optional
 import numpy as np
 import torch
 
-from medimg_training.dataobjects.patient_sample import PatientSample
-from medimg_training.contracts.patient_sample_contract import enforce_patient_sample_contract
+from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
+from medical_image_ai_toolkit.contracts.patient_sample_contract import enforce_patient_sample_contract
 
 
 class PatientSampleTensorAdapter:

@@ -11,9 +11,9 @@
 
 import numpy as np
 
-from medimg_training.evidence.evidence_report import EvidenceReport
-from medimg_training.dataobjects.patient_sample import PatientSample
-from medimg_training.dataobjects.annotation_bundle import VectorROI
+from medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
+from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
+from medical_image_ai_toolkit.dataobjects.annotation_bundle import VectorROI
 
 def enforce_patient_sample_contract(
     sample: PatientSample,
