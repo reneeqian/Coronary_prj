@@ -43,7 +43,9 @@ def test_coca_ingestor_produces_valid_patient_sample():
         ingestor = COCAGatedIngestor(dataset_root=dataset_root)
         sample = ingestor.ingest_patient("0")
     else:
-        report.warn("COCA dataset not found, using dummy sample")
+        report.warn(
+            message="COCA dataset not found, using dummy sample",
+            requirement_id="CAC-FR-01.1")
         sample = _make_dummy_patient_sample()
 
     contract_report = enforce_patient_sample_contract(
