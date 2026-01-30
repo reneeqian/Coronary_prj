@@ -23,11 +23,13 @@ class PatientSampleTensorAdapter:
         dtype: torch.dtype = torch.float32,
         device: torch.device | None = None,
         require_annotations: bool = False,
+        default_target: Optional[float] = None,  # 👈 ADD
     ):
         self.normalize = normalize
         self.dtype = dtype
         self.device = device
         self.require_annotations = require_annotations
+        self.default_target = default_target
 
     def __call__(self, sample: PatientSample) -> Dict[str, object]:
         """
@@ -125,8 +127,13 @@ class PatientSampleTensorAdapter:
 
         # --- No annotations ---
         if ann is None:
+            if self.default_target is not None:
+                return torch.tensor(
+                    [self.default_target],
+                    dtype=torch.float32,
+                )
             return None
-
+        
         # --- Dense mask annotations ---
         if isinstance(ann, np.ndarray):
             # Any non-zero pixel = positive label
