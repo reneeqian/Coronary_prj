@@ -26,6 +26,7 @@ from src.medical_image_ai_toolkit.datamodules.lazy_patient_datasource import Laz
 from src.medical_image_ai_toolkit.training.splits import DeterministicHoldoutSplitStrategy
 from src.medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
 from src.medical_image_ai_toolkit.adapters.patient_sample_to_tensor import PatientSampleTensorAdapter
+from src.medical_image_ai_toolkit.training.medical_image_trainer import MedicalImageTrainer
 
 # ---------------------------------------------------------------------
 # PROJECT IMPORTS
@@ -65,6 +66,10 @@ SAVE_TRAINING_PLOT = True  # Save plot to RUN_DIR
 
 # ---- Progress reporting ----
 PRINT_EVERY_N_BATCHES = 50   # set to 10 for fast feedback, 0 to disable
+
+# ---- Reproducibility ----
+RANDOM_SEED = 1337
+
 
 # =====================================================================
 # ARTIFACT ROOT (TRAINER-OWNED)
@@ -259,9 +264,9 @@ def plot_training_history(history, run_dir: Path, show: bool, save: bool):
         print("⚠️ matplotlib not available — skipping training plot")
         return
 
-    epochs = [h["epoch"] + 1 for h in history]
-    train_losses = [h["train_loss"] for h in history]
-    val_losses = [h["val_loss"] for h in history]
+    epochs = [h["epoch"] for h in history]
+    train_losses = [h["train"]["loss"] for h in history]
+    val_losses = [h["val"]["loss"] for h in history]
 
     plt.figure(figsize=(8, 5))
     plt.plot(epochs, train_losses, label="Train Loss", marker="o")
@@ -296,7 +301,12 @@ def main():
     print(f"Artifacts dir: {RUN_DIR}")
     print(f"Device: {DEVICE}")
     print("=" * 80)
-
+    
+    torch.manual_seed(RANDOM_SEED)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(RANDOM_SEED)
+    
+    print(f"🔧 Random seed set to: {RANDOM_SEED}")
 
     # ------------------------------------------------------------
     # INGESTOR (TRAINER INPUT)
@@ -369,6 +379,28 @@ def main():
     train_dataset = SliceViewDataset(train_source)
     val_dataset = SliceViewDataset(val_source)
 
+    # ------------------------------------------------------------
+    # DATA SPLIT ARTIFACT (FDA-CRITICAL)
+    # ------------------------------------------------------------
+    with open(RUN_DIR / "data_splits.json", "w") as f:
+        json.dump(
+            {
+                "train": {
+                    "patient_ids": splits["train"],
+                    "num_patients": len(splits["train"]),
+                    "num_slices": len(train_dataset),
+                },
+                "val": {
+                    "patient_ids": splits["val"],
+                    "num_patients": len(splits["val"]),
+                    "num_slices": len(val_dataset),
+                },
+            },
+            f,
+            indent=2,
+        )
+
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
@@ -399,14 +431,47 @@ def main():
     # ------------------------------------------------------------
     static_metadata = {
         "run_intent": RUN_INTENT,
-        "device": str(DEVICE),
+        "run_type": "training",
+        "timestamp": TIMESTAMP,
+
+        "reproducibility": {
+            "random_seed": RANDOM_SEED,
+        },
+
+        "hardware": {
+            "device": str(DEVICE),
+            "cuda_available": torch.cuda.is_available(),
+        },
+
+        "dataset": {
+            "name": "COCA",
+            "variant": "Gated_release_final",
+            "root": str(DATASET_ROOT),
+            "num_patients_discovered": len(patient_ids),
+        },
+
         "split_strategy": split_strategy.metadata(),
-        "model": "SmallSliceCNN",
-        "optimizer": "Adam",
-        "learning_rate": LEARNING_RATE,
-        "batch_size": BATCH_SIZE,
-        "epochs": NUM_EPOCHS,
+
+        "model": {
+            "architecture": "SmallSliceCNN",
+            "task": "slice_binary_classification",
+            "input_shape": [1, "H", "W"],
+            "output_shape": [1],
+        },
+
+        "optimization": {
+            "optimizer": "Adam",
+            "loss": "BCEWithLogitsLoss",
+            "learning_rate": LEARNING_RATE,
+            "batch_size": BATCH_SIZE,
+            "epochs_planned": NUM_EPOCHS,
+        },
+
+        "software": {
+            "torch_version": torch.__version__,
+        },
     }
+
 
     with open(RUN_DIR / "run_config.json", "w") as f:
         json.dump(static_metadata, f, indent=2)
@@ -486,8 +551,12 @@ def main():
 
         epoch_record = {
             "epoch": epoch,
-            "train_loss": train_loss,
-            "val_loss": val_loss,
+            "train": {
+                "loss": train_loss,
+            },
+            "val": {
+                "loss": val_loss,
+            },
             "epoch_time_sec": epoch_time,
         }
         history.append(epoch_record)
@@ -499,6 +568,21 @@ def main():
             f"time={epoch_time:.1f}s"
         )
 
+    best_epoch = min(history, key=lambda h: h["val"]["loss"])
+
+    training_summary = {
+        "epochs_completed": len(history),
+        "best_epoch": best_epoch["epoch"],
+        "best_val_loss": best_epoch["val"]["loss"],
+        "early_stopping": False,
+        "notes": "Smoke training run. No clinical performance claims.",
+    }
+
+    with open(RUN_DIR / "training_summary.json", "w") as f:
+        json.dump(training_summary, f, indent=2)
+    
+    print("\n📊 Training summary:")
+    print(json.dumps(training_summary, indent=2))
 
 
     # ------------------------------------------------------------
@@ -513,11 +597,14 @@ def main():
     # EVIDENCE REPORT (TRAINER-OWNED, NON-CLINICAL)
     # ------------------------------------------------------------
     evidence = EvidenceReport(subject="COCA gated CT smoke-training run")
-    evidence.info("Run intent: smoke training")
-    evidence.info("Dataset: COCA")
-    evidence.info("Annotation type: vector ROIs")
+    evidence.info(f"Run intent: {RUN_INTENT}")
+    evidence.info(f"Dataset: COCA / Gated_release_final")
+    evidence.info(f"Patients (train/val): {len(splits['train'])} / {len(splits['val'])}")
+    evidence.info(f"Slices (train/val): {len(train_dataset)} / {len(val_dataset)}")
     evidence.info("Task: slice-based binary classification")
-    evidence.info("No clinical performance claims implied")
+    evidence.info("Loss: BCEWithLogitsLoss")
+    evidence.info("No clinical or diagnostic performance claims implied")
+
 
     evidence.save(RUN_DIR / "evidence.json")
     

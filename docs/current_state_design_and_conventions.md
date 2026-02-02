@@ -1,439 +1,425 @@
 # Current State Design & Conventions
+
 **Project:** Coronary CT ML Pipeline  
-**Last Updated:** 2026-01-31
-**Status:** Active – authoritative snapshot of current architecture and conventions
+**Last Updated:** 2026-01-31  
+**Status:** Active — authoritative snapshot of current architecture and conventions
 
 ---
 
-## 1. Purpose
+## 1. Purpose & Scope
 
-This document describes the **current, authoritative design state** of the project.
+This document defines the **current, authoritative design state** of the system.
 
-It answers:
-- What abstractions exist today
-- Where responsibilities live
-- What assumptions downstream code may rely on
-- What conventions are considered “locked” at this stage
+It specifies:
+- Existing abstractions and boundaries
+- Ownership of responsibilities
+- Enforced contracts and assumptions
+- Conventions considered *locked*
 
-This document is intended to:
+**Goals**
 - Reduce cognitive load
-- Prevent accidental architectural drift
-- Serve as a reference during implementation, testing, and training
+- Prevent architectural drift
+- Support implementation, testing, onboarding, and audit readiness
 
-Historical rationale is captured separately in the Design History (DHF-lite).
-
----
-
-## 2. High-Level Architecture
-
-### Design Principle
-The system is divided into:
-- **Reusable medical imaging framework code** (`medical_image_ai_toolkit`)
-- **Project- and dataset-specific code** (`coronary_prj`)
-
-Framework code must be importable and usable as if it were an external package.
+**Out of Scope**
+- Historical rationale (captured in Design History / DHF-lite)
+- Future or experimental behavior (explicitly marked when present)
 
 ---
 
-## 3. Process and Conventions
-- “Validation” is a reserved word
-This project is intended to demonstrate rigorous, regulatory-ready AI development for medical imaging
-- Reporting and artifact generation are first-class requirements
-- Errors, deviations, and contract violations MUST report to EvidenceReport and generate auditable artifacts
-- Silent failure is explicitly disallowed at system boundaries
+## 2. Architectural Overview
+
+### Core Design Principle
+
+The system is split into **framework** and **project** code:
+
+| Layer | Responsibility | Constraints |
+|------|----------------|-------------|
+| `medical_image_ai_toolkit` | Reusable medical imaging ML framework | Importable as external package; dataset-agnostic |
+| `coronary_prj` | Project- and dataset-specific logic | Owns all CAC- and dataset-specific semantics |
+
+Framework code **must not** encode project assumptions.
 
 ---
 
-## 3. Core Data Contract
+## 3. Global Process & Conventions
 
-### PatientSample
+| Convention | Status |
+|-----------|--------|
+| “Validation” is a reserved word | Enforced |
+| Regulatory-ready development mindset | Required |
+| Reporting & artifact generation | First-class |
+| Silent failure at system boundaries | Disallowed |
+| Errors & deviations | Must generate auditable evidence |
 
-`PatientSample` is the canonical patient-level data representation.
+All boundary checks must emit **EvidenceReports**.
 
-**Guaranteed fields:**
-- `image_volume`: NumPy array, shape `(z, y, x)`
-- `spacing`: `(z, y, x)` tuple, all values > 0
-- `patient_id`: non-empty string
-- `annotations`: optional; supported formats:
-  - Vector ROIs (slice-indexed)
-  - Dense raster mask (NumPy array)
+---
 
-**Contract enforcement:**
-- All invariants are enforced by:
-  ```python
-  enforce_patient_sample_contract(...)
-    ```
+## 4. Canonical Data Contract
 
-  This function:
-  - Checks required fields and structural assumptions
-  - Verifies annotation integrity and bounds
-  - Supports multiple annotation representations (vector or dense)
-  - Emits an EvidenceReport containing:
-      - `INFO` (confirmed assumptions)
-      - `WARNING` (non-fatal deviations)
-      - `ERROR` (contract violations)
-      
-- This is the single, authoritative contract boundary
+### `PatientSample` (Authoritative)
+
+The **only** canonical patient-level data representation.
+
+#### Guaranteed Fields
+
+| Field | Type | Notes |
+|-------|------|------
+| `image_volume` | `np.ndarray` | Shape `(z, y, x)` |
+| `spacing` | `(z, y, x)` tuple | All values > 0 |
+| `patient_id` | `str` | Non-empty |
+| `annotations` | Optional | Vector ROIs or dense raster mask |
+
+#### Contract Enforcement
+
+All enforcement occurs via:
+
+```python
+enforce_patient_sample_contract(...)
+```
+
+#### Behavior
+- Checks required fields and invariants
+- Validates annotation bounds and structure
+- Supports vector and dense annotations
+- Emits an EvidenceReport containing:
+  - INFO: confirmed assumptions
+  - WARNING: non-fatal deviations
+  - ERROR: contract violations
+
+#### Rules
+- This is the single authoritative contract boundary
 - Downstream code assumes validated inputs
-- No downstream component re-validates these invariants
+- No downstream re-validation is permitted
 
----
+## 5. Data Contract Enforcement & Evidence
 
-## 4. Data Contract Enforcement & Integrity Checks
+### Purpose (Not Clinical Validation)
 
-This project performs **data contract enforcement**, not model or clinical validation.
+| Objective | Included |
+|----------|----------|
+| Structural correctness | Yes |
+| Semantic alignment | Yes |
+| Early ingestion error detection | Yes |
+| Clinical or model validation | No |
 
-Purpose:
-- Ensure structural and semantic correctness of data objects
-- Detect ingestion, parsing, or alignment errors early
-- Produce auditable evidence of data integrity
+### Enforcement Principles
 
-### Key Principles
-
-- Contract enforcement is **explicit and centralized**
-- Enforcement produces **evidence reports**, not exceptions
-- Enforcement is performed at defined system boundaries
-- Downstream components assume inputs satisfy enforced contracts
+- Explicit and centralized
+- Performed at defined boundaries
+- Produces evidence, not exceptions
+- Independent of tests and runtime logging
 
 ### Evidence Reports
-Evidence reports are treated as first-class artifacts:
-- They may be logged, persisted, or attached to training runs
-- They support debugging, audits, and dataset characterization
-- They are distinct from test assertions and runtime logs
 
-### Separation of Concerns
-Contract enforcement logic is isolated from:
-- Dataset ingestion
-- Dataset iteration
-- Model training
-- Loss or metric computation
-
-Tests verify enforcement behavior; enforcement does not depend on tests.
+EvidenceReports are first-class artifacts:
+- Logged, persisted, or attached to runs
+- Support debugging, audits, and dataset characterization
+- Distinct from assertions or logs
 
 ---
 
-## 5. `medical_image_ai_toolkit` (Framework Code)
+## 6. Framework: `medical_image_ai_toolkit`
 
-Toolkit data sources consume resolved patient identities.
+### Scope & Constraints
+
+| Allowed | Forbidden |
+|--------|-----------|
+| Trainers | Dataset-specific logic |
+| Datamodules | Project-specific labels |
+| Adapters | Hard-coded paths or splits |
+| Task abstractions | Cohort semantics |
+| Losses and metrics | |
+
+Toolkit code consumes resolved patient identities.  
 Patient identity resolution is a project responsibility.
 
-### Scope
+---
 
-May include:
-- Trainers
-- Datamodules
-- Adapters
-- Task abstractions
-- Losses, metrics, logging utilities
+### MedicalImageTrainer
 
-May NOT include:
-- Dataset-specific assumptions
-- Project-specific label logic
-- Hard-coded paths or splits
-
-### Trainer
-
-A reusable training container will be provided:
-```python
-MedicalImageTrainer
-```
+Reusable, dataset-agnostic training container.
 
 Responsibilities:
 - Orchestrate training
-- Accept configuration, not data
+- Accept configuration (not raw data)
 - Load data lazily
-- Capture training artifacts
+- Capture all training artifacts
 
-The trainer does not define dataset policy and does not encode dataset semantics.
+Explicitly excludes:
+- Dataset semantics
+- Split policy
+- Task semantics
 
-## 6. `coronary_prj` (Project Code)
+---
 
-Responsibilities:
-- Dataset ingestion wiring (e.g. COCA)
-- Dataset splits
-- Task definitions
-- Label semantics
-- Visualization and debugging scripts
-- Training run scripts
+## 7. Project: `coronary_prj`
+
+### Responsibilities
+
+| Category | Owned by Project |
+|---------|------------------|
+| Dataset ingestion (e.g. COCA) | Yes |
+| Dataset splits | Yes |
+| Task selection | Yes |
+| Label semantics | Yes |
+| Visualization and debugging | Yes |
+| Training scripts | Yes |
 
 All CAC-specific logic lives here.
 
 ---
 
-## 7. Dataset Splits
+## 8. Dataset Splits (Current State)
 
-- Current strategy: deterministic hash(patient_id)
-- Splits are project-level policy
-- Split logic must be reproducible and documented
-- Trainer treats splits as configuration input
+| Aspect | Policy |
+|--------|--------|
+| Strategy | Deterministic hash(patient_id) |
+| Ownership | Project-level |
+| Reproducibility | Required |
+| Documentation | Required |
+| Trainer role | Consumes split as configuration |
 
-## 8. Training Artifacts & Traceability
+---
+
+## 9. Training Artifacts & Traceability
 
 Training runs are first-class artifacts.
 
 Each run must capture:
-- Dataset root(s) used
-- Split definition
+- Dataset roots
+- Split strategy and parameters
 - Model configuration
 - Training parameters
-- Validation metrics
+- Metrics (including validation)
 - Visual evidence where applicable
 
-Artifact capture is required to support:
+Purpose:
 - Debugging
 - Reproducibility
-- Future regulatory submissions
+- Regulatory submission readiness
 
-## 9. Current Status
-
-- `PatientSample` contract finalized
-- Validation system complete and tested
-- Adapter tests passing
-- Training architecture defined but not yet executed
-
-Next step: smoke-test training run with visual outputs
+| Artifact | Filename | Purpose |
+|--------|----------|---------|
+| Run configuration | `run_config.json` | Records training intent, dataset, model, optimization parameters, and reproducibility anchors |
+| Data splits | `data_splits.json` | Exact patient IDs and slice counts used for training and validation |
+| Training metrics | `metrics.json` | Per-epoch training and validation loss (time-series evidence) |
+| Training summary | `training_summary.json` | Human-readable summary of run outcome and best epoch |
+| Model weights | `model.pt` | Trained model state dictionary |
+| Evidence report | `evidence.json` | Regulatory-facing narrative and traceability notes |
+| Training curve plot | `training_curve.png` | Visualization of training and validation loss over epochs |
 
 
 ---
 
-## Data Flow Overview
+## 10. Data & Training Flow
+
+### Data Flow
 
 ```mermaid
 flowchart TD
-    A["Raw Dataset\n(COCA, future datasets)"]
-    B["Dataset Ingestor\n(project-specific)"]
-    C["PatientSample\n(canonical contract)"]
-    D["Contract Enforcement\n(EvidenceReport)"]
-    E["Adapter\n(PatientSample → tensors)"]
+    A["Raw Dataset"]
+    B["Project Ingestor"]
+    C["PatientSample"]
+    D["Contract Enforcement"]
+    E["Adapter"]
     F["Torch Dataset"]
     G["Model"]
 
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
-    F --> G
-
+    A --> B --> C --> D --> E --> F --> G
 ```
 
----
-
-## Training Loop Overview
-
+### Training Loop
 ```mermaid
 flowchart TD
-    A["Training Run Config"]
+    A["Run Config"]
     B["MedicalImageTrainer"]
-    C["Dataset Splits"]
-    D["Torch DataLoader"]
+    C["SplitStrategy"]
+    D["DataLoader"]
     E["Model"]
     F["Loss"]
     G["Optimizer"]
     H["Metrics"]
-    I["Run Artifacts"]
+    I["Artifacts"]
 
     A --> B
     B --> C
     B --> D
     D --> E
-    E --> F
-    F --> G
-    G --> E
-    E --> H
-    H --> I
+    E --> F --> G --> E
+    E --> H --> I
     B --> I
-
 ```
-
-## 9. Experiment Abstractions: Splits and Tasks
-
-This project distinguishes between experiment policy and experiment execution.
-
-To support reproducibility, validation, and future extraction of the framework into a standalone package, the concepts of dataset splits and learning tasks are formalized as first-class abstractions with explicit interfaces and validation rules.
+## 11. Experiment Abstractions
 
 ### Design Principle
 
-- The framework defines and enforces the shape and invariants of splits and tasks
-- The project selects, configures, and instantiates concrete splits and tasks
-- The trainer executes only validated splits and tasks
+Policy is flexible; contracts are enforced.
 
-This mirrors the system’s approach to data contracts:
-*policy is flexible, contracts are enforced.*
+The framework defines invariants and interfaces.  
+The project selects and configures concrete implementations.
 
-### `SplitStrategy`
+---
 
-A SplitStrategy defines a deterministic policy for assigning patient identities to logical dataset subsets (e.g. train, val, test).
+## 11.1 SplitStrategy
 
-Responsibilities
+A SplitStrategy defines a deterministic policy for assigning patient identities to dataset subsets (e.g. train, val, test).
+
+### Responsibilities
 
 A SplitStrategy must:
 - Operate at the patient_id level
 - Be deterministic and reproducible
 - Avoid patient leakage across splits
-- Expose sufficient metadata to be captured as a training artifact
+- Expose metadata sufficient for audit and artifact capture
 
-Framework Role (medical_image_ai_toolkit)
+### Framework Role (medical_image_ai_toolkit)
 
 The framework provides:
 - A formal SplitStrategy interface
-- Validation of split invariants (e.g. determinism, exclusivity)
-- Optional reusable base implementations (e.g. deterministic hash-based splits)
+- Validation of split invariants (determinism, exclusivity, non-emptiness)
+- Optional reusable base implementations (e.g. hash-based splits)
 
 The framework does not encode dataset- or project-specific cohort logic.
 
-Project Role (coronary_prj)
+### Project Role (coronary_prj)
 
 The project is responsible for:
 - Selecting a SplitStrategy
-- Providing configuration parameters (e.g. seeds, ratios)
+- Providing configuration parameters (e.g. ratios, seeds)
 - Defining dataset-specific inclusion or exclusion rules
 
-The trainer accepts a SplitStrategy as configuration input and records its identity and parameters as part of the training run artifacts.
+The trainer accepts the SplitStrategy as configuration input and records its identity and parameters as part of training artifacts.
 
-#### Split Strategy Naming & Design Conventions
-Purpose
+---
 
-Split strategies are first-class, screenable training inputs.
-Their names and structure must clearly communicate behavioral guarantees, not intent or maturity.
+### Split Strategy Naming & Design Conventions (Normative)
 
-These conventions exist to:
-- Prevent ambiguous or misleading split semantics
-- Enable pre-training validation and screening
-- Support reproducibility, auditability, and regulatory traceability
-- Avoid “toy vs production” bifurcation in the toolkit
+Purpose:
+Split strategies are first-class, screenable training inputs.  
+Names must clearly communicate behavior, not intent.
 
-Naming Rules
+#### Naming Rules
+
 1. Names MUST describe behavior, not intent
 
-  Split strategy names must describe what the strategy does, not why or when it is used.
-
-✅ Allowed (behavioral):
+Allowed:
 - DeterministicHoldoutSplitStrategy
 - HashBasedPatientSplitStrategy
 - TemporalHoldoutSplitStrategy
 - StratifiedLabelHoldoutSplitStrategy
 
-❌ Disallowed (intent-based or informal):
+Disallowed:
 - SmokeSplitStrategy
 - DebugSplitStrategy
 - ToySplit
-- QuickSplit
 - DefaultSplit
 
-Intent (e.g., “smoke test”, “CI run”, “baseline”) belongs at the project script or run-metadata level, not in the split abstraction.
+Intent belongs at the run-metadata level, not in the split abstraction.
 
 2. Names MUST encode the primary split mechanism
 
-A reader should understand the core assignment logic from the name alone.
-
 Examples:
-- Deterministic… → no randomness
-- HashBased… → hash-derived assignment
-- Temporal… → time-ordered split
-- Stratified… → label-aware balancing
+- Deterministic → no randomness
+- HashBased → hash-derived assignment
+- Temporal → time-ordered split
+- Stratified → label-aware balancing
 
 Avoid vague names that hide mechanics.
 
 3. Dataset- or project-specific names are forbidden
 
-Split strategies must be dataset-agnostic.
-
-❌ Not allowed:
+Not allowed:
 - COCASplitStrategy
 - CoronaryHoldoutSplit
 - CACPatientSplit
 
-Dataset knowledge belongs in project-level configuration, not toolkit abstractions.
+Dataset knowledge belongs in project configuration, not toolkit abstractions.
 
-Structural Requirements
-- All split strategies in medical_image_ai_toolkit MUST:
+---
+
+### Structural Requirements (Normative)
+
+All SplitStrategy implementations MUST:
 - Operate at the patient level
-- Input: unique patient_ids
-- No slice-, patch-, or sample-level assignment
+- Input unique patient_ids
+- Avoid slice-, patch-, or sample-level assignment
 - Be deterministic
-- Repeated calls with identical inputs must yield identical outputs
-- Any source of randomness must be explicitly seeded and captured in metadata
+- Produce identical outputs for identical inputs
+- Explicitly seed and record any randomness
 - Be auditable
 - Implement metadata() returning JSON-serializable configuration
-- Metadata must fully explain how the split was generated
+- Fully describe how the split was generated
 - Be screenable
-- Must support invariant validation (e.g., no leakage, no empty splits)
-- Trainer may reject invalid strategies before data loading or training
+- Support invariant validation (e.g. no leakage, no empty splits)
 
-Split Intent Declaration (Project-Level)
+The trainer may reject invalid strategies before data loading or training.
 
-The intent behind a split (e.g., smoke test, baseline experiment, clinical evaluation) MUST NOT be encoded in the split strategy name.
+---
 
-Instead, intent should be captured via:
+### Split Intent Declaration (Project-Level)
+
+Intent MUST NOT be encoded in the split strategy name.
+
+Intent is captured via:
 - Training run metadata
 - Experiment configuration
 - Artifact annotations
 
 Example:
-```
+```json
 {
   "split_strategy": "DeterministicHoldoutSplitStrategy",
   "run_intent": "smoke_validation"
 }
 ```
 
-This ensures:
-- The same split strategy can be reused safely
-- Intent is explicit and auditable
-- Regulatory review can distinguish exploratory vs formal runs
-
-
-### `TaskDefinition`
+## 11.2 TaskDefinition
 
 A TaskDefinition specifies the learning objective applied to the dataset.
 
 A task defines:
-- How labels or targets are derived from a validated PatientSample
-- The expected model outputs
-- The loss function
-- Applicable metrics
+- How targets are derived from a validated PatientSample
+- Expected model outputs
+- Loss function
+- Metrics
 
-Responsibilities
+---
+
+### Responsibilities
 
 A TaskDefinition must:
-- Declare its input and output expectations
-- Define a loss compatible with the declared outputs
-- Provide metrics appropriate to the task type
+- Declare input and output expectations
+- Define a loss compatible with declared outputs
+- Provide appropriate, deterministic metrics
 - Be internally self-consistent and screenable
 
-Framework Role (medical_image_ai_toolkit)
+---
+
+### Framework Role (medical_image_ai_toolkit)
 
 The framework provides:
 - A formal TaskDefinition interface
 - Validation of task consistency (e.g. output–loss compatibility)
-- Optional abstract task types (e.g. classification, regression, segmentation)
+- Optional abstract task types (classification, regression, segmentation)
 
 The framework does not encode label semantics or clinical meaning.
 
-Project Role (coronary_prj)
+---
+
+### Project Role (coronary_prj)
 
 The project is responsible for:
 - Implementing concrete task definitions
 - Encoding dataset- and domain-specific label semantics
-- Selecting the task for a given training run
+- Selecting the task for a training run
 
-### Trainer Responsibilities
+---
 
-The MedicalImageTrainer:
-- Accepts a SplitStrategy and TaskDefinition as configuration
-- Validates them against framework-defined expectations
-- Refuses execution if validation fails
-- Captures split and task identity, configuration, and validation results as part of training artifacts
+### Task Definition: Training Semantics Contract
 
-The trainer does not contain:
-- Dataset-specific logic
-- Task semantics
-- Split policy decisions
-
-#### Task Definition: Training Semantics Contract
-Purpose
-
+Purpose:
 A TaskDefinition formalizes the semantic meaning of a training run.
 
 It defines:
@@ -442,64 +428,53 @@ It defines:
 - Which loss functions are valid
 - Which metrics are computed
 - What assumptions downstream code may rely on
-- Task definitions decouple model mechanics from clinical or project intent.
 
-Scope and Responsibility
+Task definitions decouple model mechanics from project or clinical intent.
 
-Task definitions live in medical_image_ai_toolkit and are treated as:
-- First-class, screenable training inputs
-- Declarative descriptions of training semantics
-- Independent of dataset, project, or split strategy
+---
 
-Project code selects and configures a task definition, but does not redefine it.
+### Task Naming Conventions (Normative)
 
-Naming Conventions
 1. Names MUST describe learning semantics, not dataset or intent
 
-✅ Allowed:
+Allowed:
 - BinaryClassificationTask
 - MultiClassClassificationTask
 - RegressionTask
 - SegmentationTask
 
-❌ Disallowed:
+Disallowed:
 - CACClassificationTask
 - CoronaryTask
 - SmokeTask
 - DebugTask
 
-Task names must remain valid across datasets and projects.
-
 2. Task names MUST reflect model outputs
 
-A reader should infer:
-- output tensor shape
-- target expectations
-- compatible loss functions
-
 Example:
+- BinaryClassificationTask → scalar output, binary target, sigmoid/logit loss
 
-BinaryClassificationTask → scalar output, binary target, sigmoid/logit loss
+---
 
-Structural Requirements
+### Structural Requirements (Normative)
 
 All TaskDefinition implementations MUST:
-- Declare input / output contracts
-- Expected model output shape
-- Target tensor shape and dtype
-- Provide loss construction
-- Return a configured torch.nn.Module
-- Loss must be compatible with declared outputs
+- Declare input and output contracts
+- Specify expected model output shape
+- Specify target shape and dtype
+- Provide loss construction (torch.nn.Module)
+- Ensure loss compatibility with outputs
 - Declare metrics
-- Metrics must be deterministic and well-defined
-- Metrics must not mutate model state
+- Ensure metrics are deterministic and side-effect free
 - Be auditable
 - Implement metadata() returning JSON-serializable configuration
-- Metadata must fully describe task semantics
+- Fully describe task semantics in metadata
 
-Separation of Concerns
+---
 
-Task definitions MUST NOT:
+### Separation of Concerns
+
+TaskDefinition implementations MUST NOT:
 - Load data
 - Perform dataset splits
 - Contain dataset-specific label logic
@@ -508,11 +483,13 @@ Task definitions MUST NOT:
 They MAY:
 - Validate model outputs and targets
 - Normalize or post-process outputs for metrics
-- Define multiple metrics for the same outputs
+- Define multiple metrics over the same outputs
 
-Task Intent Declaration (Project-Level)
+---
 
-The intent of a task (e.g., smoke validation, baseline experiment, clinical evaluation) MUST NOT be encoded in the task definition itself.
+### Task Intent Declaration (Project-Level)
+
+Task intent MUST NOT be encoded in the TaskDefinition itself.
 
 Intent is captured at the training run level via:
 - Configuration
@@ -520,86 +497,82 @@ Intent is captured at the training run level via:
 - Evidence reports
 
 Example:
-```
+```json
 {
   "task": "BinaryClassificationTask",
   "run_intent": "smoke_training"
 }
 ```
-## 12. Non-Normative Design Note: True Laziness & Future Task Definitions
 
-This section documents an architectural intent for future evolution.
-It does NOT describe current behavior and is not yet normative.
+## 12. Trainer Responsibilities
 
-Observed Current Behavior
+The MedicalImageTrainer:
+- Accepts a SplitStrategy and TaskDefinition as configuration
+- Validates both against framework-defined expectations
+- Refuses execution if validation fails
+- Captures split and task identity, configuration, and validation results as training artifacts
 
-In the current implementation:
+The trainer does not contain:
+- Dataset-specific logic
+- Task semantics
+- Split policy decisions
+
+---
+
+## 13. Non-Normative Design Note: True Laziness & Future Tasks
+
+This section documents architectural intent only.  
+It does NOT describe current behavior.
+
+### Observed Current Behavior
 
 - Patient ingestion is lazy at the patient level
-- Certain dataset constructions (e.g., slice-level views) may trigger ingestion during dataset initialization
-- This is acceptable for current, local datasets and smoke-test workflows
+- Certain dataset constructions may trigger ingestion during dataset initialization
+- This is acceptable for current local datasets and smoke-test workflows
 
-Future Design Intent
+### Future Design Intent
 
-For large-scale or remote datasets, the system is expected to evolve toward fully lazy task definitions, where:
 - Dataset construction never touches data
-- Dataset length and indexing are derived from pure metadata
+- Dataset length and indexing derive from metadata only
 - Only __getitem__ triggers data access
 - Ingestors may read from disk, object storage, or remote sources transparently
 
 ### Target Mental Model
 
-Indexes are metadata, not data.
+Indexes are metadat, not data.
 
-Conceptually:
-```
-┌────────────────────────┐
-│ TaskDefinition         │
-│  - sample_keys         │   ← PURE METADATA
-│  - view_type           │
-│  - label_schema        │
-└──────────┬─────────────┘
-           │
-┌──────────▼─────────────┐
-│ LazyDataset            │
-│  __len__               │   ← metadata only
-│  __getitem__(key)      │   ← data access
-└──────────┬─────────────┘
-           │
-┌──────────▼─────────────┐
-│ Ingestor               │   ← disk / network
-│ Adapter                │
-└────────────────────────┘
-```
 
-#### Rationale
+### Change Policy for This Section
 
-This model:
-- Enables remote and streaming datasets
-- Prevents unintended eager ingestion
-- Supports reproducibility and auditability
-- Aligns with PyTorch’s intended Dataset semantics
-
-Change Policy
-- Adopting this model will require:
+Adopting this model will require:
 - Explicit design changes
 - Updates to this document
 - A Design History (DHF-lite) entry
 
-Possible invalidation of prior assumptions
-
 Until then, current behavior remains authoritative.
 
-## !!!Change Policy!!!
+---
+
+## 14. Current Status
+
+- PatientSample contract finalized
+- Contract enforcement system complete and tested
+- Adapter tests passing
+- Training architecture defined but not yet executed
+
+Next step: smoke-test training run with visual outputs.
+
+---
+
+## 15. !!!Change Policy (Normative)!!!
 
 Any change that affects:
 - Data contracts
 - Module boundaries
 - Training responsibilities
-- `SplitStrategy` interfaces or invariants
-- `TaskDefinition` interfaces or validation rules
+- SplitStrategy interfaces or invariants
+- TaskDefinition interfaces or validation rules
 
 Must:
 - Update this document
 - Trigger a new Design History (DHF-lite) entry
-
