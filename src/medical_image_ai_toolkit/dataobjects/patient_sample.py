@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, Optional
 import numpy as np
 
-from medical_image_ai_toolkit.dataobjects.annotation_bundle import AnnotationBundle
+from src.medical_image_ai_toolkit.dataobjects.annotation_bundle import AnnotationBundle
 
 @dataclass
 class PatientSample:

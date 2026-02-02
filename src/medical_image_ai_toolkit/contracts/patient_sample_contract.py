@@ -11,9 +11,9 @@
 
 import numpy as np
 
-from medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
-from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
-from medical_image_ai_toolkit.dataobjects.annotation_bundle import VectorROI
+from src.medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
+from src.medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
+from src.medical_image_ai_toolkit.dataobjects.annotation_bundle import VectorROI
 
 def enforce_patient_sample_contract(
     sample: PatientSample,
@@ -29,16 +29,11 @@ def enforce_patient_sample_contract(
     if report is None:
         report = EvidenceReport(subject=f"PatientSample:{sample.patient_id}")
 
-
-    print(f"[Checker] Checking PatientSample {sample.patient_id}...")
-
     _check_volume(sample, report)
     _check_spacing(sample, report)
     _check_patient_id(sample, report)
     _check_annotations(sample, report, require_annotations=require_annotations)
     
-    print("[Checker] Checking complete")
-
     return report
 
 def _check_volume(sample: PatientSample, report: EvidenceReport) -> None:

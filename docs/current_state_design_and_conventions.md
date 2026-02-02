@@ -1,6 +1,6 @@
 # Current State Design & Conventions
 **Project:** Coronary CT ML Pipeline  
-**Last Updated:** 2026-01-28  
+**Last Updated:** 2026-01-31
 **Status:** Active – authoritative snapshot of current architecture and conventions
 
 ---
@@ -36,8 +36,11 @@ Framework code must be importable and usable as if it were an external package.
 ---
 
 ## 3. Process and Conventions
-- "Validation" is a reserved word.  This project is intended for demonstrating rigorous and regulatory ready AI development for medical imaging
-- Reporting and gathering artifacts are tantamount.  Errors and contract enforcement MUST report to `EvidenceReport` and generate artifacts
+- “Validation” is a reserved word
+This project is intended to demonstrate rigorous, regulatory-ready AI development for medical imaging
+- Reporting and artifact generation are first-class requirements
+- Errors, deviations, and contract violations MUST report to EvidenceReport and generate auditable artifacts
+- Silent failure is explicitly disallowed at system boundaries
 
 ---
 
@@ -60,8 +63,19 @@ Framework code must be importable and usable as if it were an external package.
   ```python
   enforce_patient_sample_contract(...)
     ```
-- This is the single contract boundary
+
+  This function:
+  - Checks required fields and structural assumptions
+  - Verifies annotation integrity and bounds
+  - Supports multiple annotation representations (vector or dense)
+  - Emits an EvidenceReport containing:
+      - `INFO` (confirmed assumptions)
+      - `WARNING` (non-fatal deviations)
+      - `ERROR` (contract violations)
+      
+- This is the single, authoritative contract boundary
 - Downstream code assumes validated inputs
+- No downstream component re-validates these invariants
 
 ---
 
@@ -81,23 +95,6 @@ Purpose:
 - Enforcement is performed at defined system boundaries
 - Downstream components assume inputs satisfy enforced contracts
 
-### `PatientSample` Contract Enforcement
-
-All `PatientSample` invariants are enforced by a single boundary function:
-
-```python
-enforce_patient_sample_contract(...)
-```
-
-This function:
-- Checks required fields and structural assumptions
-- Verifies annotation integrity and bounds
-- Supports multiple annotation representations (vector or dense)
-- Emits an EvidenceReport containing:
-    - `INFO` (confirmed assumptions)
-    - `WARNING` (non-fatal deviations)
-    - `ERROR` (contract violations)
-
 ### Evidence Reports
 Evidence reports are treated as first-class artifacts:
 - They may be logged, persisted, or attached to training runs
@@ -116,6 +113,9 @@ Tests verify enforcement behavior; enforcement does not depend on tests.
 ---
 
 ## 5. `medical_image_ai_toolkit` (Framework Code)
+
+Toolkit data sources consume resolved patient identities.
+Patient identity resolution is a project responsibility.
 
 ### Scope
 
@@ -143,6 +143,8 @@ Responsibilities:
 - Accept configuration, not data
 - Load data lazily
 - Capture training artifacts
+
+The trainer does not define dataset policy and does not encode dataset semantics.
 
 ## 6. `coronary_prj` (Project Code)
 
@@ -182,7 +184,7 @@ Artifact capture is required to support:
 - Reproducibility
 - Future regulatory submissions
 
-9. Current Status
+## 9. Current Status
 
 - `PatientSample` contract finalized
 - Validation system complete and tested
@@ -212,6 +214,7 @@ flowchart TD
     D --> E
     E --> F
     F --> G
+
 ```
 
 ---
@@ -240,6 +243,7 @@ flowchart TD
     E --> H
     H --> I
     B --> I
+
 ```
 
 ## 9. Experiment Abstractions: Splits and Tasks
@@ -287,48 +291,35 @@ The project is responsible for:
 
 The trainer accepts a SplitStrategy as configuration input and records its identity and parameters as part of the training run artifacts.
 
-Split Strategy Naming & Design Conventions
+#### Split Strategy Naming & Design Conventions
 Purpose
 
 Split strategies are first-class, screenable training inputs.
 Their names and structure must clearly communicate behavioral guarantees, not intent or maturity.
 
 These conventions exist to:
-
-Prevent ambiguous or misleading split semantics
-
-Enable pre-training validation and screening
-
-Support reproducibility, auditability, and regulatory traceability
-
-Avoid “toy vs production” bifurcation in the toolkit
+- Prevent ambiguous or misleading split semantics
+- Enable pre-training validation and screening
+- Support reproducibility, auditability, and regulatory traceability
+- Avoid “toy vs production” bifurcation in the toolkit
 
 Naming Rules
 1. Names MUST describe behavior, not intent
 
-Split strategy names must describe what the strategy does, not why or when it is used.
+  Split strategy names must describe what the strategy does, not why or when it is used.
 
 ✅ Allowed (behavioral):
-
-DeterministicHoldoutSplitStrategy
-
-HashBasedPatientSplitStrategy
-
-TemporalHoldoutSplitStrategy
-
-StratifiedLabelHoldoutSplitStrategy
+- DeterministicHoldoutSplitStrategy
+- HashBasedPatientSplitStrategy
+- TemporalHoldoutSplitStrategy
+- StratifiedLabelHoldoutSplitStrategy
 
 ❌ Disallowed (intent-based or informal):
-
-SmokeSplitStrategy
-
-DebugSplitStrategy
-
-ToySplit
-
-QuickSplit
-
-DefaultSplit
+- SmokeSplitStrategy
+- DebugSplitStrategy
+- ToySplit
+- QuickSplit
+- DefaultSplit
 
 Intent (e.g., “smoke test”, “CI run”, “baseline”) belongs at the project script or run-metadata level, not in the split abstraction.
 
@@ -337,14 +328,10 @@ Intent (e.g., “smoke test”, “CI run”, “baseline”) belongs at the pro
 A reader should understand the core assignment logic from the name alone.
 
 Examples:
-
-Deterministic… → no randomness
-
-HashBased… → hash-derived assignment
-
-Temporal… → time-ordered split
-
-Stratified… → label-aware balancing
+- Deterministic… → no randomness
+- HashBased… → hash-derived assignment
+- Temporal… → time-ordered split
+- Stratified… → label-aware balancing
 
 Avoid vague names that hide mechanics.
 
@@ -353,82 +340,49 @@ Avoid vague names that hide mechanics.
 Split strategies must be dataset-agnostic.
 
 ❌ Not allowed:
-
-COCASplitStrategy
-
-CoronaryHoldoutSplit
-
-CACPatientSplit
+- COCASplitStrategy
+- CoronaryHoldoutSplit
+- CACPatientSplit
 
 Dataset knowledge belongs in project-level configuration, not toolkit abstractions.
 
 Structural Requirements
-
-All split strategies in medical_image_ai_toolkit MUST:
-
-Operate at the patient level
-
-Input: unique patient_ids
-
-No slice-, patch-, or sample-level assignment
-
-Be deterministic
-
-Repeated calls with identical inputs must yield identical outputs
-
-Any source of randomness must be explicitly seeded and captured in metadata
-
-Be auditable
-
-Implement metadata() returning JSON-serializable configuration
-
-Metadata must fully explain how the split was generated
-
-Be screenable
-
-Must support invariant validation (e.g., no leakage, no empty splits)
-
-Trainer may reject invalid strategies before data loading or training
+- All split strategies in medical_image_ai_toolkit MUST:
+- Operate at the patient level
+- Input: unique patient_ids
+- No slice-, patch-, or sample-level assignment
+- Be deterministic
+- Repeated calls with identical inputs must yield identical outputs
+- Any source of randomness must be explicitly seeded and captured in metadata
+- Be auditable
+- Implement metadata() returning JSON-serializable configuration
+- Metadata must fully explain how the split was generated
+- Be screenable
+- Must support invariant validation (e.g., no leakage, no empty splits)
+- Trainer may reject invalid strategies before data loading or training
 
 Split Intent Declaration (Project-Level)
 
 The intent behind a split (e.g., smoke test, baseline experiment, clinical evaluation) MUST NOT be encoded in the split strategy name.
 
 Instead, intent should be captured via:
-
-Training run metadata
-
-Experiment configuration
-
-Artifact annotations
+- Training run metadata
+- Experiment configuration
+- Artifact annotations
 
 Example:
-
+```
 {
   "split_strategy": "DeterministicHoldoutSplitStrategy",
   "run_intent": "smoke_validation"
 }
-
+```
 
 This ensures:
+- The same split strategy can be reused safely
+- Intent is explicit and auditable
+- Regulatory review can distinguish exploratory vs formal runs
 
-The same split strategy can be reused safely
-
-Intent is explicit and auditable
-
-Regulatory review can distinguish exploratory vs formal runs
-
-Change Policy
-
-Adding a new split strategy requires:
-
-Adherence to the naming and structural rules above
-
-Inclusion of metadata() for artifact capture
-
-Documentation of guarantees and failure modes
-
-An entry in Design History (DHF-lite)
 
 ### `TaskDefinition`
 
@@ -477,34 +431,25 @@ The trainer does not contain:
 - Task semantics
 - Split policy decisions
 
-Task Definition: Training Semantics Contract
+#### Task Definition: Training Semantics Contract
 Purpose
 
 A TaskDefinition formalizes the semantic meaning of a training run.
 
 It defines:
-
-What model outputs represent
-
-What targets mean
-
-Which loss functions are valid
-
-Which metrics are computed
-
-What assumptions downstream code may rely on
-
-Task definitions decouple model mechanics from clinical or project intent.
+- What model outputs represent
+- What targets mean
+- Which loss functions are valid
+- Which metrics are computed
+- What assumptions downstream code may rely on
+- Task definitions decouple model mechanics from clinical or project intent.
 
 Scope and Responsibility
 
 Task definitions live in medical_image_ai_toolkit and are treated as:
-
-First-class, screenable training inputs
-
-Declarative descriptions of training semantics
-
-Independent of dataset, project, or split strategy
+- First-class, screenable training inputs
+- Declarative descriptions of training semantics
+- Independent of dataset, project, or split strategy
 
 Project code selects and configures a task definition, but does not redefine it.
 
@@ -512,36 +457,25 @@ Naming Conventions
 1. Names MUST describe learning semantics, not dataset or intent
 
 ✅ Allowed:
-
-BinaryClassificationTask
-
-MultiClassClassificationTask
-
-RegressionTask
-
-SegmentationTask
+- BinaryClassificationTask
+- MultiClassClassificationTask
+- RegressionTask
+- SegmentationTask
 
 ❌ Disallowed:
-
-CACClassificationTask
-
-CoronaryTask
-
-SmokeTask
-
-DebugTask
+- CACClassificationTask
+- CoronaryTask
+- SmokeTask
+- DebugTask
 
 Task names must remain valid across datasets and projects.
 
 2. Task names MUST reflect model outputs
 
 A reader should infer:
-
-output tensor shape
-
-target expectations
-
-compatible loss functions
+- output tensor shape
+- target expectations
+- compatible loss functions
 
 Example:
 
@@ -550,87 +484,111 @@ BinaryClassificationTask → scalar output, binary target, sigmoid/logit loss
 Structural Requirements
 
 All TaskDefinition implementations MUST:
-
-Declare input / output contracts
-
-Expected model output shape
-
-Target tensor shape and dtype
-
-Provide loss construction
-
-Return a configured torch.nn.Module
-
-Loss must be compatible with declared outputs
-
-Declare metrics
-
-Metrics must be deterministic and well-defined
-
-Metrics must not mutate model state
-
-Be auditable
-
-Implement metadata() returning JSON-serializable configuration
-
-Metadata must fully describe task semantics
+- Declare input / output contracts
+- Expected model output shape
+- Target tensor shape and dtype
+- Provide loss construction
+- Return a configured torch.nn.Module
+- Loss must be compatible with declared outputs
+- Declare metrics
+- Metrics must be deterministic and well-defined
+- Metrics must not mutate model state
+- Be auditable
+- Implement metadata() returning JSON-serializable configuration
+- Metadata must fully describe task semantics
 
 Separation of Concerns
 
 Task definitions MUST NOT:
-
-Load data
-
-Perform dataset splits
-
-Contain dataset-specific label logic
-
-Encode project or clinical intent
+- Load data
+- Perform dataset splits
+- Contain dataset-specific label logic
+- Encode project or clinical intent
 
 They MAY:
-
-Validate model outputs and targets
-
-Normalize or post-process outputs for metrics
-
-Define multiple metrics for the same outputs
+- Validate model outputs and targets
+- Normalize or post-process outputs for metrics
+- Define multiple metrics for the same outputs
 
 Task Intent Declaration (Project-Level)
 
 The intent of a task (e.g., smoke validation, baseline experiment, clinical evaluation) MUST NOT be encoded in the task definition itself.
 
 Intent is captured at the training run level via:
-
-Configuration
-
-Artifact metadata
-
-Evidence reports
+- Configuration
+- Artifact metadata
+- Evidence reports
 
 Example:
-
+```
 {
   "task": "BinaryClassificationTask",
   "run_intent": "smoke_training"
 }
+```
+## 12. Non-Normative Design Note: True Laziness & Future Task Definitions
+
+This section documents an architectural intent for future evolution.
+It does NOT describe current behavior and is not yet normative.
+
+Observed Current Behavior
+
+In the current implementation:
+
+- Patient ingestion is lazy at the patient level
+- Certain dataset constructions (e.g., slice-level views) may trigger ingestion during dataset initialization
+- This is acceptable for current, local datasets and smoke-test workflows
+
+Future Design Intent
+
+For large-scale or remote datasets, the system is expected to evolve toward fully lazy task definitions, where:
+- Dataset construction never touches data
+- Dataset length and indexing are derived from pure metadata
+- Only __getitem__ triggers data access
+- Ingestors may read from disk, object storage, or remote sources transparently
+
+### Target Mental Model
+
+Indexes are metadata, not data.
+
+Conceptually:
+```
+┌────────────────────────┐
+│ TaskDefinition         │
+│  - sample_keys         │   ← PURE METADATA
+│  - view_type           │
+│  - label_schema        │
+└──────────┬─────────────┘
+           │
+┌──────────▼─────────────┐
+│ LazyDataset            │
+│  __len__               │   ← metadata only
+│  __getitem__(key)      │   ← data access
+└──────────┬─────────────┘
+           │
+┌──────────▼─────────────┐
+│ Ingestor               │   ← disk / network
+│ Adapter                │
+└────────────────────────┘
+```
+
+#### Rationale
+
+This model:
+- Enables remote and streaming datasets
+- Prevents unintended eager ingestion
+- Supports reproducibility and auditability
+- Aligns with PyTorch’s intended Dataset semantics
 
 Change Policy
+- Adopting this model will require:
+- Explicit design changes
+- Updates to this document
+- A Design History (DHF-lite) entry
 
-Any change that affects:
+Possible invalidation of prior assumptions
 
-Output semantics
-
-Loss behavior
-
-Metric definitions
-
-Must:
-
-Update this document
-
-Trigger a Design History (DHF-lite) entry
-
-Invalidate prior training results unless explicitly grandfathered
+Until then, current behavior remains authoritative.
 
 ## !!!Change Policy!!!
 
@@ -644,3 +602,4 @@ Any change that affects:
 Must:
 - Update this document
 - Trigger a new Design History (DHF-lite) entry
+
