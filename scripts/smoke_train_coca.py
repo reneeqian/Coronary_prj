@@ -158,6 +158,8 @@ def resolve_coca_patient_ids(dataset_root: Path) -> List[str]:
 # SliceViewDataset Definition (TRAINER INPUT) - eventually to migrate 
 #   to Task Definition
 # =====================================================================
+class DatasetAccessError(RuntimeError):
+    pass
 
 
 class SliceViewDataset(Dataset):
@@ -206,12 +208,15 @@ class SliceViewDataset(Dataset):
 
     def __getitem__(self, idx: int) -> dict:
         patient_idx, slice_idx = self.index[idx]
+        try: 
+            sample = self.patient_source[patient_idx]
 
-        sample = self.patient_source[patient_idx]
-
-        image_4d = sample["image"]  # (1, D, H, W)
-        image_slice = image_4d[:, slice_idx, :, :]
-
+            image_4d = sample["image"]  # (1, D, H, W)
+            image_slice = image_4d[:, slice_idx, :, :]
+        except Exception as e:
+            raise DatasetAccessError(
+                f"Patient {patient_idx}, slice {slice_idx} failed"
+            ) from e
         target = sample.get("target")
 
         # ----------------------------
@@ -286,6 +291,36 @@ def plot_training_history(history, run_dir: Path, show: bool, save: bool):
         plt.show()
     else:
         plt.close()
+
+def preflight_dataset_check(
+    patient_source,
+    max_patients: int = 5,
+):
+    """
+    Lightweight sanity scan to catch structural issues before training.
+    Does NOT exhaustively scan the dataset.
+    """
+    print("🧪 Running dataset preflight checks...")
+
+    for i in range(min(len(patient_source), max_patients)):
+        try:
+            sample = patient_source[i]
+            image = sample["image"]
+
+            assert torch.is_tensor(image), "image is not a tensor"
+            assert image.ndim == 4, f"expected (1, D, H, W), got {image.shape}"
+            assert image.shape[1] > 0, "zero slices"
+
+            if "target" in sample:
+                target = sample["target"]
+                assert torch.is_tensor(target), "target not tensor"
+
+        except Exception as e:
+            raise RuntimeError(
+                f"Preflight failed on patient index {i}"
+            ) from e
+
+    print("✅ Preflight checks passed")
 
 
 # =====================================================================
@@ -363,6 +398,19 @@ def main():
     sample0 = train_source[0]
     print(f"  image shape: {sample0['image'].shape}")
     print(f"  target type: {type(sample0.get('target'))}")
+
+    preflight_dataset_check(train_source)
+    preflight_dataset_check(val_source)
+    
+    with open(RUN_DIR / "preflight.json", "w") as f:
+        json.dump(
+            {
+                "status": "passed",
+                "checked_patients_per_split": 5,
+            },
+            f,
+            indent=2,
+        )
 
 
     # ============================================================
@@ -479,151 +527,36 @@ def main():
     # ------------------------------------------------------------
     # TRAINING LOOP (TRAINER-OWNED)
     # ------------------------------------------------------------
-    
-    print("📦 Inspecting first training batch...")
-    first_batch = next(iter(train_loader))
-    print(f"  batch image shape: {first_batch['image'].shape}")
-    print(f"  batch target shape: {first_batch['target'].shape}")
-    print(
-        f"  patient_idx range: "
-        f"{first_batch['patient_idx'].min()}–{first_batch['patient_idx'].max()}"
-    )
-
-    history = []
-
-    for epoch in range(NUM_EPOCHS):
-        model.train()
-        train_loss = 0.0
-
-        epoch_start = time.time()
-        last_print = epoch_start
-
-        print(f"\n🟢 Epoch {epoch+1}/{NUM_EPOCHS} — training")
-
-        for batch_idx, batch in enumerate(train_loader):
-            images = batch["image"].to(DEVICE)
-            targets = batch["target"].to(DEVICE).view(-1, 1)
-
-            optimizer.zero_grad()
-            logits = model(images)
-            loss = loss_fn(logits, targets)
-            loss.backward()
-            optimizer.step()
-
-            train_loss += loss.item()
-
-            # --------------------------------------------------
-            # Progress heartbeat
-            # --------------------------------------------------
-            if PRINT_EVERY_N_BATCHES > 0 and batch_idx % PRINT_EVERY_N_BATCHES == 0:
-                now = time.time()
-                elapsed = now - epoch_start
-                since_last = now - last_print
-                last_print = now
-
-                print(
-                    f"  ⏱ batch {batch_idx:5d}/{len(train_loader)} | "
-                    f"loss={loss.item():.4f} | "
-                    f"elapsed={elapsed:.1f}s | "
-                    f"+{since_last:.1f}s"
-                )
-
-        train_loss /= len(train_loader)
-
-        # ---------------- Validation ----------------
-        model.eval()
-        val_loss = 0.0
-
-        print(f"🔵 Epoch {epoch+1}/{NUM_EPOCHS} — validation")
-
-        with torch.no_grad():
-            for batch in val_loader:
-                images = batch["image"].to(DEVICE)
-                targets = batch["target"].to(DEVICE).view(-1, 1)
-
-                logits = model(images)
-                loss = loss_fn(logits, targets)
-                val_loss += loss.item()
-
-        val_loss /= len(val_loader)
-
-        epoch_time = time.time() - epoch_start
-
-        epoch_record = {
-            "epoch": epoch,
+    trainer = MedicalImageTrainer(
+        model=model,
+        optimizer=optimizer,
+        loss_fn=loss_fn,
+        device=DEVICE,
+        run_dir=RUN_DIR,
+        run_config=static_metadata,
+        data_splits={
             "train": {
-                "loss": train_loss,
+                "patient_ids": splits["train"],
+                "num_patients": len(train_source),
+                "num_slices": len(train_dataset),
             },
             "val": {
-                "loss": val_loss,
+                "patient_ids": splits["val"],
+                "num_patients": len(val_source),
+                "num_slices": len(val_dataset),
             },
-            "epoch_time_sec": epoch_time,
-        }
-        history.append(epoch_record)
-
-        print(
-            f"✅ Epoch {epoch+1}/{NUM_EPOCHS} complete | "
-            f"train={train_loss:.4f} | "
-            f"val={val_loss:.4f} | "
-            f"time={epoch_time:.1f}s"
-        )
-
-    best_epoch = min(history, key=lambda h: h["val"]["loss"])
-
-    training_summary = {
-        "epochs_completed": len(history),
-        "best_epoch": best_epoch["epoch"],
-        "best_val_loss": best_epoch["val"]["loss"],
-        "early_stopping": False,
-        "notes": "Smoke training run. No clinical performance claims.",
-    }
-
-    with open(RUN_DIR / "training_summary.json", "w") as f:
-        json.dump(training_summary, f, indent=2)
-    
-    print("\n📊 Training summary:")
-    print(json.dumps(training_summary, indent=2))
-
-
-    # ------------------------------------------------------------
-    # METRICS + MODEL ARTIFACTS (TRAINER-OWNED)
-    # ------------------------------------------------------------
-    with open(RUN_DIR / "metrics.json", "w") as f:
-        json.dump(history, f, indent=2)
-
-    torch.save(model.state_dict(), RUN_DIR / "model.pt")
-
-    # ------------------------------------------------------------
-    # EVIDENCE REPORT (TRAINER-OWNED, NON-CLINICAL)
-    # ------------------------------------------------------------
-    evidence = EvidenceReport(subject="COCA gated CT smoke-training run")
-    evidence.info(f"Run intent: {RUN_INTENT}")
-    evidence.info(f"Dataset: COCA / Gated_release_final")
-    evidence.info(f"Patients (train/val): {len(splits['train'])} / {len(splits['val'])}")
-    evidence.info(f"Slices (train/val): {len(train_dataset)} / {len(val_dataset)}")
-    evidence.info("Task: slice-based binary classification")
-    evidence.info("Loss: BCEWithLogitsLoss")
-    evidence.info("No clinical or diagnostic performance claims implied")
-
-
-    evidence.save(RUN_DIR / "evidence.json")
-    
-    print("=" * 80)
-    print("✅ Training complete")
-    print(f"Model saved to: {RUN_DIR / 'model.pt'}")
-    print(f"Metrics saved to: {RUN_DIR / 'metrics.json'}")
-    print(f"Evidence saved to: {RUN_DIR / 'evidence.json'}")
-    print("=" * 80)
-    
-    # ------------------------------------------------------------
-    # OPTIONAL TRAINING PROGRESS PLOT
-    # ------------------------------------------------------------
-    plot_training_history(
-        history=history,
-        run_dir=RUN_DIR,
-        show=SHOW_TRAINING_PLOT,
-        save=SAVE_TRAINING_PLOT,
+        },
+        show_training_plot=SHOW_TRAINING_PLOT,
+        save_training_plot=SAVE_TRAINING_PLOT,
+        print_every_n_batches=PRINT_EVERY_N_BATCHES,
     )
+
+    trainer.train(
+        train_loader=train_loader,
+        val_loader=val_loader,
+        num_epochs=NUM_EPOCHS,
+    )
+    print("✅ Smoke training run complete")
 
 
 

@@ -1,3 +1,8 @@
+# TSR-001: Training process shall record configuration, metrics, and artifacts for each run.
+# TSR-002: Training process shall detect and fail on numerical instability.
+# TSR-003: Training process shall record non-clinical evidence of execution.
+# TSR-004: Training process shall persist model checkpoints per epoch.
+
 from __future__ import annotations
 
 import json
@@ -36,6 +41,7 @@ class MedicalImageTrainer:
         show_training_plot: bool = False,
         save_training_plot: bool = True,
         print_every_n_batches: int = 50,
+        slow_batch_threshold_sec: float = 30.0,   # ← ADD
     ):
         self.model = model
         self.optimizer = optimizer
@@ -49,7 +55,8 @@ class MedicalImageTrainer:
         self.show_training_plot = show_training_plot
         self.save_training_plot = save_training_plot
         self.print_every_n_batches = print_every_n_batches
-
+        self.slow_batch_threshold_sec = slow_batch_threshold_sec
+        
         self.history: List[Dict[str, Any]] = []
 
         self.run_dir.mkdir(parents=True, exist_ok=True)
@@ -109,6 +116,35 @@ class MedicalImageTrainer:
             f"time={epoch_time:.1f}s"
         )
 
+        # ----------------------------------------
+        # CHECKPOINT (FDA-CRITICAL)
+        # ----------------------------------------
+        checkpoint = {
+            "epoch": epoch,
+            "model_state": self.model.state_dict(),
+            "optimizer_state": self.optimizer.state_dict(),
+            "metrics": {
+                "train_loss": train_loss,
+                "val_loss": val_loss,
+            },
+        }
+
+        torch.save(
+            checkpoint,
+            self.run_dir / f"checkpoint_epoch_{epoch}.pt",
+        )
+
+        evidence = EvidenceReport(subject=f"Epoch {epoch}")
+        evidence.info(
+            f"Training loss: {train_loss:.4f}",
+            requirement_id="TSR-001",
+        )
+        evidence.info(
+            f"Validation loss: {val_loss:.4f}",
+            requirement_id="TSR-001",
+        )
+        evidence.save(self.run_dir / f"evidence_epoch_{epoch}.json")
+
         return {
             "epoch": epoch,
             "train": {"loss": train_loss},
@@ -122,18 +158,61 @@ class MedicalImageTrainer:
         last_print = epoch_start
 
         for batch_idx, batch in enumerate(loader):
-            images = batch["image"].to(self.device)
-            targets = batch["target"].to(self.device).view(-1, 1)
+            batch_start = time.time()
 
-            self.optimizer.zero_grad()
-            logits = self.model(images)
-            loss = self.loss_fn(logits, targets)
-            loss.backward()
-            self.optimizer.step()
+            try:
+                images = batch["image"].to(self.device)
+                targets = batch["target"].to(self.device).view(-1, 1)
+
+                self.optimizer.zero_grad()
+                logits = self.model(images)
+                loss = self.loss_fn(logits, targets)
+
+                # -------------------------------
+                # NUMERICAL SAFETY
+                # -------------------------------
+                if not torch.isfinite(loss):
+                    raise RuntimeError(
+                        f"Non-finite loss detected "
+                        f"(epoch={len(self.history)}, batch={batch_idx})"
+                    )
+
+                loss.backward()
+                self.optimizer.step()
+
+            except RuntimeError as e:
+                # -------------------------------
+                # CUDA OOM CONTAINMENT
+                # -------------------------------
+                if "out of memory" in str(e).lower():
+                    print(
+                        f"⚠️ CUDA OOM at batch {batch_idx} — skipping batch"
+                    )
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    continue
+                raise
 
             total_loss += loss.item()
 
-            if self.print_every_n_batches > 0 and batch_idx % self.print_every_n_batches == 0:
+            # -------------------------------
+            # SLOW BATCH DIAGNOSTIC
+            # -------------------------------
+            batch_time = time.time() - batch_start
+            if batch_time > self.slow_batch_threshold_sec:
+                print(
+                    f"⚠️ Slow batch detected: "
+                    f"{batch_time:.1f}s "
+                    f"(epoch={len(self.history)}, batch={batch_idx})"
+                )
+
+            # -------------------------------
+            # PROGRESS HEARTBEAT
+            # -------------------------------
+            if (
+                self.print_every_n_batches > 0
+                and batch_idx % self.print_every_n_batches == 0
+            ):
                 now = time.time()
                 print(
                     f"  ⏱ batch {batch_idx:5d}/{len(loader)} | "
@@ -143,6 +222,7 @@ class MedicalImageTrainer:
                 last_print = now
 
         return total_loss / len(loader)
+
 
     def _validate(self, loader: DataLoader) -> float:
         self.model.eval()
@@ -155,6 +235,11 @@ class MedicalImageTrainer:
                 logits = self.model(images)
                 loss = self.loss_fn(logits, targets)
                 total_loss += loss.item()
+                
+                if not torch.isfinite(loss):
+                    raise RuntimeError(
+                        "Non-finite validation loss detected"
+                    )
 
         return total_loss / len(loader)
 
@@ -179,10 +264,29 @@ class MedicalImageTrainer:
         evidence = EvidenceReport(
             subject=self.run_config.get("run_intent", "Training run")
         )
-        evidence.info("Trainer: MedicalImageTrainer")
-        evidence.info("Non-clinical development run")
-        evidence.info("No performance claims implied")
-        evidence.save(self.run_dir / "evidence.json")
+
+        evidence.info(
+            "Trainer implementation: MedicalImageTrainer",
+            requirement_id="TSR-001",
+        )
+
+        evidence.info(
+            "Run executed as non-clinical development activity",
+            requirement_id="TSR-003",
+        )
+
+        evidence.info(
+            "No clinical performance claims implied by this run",
+            requirement_id="TSR-003",
+        )
+
+        evidence.info(
+            f"Epochs completed: {len(self.history)}",
+            requirement_id="TSR-001",
+        )
+
+        evidence.save(self.run_dir / "evidence_report.json")
+
 
     def _maybe_plot_training_history(self) -> None:
         if not (self.show_training_plot or self.save_training_plot):
