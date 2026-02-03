@@ -1,3 +1,5 @@
+# This script checks that the medical imaging environment is set up correctly.
+# It imports key libraries and prints their versions.
 import numpy as np
 import torch
 import monai

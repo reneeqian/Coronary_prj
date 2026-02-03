@@ -31,7 +31,7 @@ from src.medical_image_ai_toolkit.training.medical_image_trainer import MedicalI
 # ---------------------------------------------------------------------
 # PROJECT IMPORTS
 # ---------------------------------------------------------------------
-from src.cac_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
+from src.ingestors.coca_gated_ingestor import COCAGatedIngestor
 
 
 # =====================================================================

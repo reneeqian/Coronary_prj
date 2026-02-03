@@ -1,0 +1,87 @@
+# Requirements (CAC)
+# CAC-DR-01 Processed CAC datasets shall conform to a documented directory structure.
+# CAC-DR-02 Required image subdirectories shall exist and be non-empty.
+# CAC-TR-01 Dataset ordering shall be deterministic when configured.
+
+
+from pathlib import Path
+import sys
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
+from src.ingestors.coca_gated_ingestor import COCAGatedIngestor
+
+def test_coca_dataset_directory_structure():
+    report = EvidenceReport(
+        subject="COCA Dataset → Directory Structure Contract"
+    )
+
+    dataset_root = (
+        PROJECT_ROOT
+        / "data"
+        / "raw"
+        / "coca"
+        / "cocacoronarycalciumandchestcts-2"
+        / "Gated_release_final"
+    )
+
+    if not dataset_root.exists():
+        report.warn(
+            message="Dataset not found; structure check skipped",
+            requirement_id="CAC-DR-01",
+        )
+    else:
+        images_dir = dataset_root / "patient"
+        report.info(
+            message="Checking image directory existence",
+            requirement_id="CAC-DR-01",
+            context=str(images_dir),
+        )
+
+        if not images_dir.exists() or not any(images_dir.iterdir()):
+            report.warn(
+                message="Image directory missing or empty; dataset may not be staged",
+                requirement_id="CAC-DR-02",
+            )
+
+
+    report.auto_save("coca_dataset_structure")
+    assert not report.has_errors, report.summary()
+
+def test_coca_ingestor_ingestion_is_deterministic():
+    report = EvidenceReport(
+        subject="COCA Ingestor → Deterministic Ingestion"
+    )
+
+    dataset_root = (
+            PROJECT_ROOT
+            / "data"
+            / "raw"
+            / "coca"
+            / "cocacoronarycalciumandchestcts-2"
+            / "Gated_release_final"
+        )
+    
+    if not dataset_root.exists():
+        report.warn(
+            message="Dataset not found; determinism check skipped",
+            requirement_id="CAC-TR-01",
+        )
+    else:
+        ingestor = COCAGatedIngestor(dataset_root=dataset_root)
+
+        sample1 = ingestor.ingest_patient("0")
+        sample2 = ingestor.ingest_patient("0")
+
+        assert sample1.image_volume.shape == sample2.image_volume.shape
+        assert sample1.spacing == sample2.spacing
+
+        report.info(
+            message="Repeated ingestion of same patient ID is deterministic",
+            requirement_id="CAC-TR-01",
+        )
+
+    report.auto_save("coca_ingestor_determinism")
+    assert not report.has_errors, report.summary()

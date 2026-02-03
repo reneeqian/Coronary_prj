@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 import time
+import random
+import numpy as np
 from pathlib import Path
 from typing import Dict, Any, List
 
@@ -31,26 +33,31 @@ class MedicalImageTrainer:
     def __init__(
         self,
         *,
+        output_dir: Path | str,
         model: nn.Module,
         optimizer: torch.optim.Optimizer,
         loss_fn: nn.Module,
         device: torch.device,
-        run_dir: Path,
         run_config: Dict[str, Any],
         data_splits: Dict[str, Any],
+        random_seed: int | None = None,  
         show_training_plot: bool = False,
         save_training_plot: bool = True,
         print_every_n_batches: int = 50,
         slow_batch_threshold_sec: float = 30.0,   # ← ADD
     ):
+        
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         self.model = model
         self.optimizer = optimizer
         self.loss_fn = loss_fn
         self.device = device
 
-        self.run_dir = run_dir
         self.run_config = run_config
         self.data_splits = data_splits
+        if random_seed is not None:
+            self._set_determinism(random_seed)
 
         self.show_training_plot = show_training_plot
         self.save_training_plot = save_training_plot
@@ -58,8 +65,6 @@ class MedicalImageTrainer:
         self.slow_batch_threshold_sec = slow_batch_threshold_sec
         
         self.history: List[Dict[str, Any]] = []
-
-        self.run_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
     # PUBLIC API
@@ -86,6 +91,19 @@ class MedicalImageTrainer:
         self._save_dynamic_artifacts()
         self._save_evidence_report()
         self._maybe_plot_training_history()
+        
+    # ------------------------------------------------------------------
+    # Helper Function
+    # ------------------------------------------------------------------
+    def _set_determinism(self, seed: int) -> None:
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
     # ------------------------------------------------------------------
     # EPOCH LOGIC
@@ -131,7 +149,7 @@ class MedicalImageTrainer:
 
         torch.save(
             checkpoint,
-            self.run_dir / f"checkpoint_epoch_{epoch}.pt",
+            self.output_dir / f"checkpoint_epoch_{epoch}.pt",
         )
 
         evidence = EvidenceReport(subject=f"Epoch {epoch}")
@@ -143,7 +161,7 @@ class MedicalImageTrainer:
             f"Validation loss: {val_loss:.4f}",
             requirement_id="TSR-001",
         )
-        evidence.save(self.run_dir / f"evidence_epoch_{epoch}.json")
+        evidence.save(self.output_dir / f"evidence_epoch_{epoch}.json")
 
         return {
             "epoch": epoch,
@@ -248,17 +266,17 @@ class MedicalImageTrainer:
     # ------------------------------------------------------------------
 
     def _save_static_artifacts(self) -> None:
-        with open(self.run_dir / "run_config.json", "w") as f:
+        with open(self.output_dir / "run_config.json", "w") as f:
             json.dump(self.run_config, f, indent=2)
 
-        with open(self.run_dir / "data_splits.json", "w") as f:
+        with open(self.output_dir / "data_splits.json", "w") as f:
             json.dump(self.data_splits, f, indent=2)
 
     def _save_dynamic_artifacts(self) -> None:
-        with open(self.run_dir / "metrics.json", "w") as f:
+        with open(self.output_dir / "metrics.json", "w") as f:
             json.dump(self.history, f, indent=2)
 
-        torch.save(self.model.state_dict(), self.run_dir / "model.pt")
+        torch.save(self.model.state_dict(), self.output_dir / "model.pt")
 
     def _save_evidence_report(self) -> None:
         evidence = EvidenceReport(
@@ -285,7 +303,7 @@ class MedicalImageTrainer:
             requirement_id="TSR-001",
         )
 
-        evidence.save(self.run_dir / "evidence_report.json")
+        evidence.save(self.output_dir / "evidence_report.json")
 
 
     def _maybe_plot_training_history(self) -> None:
@@ -312,7 +330,7 @@ class MedicalImageTrainer:
         plt.grid(True)
 
         if self.save_training_plot:
-            path = self.run_dir / "training_curve.png"
+            path = self.output_dir / "training_curve.png"
             plt.savefig(path, dpi=150, bbox_inches="tight")
             print(f"📈 Training curve saved to {path}")
 
@@ -320,3 +338,83 @@ class MedicalImageTrainer:
             plt.show()
         else:
             plt.close()
+
+    @classmethod
+    def test_instance(
+        cls,
+        *,
+        output_dir: Path,
+        random_seed: int | None = 123,
+    ) -> "MedicalImageTrainer":
+        import torch.nn as nn
+        import torch.optim as optim
+
+        _set_determinism(random_seed)
+        model = nn.Linear(4, 1)
+        optimizer = optim.SGD(model.parameters(), lr=0.01)
+        loss_fn = nn.MSELoss()
+
+        return cls(
+            output_dir=output_dir,
+            model=model,
+            optimizer=optimizer,
+            loss_fn=loss_fn,
+            device=torch.device("cpu"),
+            run_config={
+                "run_intent": "unit_test",
+                "validated_input": True,
+            },
+            data_splits={"train": "dummy", "val": "dummy"},
+            random_seed=random_seed,
+            show_training_plot=False,
+            save_training_plot=False,
+            print_every_n_batches=0,
+        )
+        
+        def _set_determinism(seed: int):
+            import random
+            import numpy as np
+            import torch
+
+            random.seed(seed)
+            np.random.seed(seed)
+            torch.manual_seed(seed)
+
+            # If CUDA is ever enabled later
+            torch.cuda.manual_seed_all(seed)
+
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+
+    
+    def train_from_samples(
+        self,
+        *,
+        samples,
+        epochs: int,
+        batch_size: int = 2,
+    ) -> None:
+        """
+        Convenience wrapper for unit tests only.
+        Converts in-memory samples into DataLoaders.
+        """
+
+        from torch.utils.data import DataLoader
+
+        train_loader = DataLoader(
+            samples,
+            batch_size=batch_size,
+            shuffle=False,  # determinism
+        )
+        val_loader = DataLoader(
+            samples,
+            batch_size=batch_size,
+            shuffle=False,
+        )
+
+        return self.train(
+            train_loader=train_loader,
+            val_loader=val_loader,
+            num_epochs=epochs,
+        )
+

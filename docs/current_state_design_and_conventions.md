@@ -563,7 +563,128 @@ Until then, current behavior remains authoritative.
 Next step: smoke-test training run with visual outputs.
 
 ---
+## 15. EvidenceReport Usage: Design Intent and Conventions
 
+### Overview
+
+The project uses a unified `EvidenceReport` mechanism to capture structured evidence across unit testing, integration testing, and model training execution. This is an intentional design choice to support traceability, determinism, and auditability in a regulated medical AI context.
+
+`EvidenceReport` is treated as an evidence aggregation and transport layer, not as a test framework or metric computation engine.
+
+---
+
+### Core Principle
+
+**EvidenceReport records claims and observations; it does not decide correctness.**
+
+Assertions, validation logic, and metric computation remain outside of `EvidenceReport`.  
+`EvidenceReport` exists to:
+- document what was evaluated
+- under what conditions
+- in support of which requirement
+
+---
+
+### Supported Evidence Contexts
+
+The same `EvidenceReport` class is used in multiple contexts, differentiated by intent and convention rather than by implementation.
+
+#### 1. Unit & Verification Tests
+
+Used during pytest execution to support formal verification of functional and technical requirements.
+
+**Characteristics**
+- Short-lived
+- Requirement-centric
+- Ends with explicit assertions (e.g., `assert not report.has_errors`)
+- Evidence is generated only to support pass/fail claims
+
+**Example usage**
+```python
+report = EvidenceReport(
+    subject="MedicalImageTrainer → Deterministic Training"
+)
+```
+**Purpose**
+
+- Verify code behavior
+- Support requirement traceability (e.g., CAC-FR-xx, CAC-TR-xx)
+- Generate verifiable artifacts for CI and design history
+
+**2. Training & Algorithmic Execution**
+
+Used during training runs to capture algorithm behavior, metrics, and stability characteristics.
+
+Characteristics
+- Long-lived
+- Metric-heavy
+- No assertions
+- Persisted alongside model artifacts
+- Descriptive rather than pass/fail
+
+Purpose
+- Demonstrate determinism, convergence, numerical stability
+- Capture training configuration and outcomes
+- Support algorithm performance evidence without enforcing correctness**
+
+**What EvidenceReport Is Not**
+
+EvidenceReport is explicitly not:
+- a test runner
+- a metric calculator
+- a control-flow mechanism
+- a replacement for assertions or exceptions
+
+Pipeline logic must not depend on the presence or contents of an EvidenceReport.
+
+### Separation of Responsibility
+
+| Concern | Owner |
+|------|------|
+| Pass / fail logic | `assert`, exceptions |
+| Metric computation | Trainer / model code |
+| Requirement enforcement | Contracts & validators |
+| Evidence capture | `EvidenceReport` |
+| Determinism guarantees | Explicit seeding & ordering logic |
+
+This separation ensures that evidence collection never alters system behavior.
+
+---
+
+### Acceptability for Regulated ML Systems
+
+This unified evidence mechanism aligns with common regulatory expectations (e.g., FDA SaMD, ISO 62304) by:
+- Supporting traceability across development phases
+- Preserving execution context and intent
+- Allowing evidence generation at development, verification, and controlled runtime
+
+Different claims are supported using the same mechanism, without conflating their meaning.
+
+---
+
+### Guardrails and Anti-Patterns
+
+The following are explicitly discouraged:
+- Using `EvidenceReport` to control logic flow
+- Making training success dependent on evidence state
+- Calling `assert` inside training code
+- Coupling pipeline behavior to “test mode” vs “train mode”
+- Treating metrics as implicit pass/fail signals
+
+Violating these principles would blur the boundary between evidence and correctness and should be avoided.
+
+---
+
+### Summary
+
+Using a single `EvidenceReport` mechanism across testing and training is a deliberate and appropriate architectural choice, provided that:
+- intent is clearly signaled via subject and requirement IDs
+- correctness is enforced outside the evidence layer
+- evidence remains descriptive, contextual, and non-authoritative
+
+This design supports scalability, auditability, and long-term maintainability without introducing unnecessary parallel systems.
+
+---
 ## 15. !!!Change Policy (Normative)!!!
 
 Any change that affects:

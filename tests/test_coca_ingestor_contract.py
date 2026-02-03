@@ -1,5 +1,6 @@
 # Requirements (CAC)
-# CAC-FR-01.1	The system shall ingest cardiac CT image volumes from a specified root directory.
+# CAC-FR-01	The system shall ingest cardiac CT image volumes from a specified root directory.
+# CAC-FR-03 The system shall fail gracefully with informative errors when required data is missing or invalid.
 
 from pathlib import Path
 import sys
@@ -38,14 +39,14 @@ def test_coca_ingestor_produces_valid_patient_sample():
     if dataset_root.exists():
         report.info(
             message="Using real COCA dataset", 
-            requirement_id="CAC-FR-01.1",
+            requirement_id="CAC-FR-01",
             context=str(dataset_root))
         ingestor = COCAGatedIngestor(dataset_root=dataset_root)
         sample = ingestor.ingest_patient("0")
     else:
         report.warn(
             message="COCA dataset not found, using dummy sample",
-            requirement_id="CAC-FR-01.1")
+            requirement_id="CAC-FR-01")
         sample = _make_dummy_patient_sample()
 
     contract_report = enforce_patient_sample_contract(
@@ -56,4 +57,28 @@ def test_coca_ingestor_produces_valid_patient_sample():
     report.issues.extend(contract_report.issues)
     report.auto_save("coca_ingestor_contract")
 
+    assert not report.has_errors, report.summary()
+
+def test_coca_ingestor_missing_dataset_fails_gracefully():
+    report = EvidenceReport(
+        subject="COCA Ingestor → Missing Dataset Failure Mode"
+    )
+
+    fake_root = PROJECT_ROOT / "data" / "raw" / "coca" / "DOES_NOT_EXIST"
+
+    try:
+        ingestor = COCAGatedIngestor(dataset_root=fake_root)
+        ingestor.ingest_patient("0")
+        report.error(
+            message="Ingestor did not fail on missing dataset",
+            requirement_id="CAC-FR-03",
+        )
+    except Exception as e:
+        report.info(
+            message="Ingestor failed as expected",
+            requirement_id="CAC-FR-03",
+            context=str(e),
+        )
+
+    report.auto_save("coca_ingestor_missing_data")
     assert not report.has_errors, report.summary()
