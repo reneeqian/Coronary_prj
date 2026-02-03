@@ -1,21 +1,30 @@
-Req ID,Description,Enforced by,Code Artifact,Evidence Artifact,Test,Status,Notes
-CAC-FR-01.1,The system shall ingest cardiac CT image volumes from a specified root directory.,Dataset ingestors,coca_gated_ingestor.py,path existence check,,Partial,"Root path passed in, ingestion logic centralized"
-CAC-FR-01.2,The system shall support volumetric image formats commonly used in public CT datasets.,Dataset ingestors,base_ingestor.py,,,Partial,Assumes NIfTI via downstream loaders
-CAC-FR-01.3,The system shall fail gracefully with informative errors when required directories or files are missing.,Dataset ingestors,base_ingestor.py,raised exceptions,,Partial,Errors raised but not yet standardized
-CAC-FR-02.1,The system shall enforce a predefined directory structure for processed datasets.,Documentation boundary,canonical_data_contract.md;coca_gated.md,,,Planned,"Structure documented, not code-enforced"
-CAC-FR-02.2,The system shall validate the presence and non-emptiness of required image subdirectories.,Scripts,build_coronary_ct_dataset.py,manual checks,,Planned,Script-level validation only
-MIT-FR-04.1,The system shall expose individual samples via a consistent PatientSample interface.,Dataset API,medimg_training/src/dataobjects/patient_sample.py,constructor validation,,Implemented,
-CAC-FR-04.2,The system shall decouple data ingestion from downstream model code.,Architecture,coronary_ct_dataset.py,,,Implemented,
-CAC-FR-05.2,The system shall produce deterministic dataset ordering when configured to do so.,Dataset,coronary_ct_dataset.py,,,Planned,Filesystem order assumed
-MIT-DR-01,PatientSample image_volume shall be a NumPy array.,PatientSample contract,medimg_training/src/contracts/patient_sample_contract.py,_check_volume(),src/medimg_training/tests/test_patient_sample_contract.py,Implemented,
-MIT-DR-02,"PatientSample image_volume shall be three-dimensional (z,y,x).",PatientSample contract,medimg_training/src/contracts/patient_sample_contract.py,_check_volume(),src/medimg_training/tests/test_patient_sample_contract.py,Implemented,
-MIT-DR-03,PatientSample image_volume spatial dimensions shall be greater than zero.,PatientSample contract,medimg_training/src/contracts/patient_sample_contract.py,_check_volume(),src/medimg_training/tests/test_patient_sample_contract.py,Implemented,
-MIT-DR-04,"PatientSample spacing shall be defined as (z,y,x) with all values > 0",PatientSample contract,medimg_training/src/contracts/patient_sample_contract.py,_check_spacing(),src/medimg_training/tests/test_patient_sample_contract.py,Implemented,
-MIT-DR-05,PatientSample shall define a non-empty patient_id.,PatientSample contract,medimg_training/src/contracts/patient_sample_contract.py,_check_patient_id(),src/medimg_training/tests/test_patient_sample_contract.py,Implemented,
-MIT-DR-06,Annotations may be optional but must be present if required by workflow.,PatientSample contract,medimg_training/src/contracts/patient_sample_contract.py,_check_annotations(),src/medimg_training/tests/test_patient_sample_contract.py,Implemented,
-MIT-DR-07,Annotation slice indices shall be valid and within volume bounds.,PatientSample contract,medimg_training/src/contracts/patient_sample_contract.py,_check_annotations(),src/medimg_training/tests/test_patient_sample_contract.py,Implemented,
-MIT-DR-08,"Vector ROI contours shall be valid (N,2) and within image bounds.",PatientSample contract,medimg_training/src/contracts/patient_sample_contract.py,_check_vector_roi(),src/medimg_training/tests/test_patient_sample_contract.py,Implemented,
-MIT-DR-09,All PatientSample invariants shall be enforced at a single validation boundary.,PatientSample contract,medimg_training/src/contracts/patient_sample_contract.py,check_patient_sample(),src/medimg_training/tests/test_patient_sample_contract.py,Implemented,
-MIT-NFR-01.2,Dataset validation logic shall be isolated from dataset iteration logic.,Architecture,validators vs datasets,,src/medimg_training/tests/test_patient_sample_contract.py,Implemented,
-PROC-NFR-02.1,Each requirement shall be traceable to at least one implementation artifact.,Process,docs/traceability.csv,,manual audit,Implemented,
-PROC-NFR-02.2,Each requirement shall be verifiable via tests.,Process,tests/,,pytest,Implemented,
+Req ID,Description,Enforced By,Code Artifact,Evidence Artifact,Test,Status,Notes
+CAC-FR-01,The system shall ingest cardiac CT image volumes from a specified root directory.,Dataset ingestors,coca_gated_ingestor.py,ingestion_log.json,manual,Partial,"Root path validated; ingestion logic centralized"
+CAC-FR-02,The system shall support volumetric CT formats commonly used in public CAC datasets.,Dataset ingestors,base_ingestor.py,loader_config.json,manual,Partial,"Assumes NIfTI via downstream loaders"
+CAC-FR-03,The system shall fail gracefully with informative errors when required data is missing or invalid.,Dataset ingestors,base_ingestor.py,error_logs.json,manual,Partial,"Errors raised but not standardized"
+CAC-DR-01,Processed CAC datasets shall conform to a documented directory structure.,Documentation boundary,canonical_data_contract.md,,manual,Planned,"Documented only; not code-enforced"
+CAC-DR-02,Required image subdirectories shall exist and be non-empty.,Dataset build scripts,build_coronary_ct_dataset.py,dataset_manifest.json,manual,Planned,"Script-level validation only"
+CAC-FR-04,Data ingestion shall be decoupled from downstream model and training logic.,Architecture boundary,coronary_ct_dataset.py,,N/A,Implemented,"Clean separation achieved"
+CAC-TR-01,Dataset ordering shall be deterministic when configured.,Dataset layer,coronary_ct_dataset.py,split_manifest.json,N/A,Planned,"Filesystem order currently assumed"
+MIT-DR-01,PatientSample image_volume shall be a NumPy array.,PatientSample contract,patient_sample_contract.py,_check_volume(),pytest,Implemented,
+MIT-DR-02,PatientSample image_volume shall be three-dimensional (z,y,x).,PatientSample contract,patient_sample_contract.py,_check_volume(),pytest,Implemented,
+MIT-DR-03,PatientSample image_volume spatial dimensions shall be greater than zero.,PatientSample contract,patient_sample_contract.py,_check_volume(),pytest,Implemented,
+MIT-DR-04,PatientSample spacing shall be defined as (z,y,x) with all values greater than zero.,PatientSample contract,patient_sample_contract.py,_check_spacing(),pytest,Implemented,
+MIT-DR-05,PatientSample shall define a non-empty patient_id.,PatientSample contract,patient_sample_contract.py,_check_patient_id(),pytest,Implemented,
+MIT-DR-06,Annotations may be optional but shall be valid if present.,PatientSample contract,patient_sample_contract.py,_check_annotations(),pytest,Implemented,
+MIT-DR-07,Annotation slice indices shall be within volume bounds.,PatientSample contract,patient_sample_contract.py,_check_annotations(),pytest,Implemented,
+MIT-DR-08,Vector ROI contours shall be valid (N,2) and within image bounds.,PatientSample contract,patient_sample_contract.py,_check_vector_roi(),pytest,Implemented,
+MIT-DR-09,All PatientSample invariants shall be enforced at a single validation boundary.,PatientSample contract,enforce_patient_sample_contract(),pytest,Implemented,
+MIT-FR-01,Datasets shall expose samples via a consistent PatientSample interface.,Dataset API,patient_sample.py,,N/A,Implemented,
+MIT-NFR-01,Dataset validation logic shall be isolated from dataset iteration logic.,Architecture,validators vs datasets,,pytest,Implemented,
+MIT-TR-01,Training and validation splits shall be deterministic and reproducible.,Split strategy,split_strategy.py,split_manifest.json,pytest,Implemented,
+MIT-TR-02,Each training run shall generate a unique and immutable run identifier.,Trainer,MedicalImageTrainer,run_id,N/A,Implemented,
+MIT-TR-03,Each training run shall persist dataset identity, split logic, and configuration.,Trainer,MedicalImageTrainer,run_config.json,N/A,Implemented,
+MIT-TR-04,Training and validation datasets shall be disjoint.,Split strategy,split_strategy.py,split_manifest.json,pytest,Implemented,
+MIT-TR-05,Training process shall record per-epoch training and validation metrics.,Trainer,MedicalImageTrainer,metrics.json,N/A,Implemented,
+MIT-TR-06,Training process shall persist model artifacts traceable to a specific run.,Trainer,MedicalImageTrainer,model.pt,N/A,Implemented,
+MIT-TR-07,Training process shall persist model checkpoints per epoch.,Trainer,MedicalImageTrainer,checkpoint_epoch_*.pt,N/A,Implemented,
+MIT-TR-08,Training process shall record non-clinical evidence of execution.,Trainer,MedicalImageTrainer,evidence.json,N/A,Implemented,
+MIT-TR-09,Training process shall detect and fail on numerical instability.,Trainer,MedicalImageTrainer,error_logs.json,pytest,Planned,
+PROC-NFR-01,Each requirement shall trace to at least one implementation artifact.,Process,traceability.csv,,manual,Implemented,
+PROC-NFR-02,Each requirement shall be verifiable via tests or artifacts.,Process,tests/,pytest,manual,Implemented,
