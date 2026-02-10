@@ -1,6 +1,23 @@
 # System Requirements — Coronary Artery Calcium (CAC) Detection Pipeline
 
-## 1. Purpose
+## 1. Requirements Overview
+
+This project defines requirements across multiple domains to reflect
+best practices for regulated medical imaging software and SaMD tooling.
+
+Requirements are grouped by intent:
+
+- Dataset and data integrity requirements
+- Medical image data contract requirements
+- Training pipeline functional requirements
+- Model artifact requirements
+- System-level auditability and reproducibility requirements
+
+Not all requirements are enforced in the current implementation.
+Some are documented to establish design intent and future validation scope.
+
+
+## 2. Purpose
 
 This document defines the functional, data, and non-functional requirements for a software pipeline that ingests cardiac CT data and supports coronary artery calcium (CAC) detection for research and educational purposes.
 
@@ -10,7 +27,7 @@ Traceability ends at the tensor adapter boundary.
 
 ---
 
-## 2. Scope
+## 3. Scope
 
 The system shall:
 - Ingest publicly available non-contrast cardiac CT datasets
@@ -23,16 +40,21 @@ The system shall **not**:
 - Make clinical claims
 - Be used for patient care
 
-### 2.1 Traceability Scope
+### 3.1 Traceability Scope
 
 The traceability matrix covers requirements for the coronary_prj system from data ingestion through enforcing PatientSample data contract and record evidence.
 
 Conversion of PatientSample objects into framework-specific tensor representations, along with training and optimization logic, is handled by the medical_image_ai_toolkit module and is out of scope for this document.
 
+### 3.2 Assumptions and Constraints
+
+- Input datasets are de-identified and publicly available.
+- CT volumes represent non-contrast cardiac imaging.
+- Ground truth labels (if present) are assumed to be externally generated.
 
 ---
 
-## 3. Definitions and Abbreviations
+## 4. Definitions and Abbreviations
 
 | Term | Definition |
 |----|----|
@@ -43,30 +65,35 @@ Conversion of PatientSample objects into framework-specific tensor representatio
 
 ---
 
-## Requirements Legend
+## 5. Requirements Legend
 
 The following table defines the requirement prefixes used throughout this project.
 
 | Prefix | Requirement Type | Description | Example |
 |------:|------------------|-------------|---------|
-| **FR** | Functional Requirement | Defines system behavior, capabilities, or workflows. | `FR-01: The system shall load coronary CT volumes from disk.` |
-| **DR** | Data Requirement | Defines constraints, assumptions, and guarantees on input data and labels. | `DR-02: Input CT volumes shall be 3D arrays.` |
-| **VRF** | Verification Requirement | Defines test-time checks that verify requirements. | `VRF-03: The system shall reject labels containing invalid values.` |
-| **VAL** | Validation Requirement | Reserved for V&V validation against intended use. |
-| **MR** | Model Requirement | Defines constraints on model inputs, outputs, and training assumptions. | `MR-01: The model shall accept single-channel CT volumes.` |
-| **NFR** | Non-Functional Requirement | Defines performance, reliability, maintainability, or reproducibility constraints. | `NFR-01: Dataset loading shall complete within 2 seconds per case.` |
+| **FR** | Functional Requirement | Defines system behavior, capabilities, or workflows. | `CAC-FR-01: The system shall load coronary CT volumes from disk.` |
+| **DR** | Data Requirement | Defines constraints, assumptions, and guarantees on input data and labels. | `MIT-DR-02: Input CT volumes shall be 3D arrays.` |
+| **MR** | Model Requirement | Defines constraints on model inputs, outputs, and training assumptions. | `MIT-MR-01: The model shall accept single-channel CT volumes.` |
+| **TR** | Training Requirement | Defines requirements for training configuration, determinism, and execution behavior. | `MIT-TR-01: Training shall be deterministic given fixed seeds.` |
+| **MAR** | Model Artifact Requirement | Defines expectations for artifacts generated during training and validation. | `MIT-MAR-02: Model artifacts shall include output shape metadata.` |
+| **SYS** | System Auditability & Reproducibility | Defines requirements for evidence generation and regulatory traceability. | `MIT-SYS-01: Training runs shall generate immutable evidence artifacts.` |
+| **VRF** | Verification Requirement | Defines test-time checks that verify requirements are met. | `MIT-VRF-03: The system shall reject invalid voxel spacing.` |
+| **VAL** | Validation Requirement | Reserved for validation against intended clinical use. | *(Reserved – not used in this project)* |
+| **NFR** | Non-Functional Requirement | Defines performance, reliability, maintainability, or reproducibility constraints. | `CAC-NFR-01: Dataset loading shall complete within 2 seconds per case.` |
 
-### Identification Format
+### 5.1 Identification Format
 
 Each requirement is uniquely identified using the format:
 
-`<PREFIX>-<NN>`
+`<PROJ>-<PREFIX>-<NN>`
 
 Where:
+- `<PROJ>` is either **CAC** (Coronary Artery Calcium Project) or **MIT** (Medical Image AI Toolkit)
 - `<PREFIX>` is one of the requirement types listed above
-- `<NN>` is a zero-padded numeric identifier (e.g., `DR-01`, `FR-02`)
+- `<NN>` is a zero-padded numeric identifier (e.g., `01`, `02`)
 
-### Traceability
+
+### 5.2 Traceability
 
 Requirements may trace to:
 - Clinical assumptions (`CA-*`)
@@ -76,205 +103,7 @@ Requirements may trace to:
 
 All requirements are expected to be traceable to at least one implementation or verification mechanism.
 
----
-
-## 4. Functional Requirements
-
-### FR-01: Dataset Ingestion
-
-**FR-01.1**  
-The system shall ingest cardiac CT image volumes from a specified root directory.
-
-**FR-01.2**  
-The system shall support volumetric image formats commonly used in public CT datasets.
-
-**FR-01.3**  
-The system shall fail gracefully with informative errors when required directories or files are missing.
-
----
-
-### FR-02: Dataset Structure Enforcement
-
-**FR-02.1**  
-The system shall enforce a predefined directory structure for processed datasets.
-
-**FR-02.2**  
-The system shall enforce the presence and non-emptiness of required image and label subdirectories.
-
----
-
-### FR-03: Metadata and Image Integrity Enforcement
-
-**FR-03.1**  
-The system shall verify that image volumes are readable and non-corrupt.
-
-**FR-03.2**  
-The system shall enforce that image volumes contain valid numeric data.
-
-**FR-03.3**  
-The system shall verify that image intensity values fall within expected CT Hounsfield Unit ranges.
-
----
-
-### FR-04: Dataset Abstraction
-
-**FR-04.1**  
-The system shall provide a dataset abstraction that exposes individual samples via a consistent interface.
-
-**FR-04.2**  
-The dataset abstraction shall support iteration over samples.
-
-**FR-04.3**  
-The dataset abstraction shall decouple data loading from downstream modeling code.
-
----
-
-### FR-05: Reproducibility
-
-**FR-05.1**  
-The system shall define all dependencies via a version-controlled environment specification.
-
-**FR-05.2**  
-The system shall produce deterministic dataset ordering when configured to do so.
-
----
-
-## 5. Data Requirements (DR)
-
-The following data requirements define the PatientSample data contract enforced by the coronary_prj system.
-All downstream components may assume these requirements hold once a PatientSample has passed enforcement.
-
-### DR-01: Volumetric CT Representation 
-
-**DR-01.1**  
-A PatientSample shall contain an image_volume represented as a NumPy array.
-
-**DR-01.2**  
-The image_volume shall be three-dimensional with shape (z, y, x).
-
-**Derived From:** CA-2  
-**Rationale:** Cardiac CT data is inherently volumetric.
-
----
-
-### DR-02: Valid Image Spatial Dimensions
-
-**DR-02.1**. 
-The spatial dimensions (y, x) of the image volume shall be greater than zero.
-
-**Rationale:** Prevents degenerate or malformed image data.
-
----
-
-### DR-03: Image Spacing Definition
-
-**DR-03.1**  
-A PatientSample shall define voxel spacing as a tuple (z, y, x).
-
-**DR-03.2**  
-All spacing values shall be strictly greater than zero.
-
-**Rationale:** Spatial reasoning and annotation alignment depend on valid spacing.
-
----
-
-### DR-04: Patient Identifier Integrity
-
-**DR-04.1**  
-Each PatientSample shall define a non-empty patient_id.
-
-**Rationale:** Required for traceability, logging, and dataset bookkeeping
-
----
-
-### DR-05: Annotation Presence Policy
-
-**DR-05.1**  
-A PatientSample may optionally include annotations.
-
-**DR-05.2**  
-If annotations are required by the consuming workflow, the system shall reject samples without annotations.
-
-**Rationale:** Supports both labeled and unlabeled datasets while preserving explicit intent.
-
----
-
-### DR-06: Annotation Slice Validity
-
-**DR-06.1**  
-All annotation slice indices shall be integers.
-
-**DR-06.2**  
-All annotation slice indices shall lie within the bounds of the image volume depth.
-
-**Rationale:** Prevents spatial misalignment between annotations and image data.
-
----
-
-### DR-07: Annotation Geometry Validity
-
-**DR-07.1**  
-All vector ROI contours shall be defined as (N, 2) arrays of pixel coordinates.
-
-**DR-07.2**  
-All ROI coordinates shall lie within the spatial bounds of the image volume.
-
-**Rationale:** Ensures annotations are geometrically valid and renderable.
-
----
-
-### DR-08: Unified Data Contract Boundary
-
-**DR-08.1**  
-All data requirements (DR-01 through DR-07) shall be enforced at the PatientSample contract boundary.
-
-**DR-08.2**  
-Downstream systems may assume all enforced PatientSample objects satisfy these requirements.
-
-**Rationale:** Establishes a single, authoritative data contract.
----
-
-## 7. Non-Functional Requirements
-
-### NFR-01: Maintainability
-
-**NFR-01.1**  
-The codebase shall follow modular design principles.
-
-**NFR-01.2**  
-Dataset contract enforcement logic shall be isolated from dataset iteration logic.
-
----
-
-### NFR-02: Traceability
-
-**NFR-02.1**  
-Each requirement shall be traceable to at least one implementation artifact.
-
-**NFR-02.2**  
-Each requirement shall be verifiable via tests or contract enforcement checks.
-
----
-
-### NFR-03: Transparency
-
-**NFR-03.1**  
-Assumptions about dataset structure and content shall be documented.
-
-**NFR-03.2**  
-Limitations of the pipeline shall be explicitly stated in documentation.
-
----
-
-## 8. Assumptions and Constraints
-
-- Input datasets are de-identified and publicly available.
-- CT volumes represent non-contrast cardiac imaging.
-- Ground truth labels (if present) are assumed to be externally generated.
-
----
-
-## 9. Verification Strategy
+### 5.3 Verification Strategy
 
 Verification of requirements shall be performed through:
 - Dataset contract enforcement
@@ -282,6 +111,44 @@ Verification of requirements shall be performed through:
 - Script-based sanity checks
 
 Verification artifacts are documented in `docs/traceability.md`.
+
+---
+
+## 4. CAC – Dataset & Collection Requirements
+
+| Req ID | Description | Project | Status | Rationale |
+| --------- | -------------------------- | --- | ------- | ------------------------------------- |
+| CAC-FR-01 | The system shall load coronary CT volumes from disk using explicit file paths. | CAC | Enforced | Ensures controlled and reproducible dataset ingestion. |
+| CAC-FR-02 | The system shall associate each CT volume with a unique case identifier. | CAC | Enforced | Prevents case ambiguity and supports traceability. |
+| CAC-DR-01 | Input CT volumes shall be 3D arrays with consistent axial orientation. | CAC | Enforced | Ensures compatibility with downstream processing and training. |
+| CAC-DR-02 | CT voxel spacing shall be explicitly provided and validated. | CAC | Enforced | Prevents invalid physical interpretation of imaging data. |
+| CAC-DR-03 | Labels shall be numeric and bounded within a predefined domain. | CAC | Enforced | Prevents undefined or unsafe training behavior. |
+| CAC-NFR-01 | Dataset loading shall complete within a reasonable time per case on commodity hardware. | CAC | Documented | Establishes performance expectations without strict guarantees. |
+
+
+---
+
+## MIT – Medical Image Data Contract Requirements
+
+| Req ID | Description | Project | Status | Rationale |
+| --------- | -------------------------- | --- | ------- | ------------------------------------- |
+| MIT-DR-01 | Medical image samples shall include image data, spacing metadata, and identifiers. | MIT | Enforced | Establishes a strict data contract for all toolkit consumers. |
+| MIT-DR-02 | Image spacing values shall be positive and non-zero. | MIT | Enforced | Prevents invalid geometric assumptions during training. |
+| MIT-DR-03 | Image tensor shapes shall be validated prior to training. | MIT | Enforced | Prevents silent shape mismatches in models. |
+| MIT-MR-01 | Models shall explicitly define expected input tensor shape. | MIT | Documented | Prevents ambiguous model usage across projects. |
+| MIT-MR-02 | Models shall define the semantic meaning of each output channel. | MIT | Documented | Supports correct downstream interpretation of results. |
+| MIT-TR-01 | Training shall be deterministic when provided fixed random seeds and identical inputs. | MIT | Planned | Enables reproducibility and auditability of results. |
+| MIT-TR-02 | Training shall require an explicit configuration object. | MIT | Enforced | Prevents undocumented or implicit training behavior. |
+| MIT-TR-03 | Training shall fail fast upon detection of invalid data or configuration. | MIT | Enforced | Prevents silent propagation of invalid states. |
+| MIT-TR-04 | Training shall not silently coerce data types or shapes. | MIT | Documented | Prevents unintentional changes to training behavior. |
+| MIT-MAR-01 | Training runs shall produce versioned model artifacts. | MIT | Planned | Enables model comparison and archival. |
+| MIT-MAR-02 | Model artifacts shall include training configuration metadata. | MIT | Planned | Supports traceability and reproducibility. |
+| MIT-MAR-03 | Model artifacts shall include dataset identifiers or hashes. | MIT | Planned | Enables linkage between models and training data. |
+| MIT-SYS-01 | Each training run shall generate immutable evidence artifacts. | MIT | Enforced | Supports regulated development workflows and audits. |
+| MIT-SYS-02 | Training evidence shall include timestamps and execution context. | MIT | Enforced | Enables reconstruction of training events. |
+| MIT-SYS-03 | The system shall record code version identifiers for training runs. | MIT | Documented | Supports root-cause analysis and reproducibility. |
+| MIT-VRF-01 | The system shall reject medical image samples violating data contracts. | MIT | Enforced | Verifies enforcement of MIT-DR requirements. |
+| MIT-VRF-02 | The system shall surface descriptive errors for invalid training inputs. | MIT | Enforced | Ensures debuggability and safe failure modes. |
 
 ---
 

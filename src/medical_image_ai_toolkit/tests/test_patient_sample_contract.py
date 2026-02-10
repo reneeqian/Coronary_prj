@@ -1,3 +1,10 @@
+"""
+Primary requirement: MIT-DR-09
+Secondary requirements implicitly covered:
+MIT-DR-01 through MIT-DR-08
+"""
+
+
 import numpy as np
 
 from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
@@ -5,7 +12,7 @@ from medical_image_ai_toolkit.contracts.patient_sample_contract import enforce_p
 from medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
 
 
-def test_patient_sample_contract_with_dummy_data():
+def test_MIT_DR_09_enforce_patient_sample_contract_boundary():
     report = EvidenceReport(subject="PatientSample Contract (Dummy)")
 
     sample = PatientSample(

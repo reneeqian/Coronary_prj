@@ -13,7 +13,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
 from src.ingestors.coca_gated_ingestor import COCAGatedIngestor
 
-def test_coca_dataset_directory_structure():
+def test_CAC_DR_02_required_subdirectories_present():
     report = EvidenceReport(
         subject="COCA Dataset → Directory Structure Contract"
     )
@@ -50,7 +50,7 @@ def test_coca_dataset_directory_structure():
     report.auto_save("coca_dataset_structure")
     assert not report.has_errors, report.summary()
 
-def test_coca_ingestor_ingestion_is_deterministic():
+def test_CAC_TR_01_deterministic_dataset_ordering():
     report = EvidenceReport(
         subject="COCA Ingestor → Deterministic Ingestion"
     )

@@ -67,9 +67,9 @@ def _hash_metrics_file(metrics_path: Path) -> str:
 # Test Cases
 # -------------------------------
 
-def test_trainer_records_metrics_and_evidence(tmp_path):
+def test_MIT_TR_05_training_records_metrics_and_evidence(tmp_path):
     report = EvidenceReport(
-        subject="MedicalImageTrainer → Metrics & Evidence"
+        subject="MedicalImageTrainer metrics and evidence generation"
     )
 
     trainer = MedicalImageTrainer.test_instance(
@@ -103,13 +103,14 @@ def test_trainer_records_metrics_and_evidence(tmp_path):
             requirement_id="MIT-TR-08",
         )
 
-    report.auto_save("trainer_metrics_and_evidence")
+    report.auto_save("MIT_TR_05_training_records_metrics_and_evidence")
     assert not report.has_errors, report.summary()
 
 
-def test_trainer_detects_nan_loss(tmp_path):
+
+def test_MIT_TR_09_training_detects_nan_loss(tmp_path):
     report = EvidenceReport(
-        subject="MedicalImageTrainer → Numerical Instability Detection"
+        subject="MedicalImageTrainer numerical instability detection"
     )
 
     trainer = MedicalImageTrainer.test_instance(
@@ -139,13 +140,14 @@ def test_trainer_detects_nan_loss(tmp_path):
             context=str(e),
         )
 
-    report.auto_save("trainer_nan_detection")
+    report.auto_save("MIT_TR_09_training_detects_nan_loss")
     assert not report.has_errors, report.summary()
 
 
-def test_trainer_rejects_unvalidated_input(tmp_path):
+
+def test_MIT_DR_09_trainer_rejects_unvalidated_input(tmp_path):
     report = EvidenceReport(
-        subject="MedicalImageTrainer → Validation Boundary Enforcement"
+        subject="MedicalImageTrainer validation boundary enforcement"
     )
 
     trainer = MedicalImageTrainer.test_instance(output_dir=tmp_path)
@@ -179,17 +181,17 @@ def test_trainer_rejects_unvalidated_input(tmp_path):
             context=str(e),
         )
 
-    report.auto_save("trainer_validation_boundary")
+    report.auto_save("MIT_DR_09_trainer_rejects_unvalidated_input")
     assert not report.has_errors, report.summary()
 
 
-def test_trainer_full_training_is_deterministic(tmp_path):
+
+def test_MIT_TR_01_training_is_deterministic(tmp_path):
     report = EvidenceReport(
-        subject="MedicalImageTrainer → Deterministic Training (Tensor Dataset)"
+        subject="MedicalImageTrainer deterministic training behavior"
     )
 
     seed = 1337
-
     dataset = _TensorDataset(num_batches=4)
 
     train_loader = DataLoader(dataset, batch_size=2, shuffle=False)
@@ -237,5 +239,6 @@ def test_trainer_full_training_is_deterministic(tmp_path):
             context=f"{hash1} != {hash2}",
         )
 
-    report.auto_save("trainer_determinism_tensor_dataset")
+    report.auto_save("MIT_TR_01_training_is_deterministic")
     assert not report.has_errors, report.summary()
+

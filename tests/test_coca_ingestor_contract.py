@@ -24,7 +24,7 @@ def _make_dummy_patient_sample() -> PatientSample:
     )
 
 
-def test_coca_ingestor_produces_valid_patient_sample():
+def test_CAC_FR_01_ingest_ct_volumes_from_root():
     report = EvidenceReport(subject="COCA Ingestor → PatientSample Contract")
 
     dataset_root = (
@@ -59,7 +59,7 @@ def test_coca_ingestor_produces_valid_patient_sample():
 
     assert not report.has_errors, report.summary()
 
-def test_coca_ingestor_missing_dataset_fails_gracefully():
+def test_CAC_FR_03_graceful_failure_on_missing_data():
     report = EvidenceReport(
         subject="COCA Ingestor → Missing Dataset Failure Mode"
     )
