@@ -12,7 +12,9 @@ from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
 from medical_image_ai_toolkit.contracts.patient_sample_contract import enforce_patient_sample_contract
 from medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
 
-@pytest.mark.requirement("MIT-DR-09")
+@pytest.mark.requirement("MIT-DR-01")
+@pytest.mark.requirement("MIT-DR-02")
+@pytest.mark.requirement("MIT-VRF-01")
 def test_MIT_DR_09_enforce_patient_sample_contract_boundary():
     report = EvidenceReport(subject="PatientSample Contract (Dummy)")
 

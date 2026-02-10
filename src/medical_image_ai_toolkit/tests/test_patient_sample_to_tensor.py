@@ -34,10 +34,8 @@ def make_invalid_sample():
         annotations=None,
     )
 
-@pytest.mark.requirement("MIT-DR-02")
-@pytest.mark.requirement("MIT-DR-01")
-@pytest.mark.requirement("MIT-FR-01")
-def test_MIT_DR_02_patient_sample_converted_to_3d_tensor(sample):
+@pytest.mark.requirement("MIT-DR-03")
+def test_MIT_DR_03_patient_sample_converted_to_3d_tensor(sample):
     report = EvidenceReport(
         subject="PatientSample to tensor dimensionality and interface validation"
     )
@@ -54,7 +52,7 @@ def test_MIT_DR_02_patient_sample_converted_to_3d_tensor(sample):
 
     report.info(
         message="PatientSample image_volume converted to 3D tensor with channel dimension",
-        requirement_id="MIT-DR-02",
+        requirement_id="MIT-DR-03",
         context=f"shape={tuple(image.shape)}",
     )
 
@@ -65,7 +63,7 @@ def test_MIT_DR_02_patient_sample_converted_to_3d_tensor(sample):
 
     report.info(
         message="image_volume represented as normalized float32 tensor",
-        requirement_id="MIT-DR-01",
+        requirement_id="MIT-DR-03",
     )
 
     # MIT-FR-01
@@ -73,10 +71,10 @@ def test_MIT_DR_02_patient_sample_converted_to_3d_tensor(sample):
 
     report.info(
         message="Adapter preserves PatientSample interface semantics",
-        requirement_id="MIT-FR-01",
+        requirement_id="MIT-FR-03",
     )
 
-    report.auto_save("MIT_DR_02_patient_sample_converted_to_3d_tensor")
+    report.auto_save("MIT_DR_03_patient_sample_converted_to_3d_tensor")
     assert not report.has_errors, report.summary()
 
 @pytest.mark.requirement("MIT-DR-01")

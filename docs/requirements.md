@@ -229,7 +229,7 @@ This structure enables automated generation of requirement traceability matrices
 
 ---
 
-## MIT – Medical Image Data Contract Requirements
+## 5. MIT – Medical Image Data Contract Requirements
 
 | Req ID | Description | Project | Status | Rationale |
 | --------- | -------------------------- | --- | ------- | ------------------------------------- |
@@ -253,6 +253,6 @@ This structure enables automated generation of requirement traceability matrices
 
 ---
 
-## 10. Disclaimer
+## 6. Disclaimer
 
 This system is intended for research and educational purposes only and is not a medical device.
