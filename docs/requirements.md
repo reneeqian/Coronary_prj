@@ -114,6 +114,107 @@ Verification artifacts are documented in `docs/traceability.md`.
 
 ---
 
+## 6. Test & Evidence Naming Conventions
+
+This section defines mandatory naming conventions for test files, test functions, and evidence artifacts to ensure deterministic traceability between requirements, verification activities, and generated evidence in accordance with FDA SaMD expectations (IEC 62304, FDA AI/ML Good Machine Learning Practice).
+
+### 6.1 Test Function Naming
+
+Each test function shall reference the requirement it verifies.
+
+**Format**
+
+`def test_<REQ_ID>_<behavior_under_test>():`
+
+
+**Rules**
+* The requirement ID must appear verbatim
+* The function name must clearly state the expected behavior or constraint
+* Tests verifying negative behavior (rejection, failure) should explicitly state so
+
+**Examples**
+
+```python
+def test_CAC_DR_01_valid_ct_volume_is_accepted():
+    ...
+
+def test_CAC_DR_01_non_3d_volume_is_rejected():
+    ...
+
+def test_MIT_SYS_01_evidence_written_once_and_immutable():
+    ...
+```
+
+### 6.2 Requirement Annotation (Optional but Recommended)
+
+Tests may explicitly annotate the requirement they verify to support automated traceability extraction.
+
+Example
+
+```python
+@pytest.mark.requirement("CAC-DR-01")
+def test_CAC_DR_01_valid_ct_volume_is_accepted():
+    ...
+```
+
+### 6.3 Evidence Artifact Naming
+
+Each verification test shall generate a corresponding immutable evidence artifact.
+
+**Format**
+
+`<REQ_ID>_<test_name>_<YYYYMMDD_HHMMSS>.json`
+
+
+**Rules**
+* `<REQ_ID>` must match the requirement under verification
+* `<test_name>` must match the pytest function name
+* Timestamps must be UTC
+
+Evidence artifacts are write-once and never overwritten
+
+**Examples**
+
+```text
+CAC-DR-01_test_CAC_DR_01_valid_ct_volume_is_accepted_20260210_153422.json
+MIT-SYS-01_test_MIT_SYS_01_evidence_written_once_and_immutable_20260210_153501.json
+```
+
+### 6.4 Evidence JSON Required Fields
+
+All evidence artifacts shall include the following minimum fields to support regulatory auditability and traceability:
+
+```json
+{
+  "project_id": "CAC",
+  "requirement_id": "CAC-DR-01",
+  "requirement_type": "Data Requirement",
+  "test_id": "test_CAC_DR_01_valid_ct_volume_is_accepted",
+  "result": "PASS",
+  "timestamp_utc": "2026-02-10T15:34:22Z",
+  "inputs": { },
+  "outputs": { },
+  "pass_fail_criteria": "Input CT volume is a 3D array",
+  "tool_name": "medical-image-ai-toolkit",
+  "tool_version": "0.1.0",
+  "code_revision": "<git_commit_hash>"
+}
+```
+
+Additional fields may be included as needed (e.g., dataset identifiers, model hashes, configuration snapshots).
+
+### 6.5 Traceability Guarantee
+
+Adherence to the above conventions guarantees a deterministic and auditable trace path:
+
+```text
+Requirement → Test File → Test Function → Evidence Artifact → Result
+```
+
+This structure enables automated generation of requirement traceability matrices for regulatory review and supports reuse of the Medical Image AI Toolkit across multiple SaMD projects.
+
+---
+
 ## 4. CAC – Dataset & Collection Requirements
 
 | Req ID | Description | Project | Status | Rationale |

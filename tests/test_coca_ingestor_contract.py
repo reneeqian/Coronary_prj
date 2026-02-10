@@ -1,10 +1,7 @@
-# Requirements (CAC)
-# CAC-FR-01	The system shall ingest cardiac CT image volumes from a specified root directory.
-# CAC-FR-03 The system shall fail gracefully with informative errors when required data is missing or invalid.
-
 from pathlib import Path
 import sys
 import numpy as np
+import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -23,6 +20,11 @@ def _make_dummy_patient_sample() -> PatientSample:
         annotations=None,
     )
 
+@pytest.mark.requirement("CAC-FR-01")
+@pytest.mark.requirement("CAC-DR-01")
+@pytest.mark.requirement("CAC-DR-02")
+@pytest.mark.requirement("CAC-DR-03")
+@pytest.mark.requirement("MIT-VRF-01")
 
 def test_CAC_FR_01_ingest_ct_volumes_from_root():
     report = EvidenceReport(subject="COCA Ingestor → PatientSample Contract")
@@ -59,7 +61,8 @@ def test_CAC_FR_01_ingest_ct_volumes_from_root():
 
     assert not report.has_errors, report.summary()
 
-def test_CAC_FR_03_graceful_failure_on_missing_data():
+
+def test_CAC_FR_01_graceful_failure_on_missing_data():
     report = EvidenceReport(
         subject="COCA Ingestor → Missing Dataset Failure Mode"
     )
@@ -71,12 +74,12 @@ def test_CAC_FR_03_graceful_failure_on_missing_data():
         ingestor.ingest_patient("0")
         report.error(
             message="Ingestor did not fail on missing dataset",
-            requirement_id="CAC-FR-03",
+            requirement_id="CAC-FR-01",
         )
     except Exception as e:
         report.info(
             message="Ingestor failed as expected",
-            requirement_id="CAC-FR-03",
+            requirement_id="CAC-FR-01",
             context=str(e),
         )
 

@@ -10,6 +10,7 @@ import sys
 import json
 import hashlib
 import torch
+import pytest
 from torch.utils.data import DataLoader, Dataset
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -66,7 +67,8 @@ def _hash_metrics_file(metrics_path: Path) -> str:
 # -------------------------------
 # Test Cases
 # -------------------------------
-
+@pytest.mark.requirement("MIT-TR-05")
+@pytest.mark.requirement("MIT-TR-08")
 def test_MIT_TR_05_training_records_metrics_and_evidence(tmp_path):
     report = EvidenceReport(
         subject="MedicalImageTrainer metrics and evidence generation"
@@ -107,7 +109,7 @@ def test_MIT_TR_05_training_records_metrics_and_evidence(tmp_path):
     assert not report.has_errors, report.summary()
 
 
-
+@pytest.mark.requirement("MIT-TR-09")
 def test_MIT_TR_09_training_detects_nan_loss(tmp_path):
     report = EvidenceReport(
         subject="MedicalImageTrainer numerical instability detection"
@@ -144,7 +146,7 @@ def test_MIT_TR_09_training_detects_nan_loss(tmp_path):
     assert not report.has_errors, report.summary()
 
 
-
+@pytest.mark.requirement("MIT-DR-09")
 def test_MIT_DR_09_trainer_rejects_unvalidated_input(tmp_path):
     report = EvidenceReport(
         subject="MedicalImageTrainer validation boundary enforcement"
@@ -185,7 +187,7 @@ def test_MIT_DR_09_trainer_rejects_unvalidated_input(tmp_path):
     assert not report.has_errors, report.summary()
 
 
-
+@pytest.mark.requirement("MIT-TR-01")
 def test_MIT_TR_01_training_is_deterministic(tmp_path):
     report = EvidenceReport(
         subject="MedicalImageTrainer deterministic training behavior"

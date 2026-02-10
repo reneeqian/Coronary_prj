@@ -5,7 +5,7 @@ from pathlib import Path
 from medical_image_ai_toolkit.datamodules.tensor_datamodule import TensorDatamodule
 from medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
 
-
+@pytest.mark.requirement("MIT-FR-01")
 def test_MIT_FR_01_tensor_datamodule_exposes_dataset_length():
     report = EvidenceReport(
         subject="TensorDatamodule dataset length exposure"
@@ -26,7 +26,7 @@ def test_MIT_FR_01_tensor_datamodule_exposes_dataset_length():
     assert not report.has_errors, report.summary()
 
 
-
+@pytest.mark.requirement("MIT-TR-01")
 def test_MIT_TR_01_tensor_datamodule_deterministic_ordering():
     report = EvidenceReport(
         subject="Deterministic ordering of TensorDatamodule samples"
@@ -50,6 +50,7 @@ def test_MIT_TR_01_tensor_datamodule_deterministic_ordering():
     report.auto_save("MIT_TR_01_tensor_datamodule_deterministic_ordering")
     assert not report.has_errors, report.summary()
 
+@pytest.mark.requirement("MIT-FR-01")
 def test_MIT_FR_01_tensor_datamodule_getitem_returns_sample():
     report = EvidenceReport(
         subject="TensorDatamodule __getitem__ behavior"
@@ -70,6 +71,7 @@ def test_MIT_FR_01_tensor_datamodule_getitem_returns_sample():
     report.auto_save("MIT_FR_01_tensor_datamodule_getitem_returns_sample")
     assert not report.has_errors, report.summary()
 
+@pytest.mark.requirement("MIT-NFR-01")
 def test_MIT_NFR_01_tensor_datamodule_empty_dataset_rejected():
     report = EvidenceReport(
         subject="TensorDatamodule validation of empty dataset"
