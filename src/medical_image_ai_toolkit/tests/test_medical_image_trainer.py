@@ -10,8 +10,8 @@ from torch.utils.data import DataLoader, Dataset
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.medical_image_ai_toolkit.training.medical_image_trainer import MedicalImageTrainer
-from src.medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
+from medical_image_ai_toolkit.training.medical_image_trainer import MedicalImageTrainer
+from medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
 
 
 # -------------------------------
