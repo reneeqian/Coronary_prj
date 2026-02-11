@@ -93,6 +93,35 @@ class COCAGatedIngestor(BaseIngestor):
             metadata=metadata,
             patient_id=patient_id,
         )
+        
+    def list_patient_ids(self) -> list[str]:
+        """
+        Return sorted list of patient IDs under:
+        dataset_root/patient/<pid>/
+
+        Raises:
+            FileNotFoundError: if patient directory does not exist.
+        """
+
+        patient_root = self.dataset_root / "patient"
+
+        if not patient_root.exists():
+            raise FileNotFoundError(
+                f"Patient directory not found: {patient_root}"
+            )
+
+        patient_ids = [
+            p.name
+            for p in patient_root.iterdir()
+            if p.is_dir()
+        ]
+
+        if not patient_ids:
+            raise RuntimeError(
+                f"No patient subdirectories found in {patient_root}"
+            )
+
+        return sorted(patient_ids)
 
     # ------------------------------------------------------------------
     # Internal helpers

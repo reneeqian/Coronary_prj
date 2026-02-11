@@ -1,4 +1,3 @@
-from pathlib import Path
 import numpy as np
 import pytest
 
@@ -21,18 +20,17 @@ def _make_dummy_patient_sample() -> PatientSample:
 @pytest.mark.requirement("CAC-DR-02")
 @pytest.mark.requirement("CAC-DR-03")
 @pytest.mark.requirement("MIT-VRF-01")
+def test_CAC_FR_01_ingest_ct_volumes_from_root(coca_dataset_root,
+    coca_dataset_available,
+):
+    if not coca_dataset_available:
+        pytest.skip("COCA dataset not available — skipping integration test.")
 
-def test_CAC_FR_01_ingest_ct_volumes_from_root():
+    assert coca_dataset_root.exists()
+    
     report = EvidenceReport(subject="COCA Ingestor → PatientSample Contract")
 
-    dataset_root = (
-        PROJECT_ROOT
-        / "data"
-        / "raw"
-        / "coca"
-        / "cocacoronarycalciumandchestcts-2"
-        / "Gated_release_final"
-    )
+    dataset_root = coca_dataset_root
 
     if dataset_root.exists():
         report.info(
@@ -57,27 +55,24 @@ def test_CAC_FR_01_ingest_ct_volumes_from_root():
 
     assert not report.has_errors, report.summary()
 
-
-def test_CAC_FR_01_graceful_failure_on_missing_data():
+@pytest.mark.requirement("CAC-FR-01")
+def test_CAC_FR_01_graceful_failure_on_missing_data(tmp_path):
     report = EvidenceReport(
         subject="COCA Ingestor → Missing Dataset Failure Mode"
     )
 
-    fake_root = PROJECT_ROOT / "data" / "raw" / "coca" / "DOES_NOT_EXIST"
+    fake_root = tmp_path / "does_not_exist"
 
-    try:
-        ingestor = COCAGatedIngestor(dataset_root=fake_root)
+    ingestor = COCAGatedIngestor(dataset_root=fake_root)
+
+    with pytest.raises(Exception) as exc:
         ingestor.ingest_patient("0")
-        report.error(
-            message="Ingestor did not fail on missing dataset",
-            requirement_id="CAC-FR-01",
-        )
-    except Exception as e:
-        report.info(
-            message="Ingestor failed as expected",
-            requirement_id="CAC-FR-01",
-            context=str(e),
-        )
+
+    report.info(
+        message="Ingestor failed as expected",
+        requirement_id="CAC-FR-01",
+        context=str(exc.value),
+    )
 
     report.auto_save("coca_ingestor_missing_data")
     assert not report.has_errors, report.summary()

@@ -1,0 +1,107 @@
+system:
+  id: SYS-001
+  name: Coronary Artery Calcium (CAC) Detection SaMD
+  description: >
+    Software that ingests gated cardiac CT scans and produces
+    coronary artery calcium detection outputs suitable for
+    quantitative scoring and clinical workflow integration.
+
+requirements:
+
+  # =========================
+  # System-Level Requirements
+  # =========================
+
+  - id: SYS-FR-01
+    title: End-to-End Inference Pipeline
+    description: >
+      The system shall accept a CT study directory and produce
+      a deterministic CAC detection output.
+    verification: test_end_to_end_inference
+
+  - id: SYS-NFR-01
+    title: Deterministic Behavior
+    description: >
+      Given identical inputs and model weights, the system shall
+      produce identical outputs.
+    verification: test_deterministic_inference
+
+  # =========================
+  # Data Ingestion Requirements
+  # =========================
+
+  - id: ING-FR-01
+    title: Dataset Root Validation
+    description: >
+      The ingestion module shall validate dataset directory structure
+      before attempting ingestion.
+    verification: test_dataset_structure_validation
+
+  - id: ING-FR-02
+    title: Deterministic Patient Enumeration
+    description: >
+      The ingestion module shall enumerate patient IDs in a deterministic order.
+    verification: test_deterministic_dataset_ordering
+
+  - id: ING-FR-03
+    title: Graceful Failure on Missing Dataset
+    description: >
+      The ingestion module shall raise a controlled exception if dataset root is missing.
+    verification: test_graceful_failure_on_missing_data
+
+  # =========================
+  # Algorithm Requirements
+  # =========================
+
+  - id: ALG-FR-01
+    title: Volume-Based Inference
+    description: >
+      The algorithm shall accept a 3D CT volume and output CAC predictions.
+    verification: test_algorithm_accepts_volume
+
+  - id: ALG-FR-02
+    title: Output Shape Consistency
+    description: >
+      The output prediction shall maintain consistent spatial dimensions
+      relative to input volume.
+    verification: test_output_shape_consistency
+
+  - id: ALG-NFR-01
+    title: Reproducible Model Loading
+    description: >
+      Model weights shall load deterministically without modification
+      to inference logic.
+    verification: test_model_loading_reproducibility
+
+  # =========================
+  # Deployment Requirements
+  # =========================
+
+  - id: DEP-FR-01
+    title: Deployment Wrapper Interface
+    description: >
+      The system shall expose a callable inference interface
+      for integration into external workflows.
+    verification: test_deployment_wrapper_interface
+
+  - id: DEP-NFR-01
+    title: No Hardcoded Paths
+    description: >
+      The deployment module shall not rely on hardcoded file paths.
+    verification: test_no_hardcoded_paths
+
+  # =========================
+  # Safety Requirements
+  # =========================
+
+  - id: SAF-FR-01
+    title: Input Validation
+    description: >
+      The system shall validate input tensor dimensions and spacing.
+    verification: test_input_validation
+
+  - id: SAF-FR-02
+    title: Failure Mode Logging
+    description: >
+      Critical failures shall produce structured error messages.
+    verification: test_failure_logging
