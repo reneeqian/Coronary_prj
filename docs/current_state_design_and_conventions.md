@@ -4,6 +4,12 @@
 **Last Updated:** 2026-01-31  
 **Status:** Active — authoritative snapshot of current architecture and conventions
 
+### Tooling Dependencies
+
+Traceability artifacts are generated using:
+- regulatory-tools v0.1.0
+- medical-image-ai-toolkit v0.1.0
+
 ---
 
 ## 1. Purpose & Scope

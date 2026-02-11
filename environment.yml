@@ -13,6 +13,7 @@ dependencies:
   - ncurses=6.5
   - openssl=3.0.18
   - pip=25.3
+  - pytest=9.0.2
   - python=3.10.19
   - readline=8.3
   - setuptools=80.9.0

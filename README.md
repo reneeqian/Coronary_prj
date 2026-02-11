@@ -88,6 +88,17 @@ Only datasets that permit research use and redistribution of derived metadata ar
 
 ---
 
+## Dependencies
+
+This project depends on the following internal libraries:
+
+- medical-image-ai-toolkit (v0.1.0)
+- regulatory-tools (v0.1.0)
+
+These dependencies are declared in `pyproject.toml` and installed automatically.
+
+---
+
 ## Disclaimer
 
 This repository is **not a medical device** and is **not intended for clinical use**.  

@@ -1,4 +1,2 @@
 annotations
 ingestors
-medical_image_ai_toolkit
-regulatory_tools

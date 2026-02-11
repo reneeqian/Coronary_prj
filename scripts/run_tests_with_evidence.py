@@ -3,6 +3,8 @@ from datetime import datetime
 from pathlib import Path
 import os
 import sys
+import json
+import platform
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 os.chdir(REPO_ROOT)
@@ -21,14 +23,31 @@ env = {
     "EVIDENCE_OUTPUT_DIR": str(EVIDENCE_DIR),
 }
 
+command = [
+    sys.executable,
+    "-m",
+    "pytest",
+    "-s",
+    "tests",
+]
+
 result = subprocess.run(
-    [
-        "pytest",
-        "-s",
-        "tests",
-        "src/medical_image_ai_toolkit/tests",
-    ],
+    command,
     env=env,
+    cwd=REPO_ROOT,
+)
+
+# ---- Evidence metadata (FDA-friendly) ----
+metadata = {
+    "timestamp": datetime.utcnow().isoformat() + "Z",
+    "command": " ".join(command),
+    "returncode": result.returncode,
+    "python_version": sys.version,
+    "platform": platform.platform(),
+}
+
+(Path(EVIDENCE_DIR) / "run_metadata.json").write_text(
+    json.dumps(metadata, indent=2)
 )
 
 if result.returncode != 0:

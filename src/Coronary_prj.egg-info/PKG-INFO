@@ -3,3 +3,5 @@ Name: Coronary_prj
 Version: 0.1.0
 Summary: Coronary Artery Calcium SaMD Project
 Requires-Python: >=3.10
+Requires-Dist: medical-image-ai-toolkit @ git+https://github.com/reneeqian/medical_image_ai_toolkit.git@v0.1.0
+Requires-Dist: regulatory-tools @ git+https://github.com/reneeqian/regulatory_tools.git@v0.1.0
