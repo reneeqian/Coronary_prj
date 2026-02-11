@@ -1,8 +1,3 @@
-# TSR-001: Training process shall record configuration, metrics, and artifacts for each run.
-# TSR-002: Training process shall detect and fail on numerical instability.
-# TSR-003: Training process shall record non-clinical evidence of execution.
-# TSR-004: Training process shall persist model checkpoints per epoch.
-
 from __future__ import annotations
 
 import json

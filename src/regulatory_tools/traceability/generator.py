@@ -4,7 +4,7 @@ from typing import List
 from .models import TraceRow
 from .evidence_loader import load_latest_evidence
 
-def normalize_requirements(record) -> List[str]:
+def _extract_requirement_ids(record) -> List[str]:
     if "requirement_ids" in record:
         return record["requirement_ids"]
     if "requirement_id" in record:
@@ -13,18 +13,20 @@ def normalize_requirements(record) -> List[str]:
 
 def generate_trace_rows(evidence_root: Path) -> List[TraceRow]:
     evidence = load_latest_evidence(evidence_root)
-
     rows: List[TraceRow] = []
 
-    for rec in evidence:
-        reqs = normalize_requirements(rec)
-        for req in reqs:
+    for record in evidence:
+        test_id = record.get("test_id")
+        result = record.get("result")
+        evidence_file = record.get("_evidence_file")
+
+        for req_id in _extract_requirement_ids(record):
             rows.append(
                 TraceRow(
-                    requirement_id=req,
-                    test_id=rec.get("test_id"),
-                    evidence_file=rec.get("_evidence_file"),
-                    result=rec.get("result"),
+                    requirement_id=req_id,
+                    test_id=test_id,
+                    evidence_file=evidence_file,
+                    result=result,
                 )
             )
 

@@ -7,14 +7,13 @@ def load_latest_evidence(root: Path) -> List[Dict[str, Any]]:
     if not runs:
         raise RuntimeError("No evidence runs found")
 
-    latest = runs[-1]
+    latest_run = runs[-1]
 
-    records = []
-    for path in latest.glob("*.json"):
+    records: List[Dict[str, Any]] = []
+    for path in latest_run.glob("*.json"):
         with open(path) as f:
             record = json.load(f)
             record["_evidence_file"] = path.name
             records.append(record)
 
     return records
-

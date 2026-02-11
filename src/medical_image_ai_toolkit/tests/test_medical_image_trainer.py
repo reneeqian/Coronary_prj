@@ -1,24 +1,16 @@
-# Requirements (Toolkit)
-# MIT-DR-09 All PatientSample invariants shall be enforced at a single validation boundary.
-# MIT-TR-01 Training shall be deterministic when configured with a fixed random seed.
-# MIT-TR-05 Training shall record per-epoch metrics.
-# MIT-TR-08 Training shall generate non-clinical evidence artifacts.
-# MIT-TR-09 Training shall detect numerical instability and fail safely.
-
 from pathlib import Path
 import sys
 import json
 import hashlib
 import torch
 import pytest
+import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.medical_image_ai_toolkit.training.medical_image_trainer import (
-    MedicalImageTrainer,
-)
+from src.medical_image_ai_toolkit.training.medical_image_trainer import MedicalImageTrainer
 from src.medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
 
 
@@ -53,6 +45,33 @@ class _TensorDataset(Dataset):
             return _nan_tensor_batch(batch_size=1)
         return _dummy_tensor_batch(batch_size=1)
 
+class SmallSliceCNN(nn.Module):
+    """
+    Minimal 2D CNN for slice-based binary classification.
+
+    This model is intentionally small, transparent, and explainable.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(1, 8, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+
+            nn.Conv2d(8, 16, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((1, 1)),
+        )
+
+        self.classifier = nn.Linear(16, 1)
+
+    def forward(self, x):
+        # x: (B, 1, H, W)
+        feats = self.features(x)
+        feats = feats.view(x.size(0), -1)
+        return self.classifier(feats)
+
 
 # -------------------------------
 # Helper Functions
@@ -74,7 +93,7 @@ def test_MIT_TR_05_training_records_metrics_and_evidence(tmp_path):
         subject="MedicalImageTrainer metrics and evidence generation"
     )
 
-    trainer = MedicalImageTrainer.test_instance(
+    trainer = MedicalImageTrainer(
         output_dir=tmp_path,
         random_seed=123,
     )
@@ -115,7 +134,7 @@ def test_MIT_TR_09_training_detects_nan_loss(tmp_path):
         subject="MedicalImageTrainer numerical instability detection"
     )
 
-    trainer = MedicalImageTrainer.test_instance(
+    trainer = MedicalImageTrainer(
         output_dir=tmp_path,
         random_seed=123,
     )
@@ -152,7 +171,7 @@ def test_MIT_DR_09_trainer_rejects_unvalidated_input(tmp_path):
         subject="MedicalImageTrainer validation boundary enforcement"
     )
 
-    trainer = MedicalImageTrainer.test_instance(output_dir=tmp_path)
+    trainer = MedicalImageTrainer(output_dir=tmp_path)
 
     class _InvalidDataset(Dataset):
         def __len__(self):
@@ -201,7 +220,7 @@ def test_MIT_TR_01_training_is_deterministic(tmp_path):
 
     # --- Run 1 ---
     run1_dir = tmp_path / "run1"
-    trainer1 = MedicalImageTrainer.test_instance(
+    trainer1 = MedicalImageTrainer(
         output_dir=run1_dir,
         random_seed=seed,
     )
@@ -214,7 +233,7 @@ def test_MIT_TR_01_training_is_deterministic(tmp_path):
 
     # --- Run 2 ---
     run2_dir = tmp_path / "run2"
-    trainer2 = MedicalImageTrainer.test_instance(
+    trainer2 = MedicalImageTrainer(
         output_dir=run2_dir,
         random_seed=seed,
     )

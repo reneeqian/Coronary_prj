@@ -1,0 +1,8 @@
+[project]
+name = "Coronary_prj"
+version = "0.1.0"
+description = "Coronary Artery Calcium SaMD Project"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
