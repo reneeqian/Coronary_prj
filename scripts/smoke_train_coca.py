@@ -22,11 +22,11 @@ sys.path.insert(0, str(PROJECT_ROOT))
 # ---------------------------------------------------------------------
 # TOOLKIT IMPORTS
 # ---------------------------------------------------------------------
-from src.medical_image_ai_toolkit.datamodules.lazy_patient_datasource import LazyPatientDataSource
-from src.medical_image_ai_toolkit.training.splits import DeterministicHoldoutSplitStrategy
-from src.medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
-from src.medical_image_ai_toolkit.adapters.patient_sample_to_tensor import PatientSampleTensorAdapter
-from src.medical_image_ai_toolkit.training.medical_image_trainer import MedicalImageTrainer
+from medical_image_ai_toolkit.datamodules.lazy_patient_datasource import LazyPatientDataSource
+from medical_image_ai_toolkit.training.splits import DeterministicHoldoutSplitStrategy
+from regulatory_tools.evidence.evidence_report import EvidenceReport
+from medical_image_ai_toolkit.adapters.patient_sample_to_tensor import PatientSampleTensorAdapter
+from medical_image_ai_toolkit.training.medical_image_trainer import MedicalImageTrainer
 
 # ---------------------------------------------------------------------
 # PROJECT IMPORTS

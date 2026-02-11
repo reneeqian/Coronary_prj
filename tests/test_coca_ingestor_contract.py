@@ -5,7 +5,7 @@ import pytest
 from src.ingestors.coca_gated_ingestor import COCAGatedIngestor
 from medical_image_ai_toolkit.contracts.patient_sample_contract import enforce_patient_sample_contract
 from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
-from medical_image_ai_toolkit.evidence.evidence_report import EvidenceReport
+from regulatory_tools.evidence.evidence_report import EvidenceReport
 
 
 def _make_dummy_patient_sample() -> PatientSample:
