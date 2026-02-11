@@ -2,7 +2,7 @@ from pathlib import Path
 import pytest
 
 from regulatory_tools.evidence.evidence_report import EvidenceReport
-from src.ingestors.coca_gated_ingestor import COCAGatedIngestor
+from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
 
 @pytest.mark.requirement("CAC_FR_01")
 def test_CAC_FR_01_required_subdirectories_present():

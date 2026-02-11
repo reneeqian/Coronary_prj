@@ -5,9 +5,9 @@ from lxml import etree
 import pydicom
 from pydicom.dataset import Dataset
 
-from src.ingestors.base_ingestor import BaseIngestor
-from src.medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
-from src.medical_image_ai_toolkit.dataobjects.annotation_bundle import (
+from Coronary_prj.ingestors.base_ingestor import BaseIngestor
+from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
+from medical_image_ai_toolkit.dataobjects.annotation_bundle import (
     AnnotationBundle,
     VectorROI,
 )

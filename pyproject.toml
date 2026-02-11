@@ -5,8 +5,9 @@ description = "Coronary Artery Calcium SaMD Project"
 requires-python = ">=3.10"
 
 dependencies = [
-    "medical-image-ai-toolkit @ git+https://github.com/reneeqian/medical_image_ai_toolkit.git@v0.1.0",
-    "regulatory-tools @ git+https://github.com/reneeqian/regulatory_tools.git@v0.1.0"
+    "numpy",
+    "torch",
+    "matplotlib",
 ]
 
 
