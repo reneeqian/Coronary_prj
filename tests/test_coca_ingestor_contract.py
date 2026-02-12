@@ -15,34 +15,36 @@ def _make_dummy_patient_sample() -> PatientSample:
         annotations=None,
     )
 
-@pytest.mark.requirement("CAC-FR-01")
-@pytest.mark.requirement("CAC-DR-01")
-@pytest.mark.requirement("CAC-DR-02")
-@pytest.mark.requirement("CAC-DR-03")
-@pytest.mark.requirement("MIT-VRF-01")
-def test_CAC_FR_01_ingest_ct_volumes_from_root(coca_dataset_root,
+@pytest.mark.requirement("ING-FR-01")
+@pytest.mark.requirement("SAF-FR-01")
+def test_ING_FR_01_ingest_ct_volumes_from_root(coca_dataset_root,
     coca_dataset_available,
+    request,
+    evidence_output_dir,
 ):
     if not coca_dataset_available:
         pytest.skip("COCA dataset not available — skipping integration test.")
 
     assert coca_dataset_root.exists()
     
-    report = EvidenceReport(subject="COCA Ingestor → PatientSample Contract")
+    report = EvidenceReport(
+        subject="COCA Ingestor → PatientSample Contract",
+        test_id=request.node.nodeid,
+)
 
     dataset_root = coca_dataset_root
 
     if dataset_root.exists():
         report.info(
             message="Using real COCA dataset", 
-            requirement_id="CAC-FR-01",
+            requirement_id="ING-FR-01",
             context=str(dataset_root))
         ingestor = COCAGatedIngestor(dataset_root=dataset_root)
         sample = ingestor.ingest_patient("0")
     else:
         report.warn(
             message="COCA dataset not found, using dummy sample",
-            requirement_id="CAC-FR-01")
+            requirement_id="ING-FR-01")
         sample = _make_dummy_patient_sample()
 
     contract_report = enforce_patient_sample_contract(
@@ -51,14 +53,15 @@ def test_CAC_FR_01_ingest_ct_volumes_from_root(coca_dataset_root,
     )
 
     report.issues.extend(contract_report.issues)
-    report.auto_save("coca_ingestor_contract")
+    report.auto_save("coca_ingestor_contract", evidence_output_dir)
 
     assert not report.has_errors, report.summary()
 
-@pytest.mark.requirement("CAC-FR-01")
-def test_CAC_FR_01_graceful_failure_on_missing_data(tmp_path):
+@pytest.mark.requirement("ING-FR-03")
+def test_ING_FR_03_graceful_failure_on_missing_data(tmp_path, request, evidence_output_dir):
     report = EvidenceReport(
-        subject="COCA Ingestor → Missing Dataset Failure Mode"
+        subject="COCA Ingestor → Missing Dataset Failure Mode",
+        test_id=request.node.nodeid,
     )
 
     fake_root = tmp_path / "does_not_exist"
@@ -70,9 +73,9 @@ def test_CAC_FR_01_graceful_failure_on_missing_data(tmp_path):
 
     report.info(
         message="Ingestor failed as expected",
-        requirement_id="CAC-FR-01",
+        requirement_id="ING-FR-03",
         context=str(exc.value),
     )
 
-    report.auto_save("coca_ingestor_missing_data")
+    report.auto_save("coca_ingestor_missing_data", evidence_output_dir)
     assert not report.has_errors, report.summary()
