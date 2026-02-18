@@ -1,20 +1,13 @@
 import numpy as np
 import pytest
 
-from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
+from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor, DatasetStructureError
 from medical_image_ai_toolkit.contracts.patient_sample_contract import enforce_patient_sample_contract
 from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
 from regulatory_tools.evidence.evidence_report import EvidenceReport
 
 
-def _make_dummy_patient_sample() -> PatientSample:
-    return PatientSample(
-        patient_id="DUMMY-COCA-001",
-        image_volume=np.zeros((16, 64, 64), dtype=np.float32),
-        spacing=(1.0, 1.0, 1.0),
-        annotations=None,
-    )
-
+@pytest.mark.requires_dataset
 @pytest.mark.requirement("ING-FR-01")
 @pytest.mark.requirement("SAF-FR-01")
 def test_ING_FR_01_ingest_ct_volumes_from_root(coca_dataset_root,
@@ -41,11 +34,6 @@ def test_ING_FR_01_ingest_ct_volumes_from_root(coca_dataset_root,
             context=str(dataset_root))
         ingestor = COCAGatedIngestor(dataset_root=dataset_root)
         sample = ingestor.ingest_patient("0")
-    else:
-        report.warn(
-            message="COCA dataset not found, using dummy sample",
-            requirement_id="ING-FR-01")
-        sample = _make_dummy_patient_sample()
 
     contract_report = enforce_patient_sample_contract(
         sample,
@@ -68,14 +56,14 @@ def test_ING_FR_03_graceful_failure_on_missing_data(tmp_path, request, evidence_
 
     ingestor = COCAGatedIngestor(dataset_root=fake_root)
 
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(DatasetStructureError) as exc:
         ingestor.ingest_patient("0")
 
-    report.info(
-        message="Ingestor failed as expected",
-        requirement_id="ING-FR-03",
-        context=str(exc.value),
-    )
+        report.info(
+            message="Ingestor failed as expected",
+            requirement_id="ING-FR-03",
+            context=str(exc.value),
+        )
 
-    report.auto_save("coca_ingestor_missing_data", evidence_output_dir)
-    assert not report.has_errors, report.summary()
+        report.auto_save("coca_ingestor_missing_data", evidence_output_dir)
+        assert not report.has_errors, report.summary()

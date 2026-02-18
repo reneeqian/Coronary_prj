@@ -1,8 +1,11 @@
 import pytest
+import numpy as np
+
 
 from regulatory_tools.evidence.evidence_report import EvidenceReport
 from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
 
+@pytest.mark.requires_dataset
 @pytest.mark.requirement("ING-FR-01")
 def test_ING_FR_01_required_subdirectories_present(coca_dataset_root,
     coca_dataset_available,
@@ -26,16 +29,23 @@ def test_ING_FR_01_required_subdirectories_present(coca_dataset_root,
         context=str(images_dir),
     )
 
-    if not images_dir.exists() or not any(images_dir.iterdir()):
-        report.warn(
-            message="Image directory missing or empty; dataset may not be staged",
+    if not images_dir.exists():
+        report.error(
+            message="Patient directory missing",
             requirement_id="ING-FR-01",
         )
+    elif not any(images_dir.iterdir()):
+        report.error(
+            message="Patient directory exists but is empty",
+            requirement_id="ING-FR-01",
+        )
+
 
 
     report.auto_save("coca_dataset_structure", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
+@pytest.mark.requires_dataset
 @pytest.mark.requirement("ING-FR-02")
 def test_ING_FR_02_deterministic_dataset_ordering(coca_dataset_root,
     coca_dataset_available,
@@ -70,7 +80,10 @@ def test_ING_FR_02_deterministic_dataset_ordering(coca_dataset_root,
         sample1 = ingestor.ingest_patient(pid)
         sample2 = ingestor.ingest_patient(pid)
 
-        assert sample1.image_volume.shape == sample2.image_volume.shape
+        assert np.array_equal(
+            sample1.image_volume,
+            sample2.image_volume
+        ), "Image volume differs across repeated ingestion"
         assert sample1.spacing == sample2.spacing
 
         report.info(

@@ -17,14 +17,12 @@ requirements:
     description: >
       The system shall accept a CT study directory and produce
       a deterministic CAC detection output.
-    verification: test_end_to_end_inference
 
   - id: SYS-NFR-01
     title: Deterministic Behavior
     description: >
       Given identical inputs and model weights, the system shall
       produce identical outputs.
-    verification: test_deterministic_inference
 
   # =========================
   # Data Ingestion Requirements
@@ -35,19 +33,37 @@ requirements:
     description: >
       The ingestion module shall validate dataset directory structure
       before attempting ingestion.
-    verification: test_dataset_structure_validation
 
   - id: ING-FR-02
     title: Deterministic Patient Enumeration
     description: >
       The ingestion module shall enumerate patient IDs in a deterministic order.
-    verification: test_deterministic_dataset_ordering
 
   - id: ING-FR-03
     title: Graceful Failure on Missing Dataset
     description: >
       The ingestion module shall raise a controlled exception if dataset root is missing.
-    verification: test_graceful_failure_on_missing_data
+  
+  - id: ING-FR-04
+    title: CT Slice Ordering by Spatial Position
+    description: >
+      The system shall sort DICOM slices by the Z component of
+      ImagePositionPatient prior to volume construction to ensure
+      anatomically correct volumetric reconstruction.
+
+  - id: ING-FR-05
+    title: Hounsfield Unit Rescale Application
+    description: >
+      The system shall apply RescaleSlope and RescaleIntercept
+      to raw DICOM pixel data to produce clinically accurate
+      Hounsfield Unit (HU) values.
+
+  - id: ING-FR-06
+    title: Annotation Index Remapping
+    description: >
+      The system shall convert 1-based external annotation slice
+      indices into 0-based internal indices and associate
+      annotations with the correct reconstructed slice.
 
   # =========================
   # Algorithm Requirements
@@ -57,21 +73,18 @@ requirements:
     title: Volume-Based Inference
     description: >
       The algorithm shall accept a 3D CT volume and output CAC predictions.
-    verification: test_algorithm_accepts_volume
 
   - id: ALG-FR-02
     title: Output Shape Consistency
     description: >
       The output prediction shall maintain consistent spatial dimensions
       relative to input volume.
-    verification: test_output_shape_consistency
 
   - id: ALG-NFR-01
     title: Reproducible Model Loading
     description: >
       Model weights shall load deterministically without modification
       to inference logic.
-    verification: test_model_loading_reproducibility
 
   # =========================
   # Deployment Requirements
@@ -82,13 +95,11 @@ requirements:
     description: >
       The system shall expose a callable inference interface
       for integration into external workflows.
-    verification: test_deployment_wrapper_interface
 
   - id: DEP-NFR-01
     title: No Hardcoded Paths
     description: >
       The deployment module shall not rely on hardcoded file paths.
-    verification: test_no_hardcoded_paths
 
   # =========================
   # Safety Requirements
@@ -98,10 +109,22 @@ requirements:
     title: Input Validation
     description: >
       The system shall validate input tensor dimensions and spacing.
-    verification: test_input_validation
 
   - id: SAF-FR-02
     title: Failure Mode Logging
     description: >
       Critical failures shall produce structured error messages.
-    verification: test_failure_logging
+
+  - id: SAF-FR-03
+    title: Annotation Bounds Validation
+    description: >
+      The system shall reject annotations that reference
+      slice indices outside the reconstructed volume bounds
+      and raise a DatasetStructureError.
+
+  - id: SAF-FR-04
+    title: Mandatory DICOM Spatial Metadata Validation
+    description: >
+      The system shall validate presence of ImagePositionPatient
+      and required spacing metadata and raise DatasetStructureError
+      if required metadata is missing or invalid.

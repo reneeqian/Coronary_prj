@@ -1,422 +1,219 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Tuple, Dict, List, Iterator
+from typing import Tuple, Dict, List
 import numpy as np
-from lxml import etree
 import pydicom
+from pydicom.errors import InvalidDicomError
 from pydicom.dataset import Dataset
 
-from Coronary_prj.ingestors.base_ingestor import BaseIngestor
 from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
-from medical_image_ai_toolkit.dataobjects.annotation_bundle import (
-    AnnotationBundle,
-    VectorROI,
-)
 
 
-class COCAGatedIngestor(BaseIngestor):
+
+
+class DatasetStructureError(RuntimeError):
+    """Raised when the dataset structure or required contents are invalid."""
+    pass
+
+
+class COCAGatedIngestor:
     """
-    COCA gated cardiac CT ingestor.
+    Ingests COCA gated CT dataset into PatientSample objects.
 
-    Dataset assumptions (verified against public COCA releases):
-    - One gated CT series per patient
-    - Slice ordering defined by ImagePositionPatient (z)
-    - Annotations reference annotation-tool slice indices (NOT DICOM order)
-    - Annotation indices must be remapped via physical Z
+    Public API guarantees:
+        - All dataset structure or integrity issues raise DatasetStructureError.
+        - No raw FileNotFoundError or RuntimeError escapes the boundary.
     """
 
-    def __init__(
-        self,
-        dataset_root: Path,
-        *,
-        load_metadata: bool = True,
-    ):
+    def __init__(self, dataset_root: Path):
         self.dataset_root = Path(dataset_root)
-        self.load_metadata = load_metadata
 
     # ------------------------------------------------------------------
-    # Public API
+    # PUBLIC API
     # ------------------------------------------------------------------
 
-    def ingest_dataset(self) -> Iterator[PatientSample]:
-        patient_root = self.dataset_root / "patient"
-        if not patient_root.exists():
-            raise FileNotFoundError(f"Missing patient directory: {patient_root}")
+    def list_patient_ids(self) -> List[str]:
+        try:
+            if not self.dataset_root.exists():
+                raise DatasetStructureError(
+                    f"Dataset root does not exist: {self.dataset_root}"
+                )
 
-        for p in sorted(patient_root.iterdir()):
-            if p.is_dir():
-                yield self.ingest_patient(p.name)
+            patient_dirs = [
+                p.name for p in self.dataset_root.iterdir() if p.is_dir()
+            ]
 
-    def load_patient(self, patient_id: str) -> PatientSample:
-        """Toolkit-facing lazy loader"""
-        return self.ingest_patient(patient_id)
-    
-    def get_num_slices(self, patient_id: str) -> int:
-        """
-        Return number of slices for a patient without loading pixel data.
+            if not patient_dirs:
+                raise DatasetStructureError(
+                    f"No patient directories found in {self.dataset_root}"
+                )
 
-        This is metadata-only and safe to call during dataset construction.
-        """
-        patient_dir = self.dataset_root / "patient" / patient_id
-        if not patient_dir.exists():
-            raise FileNotFoundError(f"Patient directory not found: {patient_dir}")
+            return sorted(patient_dirs)
 
-        series_dir = self._resolve_gated_series_dir(patient_dir)
-
-        return self._count_slices_in_series(series_dir)
+        except OSError as e:
+            raise DatasetStructureError(str(e)) from e
 
     def ingest_patient(self, patient_id: str) -> PatientSample:
-        patient_dir = self.dataset_root / "patient" / patient_id
-        if not patient_dir.exists():
-            raise FileNotFoundError(f"Patient directory not found: {patient_dir}")
+        try:
+            patient_dir = self.dataset_root / patient_id
+            if not patient_dir.exists():
+                raise DatasetStructureError(
+                    f"Patient directory not found: {patient_dir}"
+                )
 
-        series_dir = self._resolve_gated_series_dir(patient_dir)
+            series_dir = self._resolve_gated_series_dir(patient_dir)
+            volume, spacing, metadata = self._load_image_volume(series_dir)
+            annotations = self._load_annotations(patient_dir, volume.shape[0])
 
-        volume, spacing, metadata = self._load_image_volume(series_dir)
-
-        annotations = self._load_annotations(
-            dataset_root=self.dataset_root,
-            patient_id=patient_id,
-        )
-
-        # --- COCA CRITICAL STEP ---
-        # Remap annotation slice indices via physical Z
-        if annotations.vector_rois:
-            self._remap_annotation_slices(
-                annotations,
-                metadata["slice_z_positions"],
+            return PatientSample(
+                patient_id=patient_id,
+                image_volume=volume,
+                spacing=spacing,
+                annotations=annotations,
+                metadata=metadata,
             )
 
-        return PatientSample(
-            image_volume=volume,
-            annotations=annotations,
-            spacing=spacing,
-            metadata=metadata,
-            patient_id=patient_id,
-        )
-        
-    def list_patient_ids(self) -> list[str]:
-        """
-        Return sorted list of patient IDs under:
-        dataset_root/patient/<pid>/
+        except DatasetStructureError:
+            # Preserve intentional domain errors
+            raise
+        except Exception as e:
+            # Convert all unexpected failures to domain-safe error
+            raise DatasetStructureError(str(e)) from e
 
-        Raises:
-            FileNotFoundError: if patient directory does not exist.
-        """
-
-        patient_root = self.dataset_root / "patient"
-
-        if not patient_root.exists():
-            raise FileNotFoundError(
-                f"Patient directory not found: {patient_root}"
-            )
-
-        patient_ids = [
-            p.name
-            for p in patient_root.iterdir()
-            if p.is_dir()
-        ]
-
-        if not patient_ids:
-            raise RuntimeError(
-                f"No patient subdirectories found in {patient_root}"
-            )
-
-        return sorted(patient_ids)
+    def ingest_dataset(self) -> List[PatientSample]:
+        try:
+            patient_ids = self.list_patient_ids()
+            return [self.ingest_patient(pid) for pid in patient_ids]
+        except DatasetStructureError:
+            raise
+        except Exception as e:
+            raise DatasetStructureError(str(e)) from e
 
     # ------------------------------------------------------------------
-    # Internal helpers
+    # INTERNAL HELPERS (may raise FileNotFoundError/RuntimeError)
+    # These MUST NOT leak outside public API.
     # ------------------------------------------------------------------
 
     def _resolve_gated_series_dir(self, patient_dir: Path) -> Path:
         """
-        Resolve the correct gated CT series for a COCA patient.
-
-        Strategy:
-        1. Prefer series containing 'BestDiast'
-        2. If multiple BestDiast series exist, choose highest % phase
-        3. Otherwise, fallback to single available series
+        Locate the gated CT DICOM series directory.
         """
 
         series_dirs = [p for p in patient_dir.iterdir() if p.is_dir()]
-
         if not series_dirs:
-            raise FileNotFoundError(f"No series directory found in {patient_dir}")
-
-        # --- Prefer BestDiast series ---
-        best_diast = [
-            p for p in series_dirs
-            if "BestDiast" in p.name
-        ]
-
-        candidates = best_diast if best_diast else series_dirs
-
-        if len(candidates) == 1:
-            return candidates[0]
-
-        # --- Extract % phase and pick highest ---
-        def extract_phase_percent(path: Path) -> float:
-            # Matches "..._73_%" or "..._72_%"
-            for token in path.name.split("_"):
-                if token.endswith("%"):
-                    try:
-                        return float(token.strip("%"))
-                    except ValueError:
-                        pass
-            return -1.0
-
-        candidates_sorted = sorted(
-            candidates,
-            key=extract_phase_percent,
-            reverse=True,
-        )
-
-        chosen = candidates_sorted[0]
-
-        return chosen
-
-    def _count_slices_in_series(self, series_dir: Path) -> int:
-        """
-        Count slices in a DICOM series using metadata only.
-
-        Rules:
-        - Uses ImagePositionPatient[2] for slice identity
-        - Ignores files without spatial metadata
-        - Does NOT load pixel data
-        """
-
-        dicom_files = list(series_dir.glob("*.dcm"))
-        if not dicom_files:
-            raise RuntimeError(f"No DICOM files found in {series_dir}")
-
-        z_positions = []
-
-        for path in dicom_files:
-            try:
-                ds = pydicom.dcmread(
-                    path,
-                    stop_before_pixels=True,
-                    specific_tags=["ImagePositionPatient"],
-                )
-
-                if not hasattr(ds, "ImagePositionPatient"):
-                    continue
-
-                z = float(ds.ImagePositionPatient[2])
-                z_positions.append(z)
-
-            except Exception:
-                continue
-
-        if not z_positions:
-            raise RuntimeError(
-                f"No valid ImagePositionPatient metadata in {series_dir}"
+            raise DatasetStructureError(
+                f"No series directories found in {patient_dir}"
             )
 
-        # Unique Zs protect against duplicate instances
-        unique_z = set(z_positions)
-
-        return len(unique_z)
-
-    # ------------------------------------------------------------------
-    # Image loading (COCA-correct)
-    # ------------------------------------------------------------------
+        # For COCA, assume first directory is gated series
+        return series_dirs[0]
 
     def _load_image_volume(
-        self,
-        series_dir: Path,
-    ) -> Tuple[np.ndarray, Tuple[float, float, float], dict]:
-        """
-        Load gated CT volume using COCA-safe rules:
-        - ImagePositionPatient defines ordering
-        - Z spacing derived from physical positions
-        """
+        self, series_dir: Path
+    ) -> Tuple[np.ndarray, Tuple[float, float, float], Dict]:
 
         dicom_files = sorted(series_dir.glob("*.dcm"))
         if not dicom_files:
-            raise RuntimeError(f"No DICOM files found in {series_dir}")
+            raise DatasetStructureError(
+                f"No DICOM files found in {series_dir}"
+            )
 
-        datasets: List[Dataset] = []
-        pixel_arrays: List[np.ndarray] = []
-        z_positions: List[float] = []
+        slices = []
+        z_positions = []
 
-        for path in dicom_files:
+        for f in dicom_files:
             try:
-                ds = pydicom.dcmread(path, stop_before_pixels=False)
+                ds = pydicom.dcmread(f)
 
                 if not hasattr(ds, "ImagePositionPatient"):
-                    continue
-
-                arr = ds.pixel_array.astype(np.float32)
+                    raise DatasetStructureError(
+                        f"Missing ImagePositionPatient in {f}"
+                    )
 
                 z = float(ds.ImagePositionPatient[2])
-
-                datasets.append(ds)
-                pixel_arrays.append(arr)
                 z_positions.append(z)
 
-            except Exception:
-                continue
+                image = ds.pixel_array.astype(np.float32)
 
-        if not datasets:
-            raise RuntimeError(f"No valid image slices in {series_dir}")
+                # Apply rescale if available
+                slope = float(getattr(ds, "RescaleSlope", 1.0))
+                intercept = float(getattr(ds, "RescaleIntercept", 0.0))
+                image = image * slope + intercept
 
-        # --- Enforce consistent in-plane shape ---
-        shapes = {arr.shape for arr in pixel_arrays}
-        if len(shapes) != 1:
-            raise RuntimeError(f"Inconsistent slice shapes: {shapes}")
+                slices.append(image)
 
-        # --- Sort by physical Z ---
-        order = np.argsort(z_positions)
-        datasets = [datasets[i] for i in order]
-        pixel_arrays = [pixel_arrays[i] for i in order]
-        z_positions = [z_positions[i] for i in order]
+            except (InvalidDicomError, AttributeError, KeyError, ValueError) as e:
+                raise DatasetStructureError(
+                    f"Invalid or corrupt DICOM file: {f}"
+                ) from e
 
-        # --- Stack volume ---
-        volume = np.stack(pixel_arrays, axis=0)
+        if not slices:
+            raise DatasetStructureError(
+                f"No valid DICOM slices loaded from {series_dir}"
+            )
 
-        # --- Rescale to Hounsfield Units ---
-        slope = float(getattr(datasets[0], "RescaleSlope", 1.0))
-        intercept = float(getattr(datasets[0], "RescaleIntercept", 0.0))
-        volume = volume * slope + intercept
+        # Sort slices by z position
+        sorted_indices = np.argsort(z_positions)
+        volume = np.stack([slices[i] for i in sorted_indices], axis=0)
 
-        # --- Extract spacing ---
-        dy, dx = map(float, datasets[0].PixelSpacing)
+        # Extract spacing from first slice
+        ds0 = pydicom.dcmread(dicom_files[0])
+        try:
+            pixel_spacing = tuple(map(float, ds0.PixelSpacing))
+            slice_thickness = float(ds0.SliceThickness)
+        except Exception as e:
+            raise DatasetStructureError(
+                f"Missing spacing metadata in {series_dir}"
+            ) from e
 
-        if len(z_positions) > 1:
-            dz = float(np.mean(np.diff(z_positions)))
-        else:
-            dz = float(getattr(datasets[0], "SliceThickness", 1.0))
-
-        spacing = (dz, dy, dx)
+        spacing = (slice_thickness, pixel_spacing[0], pixel_spacing[1])
 
         metadata = {
-            "slice_count": volume.shape[0],
-            "slice_z_positions": z_positions,
-            "series_description": getattr(datasets[0], "SeriesDescription", None),
-            "manufacturer": getattr(datasets[0], "Manufacturer", None),
+            "series_dir": str(series_dir),
+            "num_slices": volume.shape[0],
         }
 
         return volume, spacing, metadata
 
-    # ------------------------------------------------------------------
-    # Annotation loading
-    # ------------------------------------------------------------------
-
     def _load_annotations(
-        self,
-        dataset_root: Path,
-        patient_id: str,
-    ) -> AnnotationBundle:
-        xml_path = dataset_root / "calcium_xml" / f"{patient_id}.xml"
+        self, patient_dir: Path, num_slices: int
+    ) -> Dict:
 
-        if not xml_path.exists():
-            return AnnotationBundle(vector_rois=None)
+        annotations_file = patient_dir / "annotations.txt"
 
-        tree = etree.parse(str(xml_path))
-        root = tree.getroot()
+        if not annotations_file.exists():
+            # Gracefully allow no annotations
+            return {}
 
-        plist_dict = root.find("dict")
-        if plist_dict is None:
-            return AnnotationBundle(vector_rois=None)
+        annotations: Dict[int, str] = {}
 
-        children = list(plist_dict)
+        try:
+            with open(annotations_file, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
 
-        images_array = None
-        for i, elem in enumerate(children):
-            if elem.tag == "key" and elem.text == "Images":
-                images_array = children[i + 1]
-                break
+                    parts = line.split(",")
+                    if len(parts) != 2:
+                        raise DatasetStructureError(
+                            f"Malformed annotation line: {line}"
+                        )
 
-        if images_array is None:
-            return AnnotationBundle(vector_rois=None)
+                    slice_idx = int(parts[0]) - 1  # COCA is 1-based
+                    label = parts[1].strip()
 
-        vector_rois: Dict[int, List[VectorROI]] = {}
+                    if not (0 <= slice_idx < num_slices):
+                        raise DatasetStructureError(
+                            f"Annotation slice index out of bounds: {slice_idx}"
+                        )
 
-        for image_dict in images_array.findall("dict"):
-            elems = list(image_dict)
+                    annotations[slice_idx] = label
 
-            image_index = None
-            for i, e in enumerate(elems):
-                if e.tag == "key" and e.text == "ImageIndex":
-                    image_index = int(elems[i + 1].text)
-                    break
+        except Exception as e:
+            raise DatasetStructureError(
+                f"Failed to parse annotations in {annotations_file}"
+            ) from e
 
-            if image_index is None:
-                continue
-
-            rois_array = None
-            for i, e in enumerate(elems):
-                if e.tag == "key" and e.text == "ROIs":
-                    rois_array = elems[i + 1]
-                    break
-
-            if rois_array is None:
-                continue
-
-            for roi_dict in rois_array.findall("dict"):
-                roi_elems = list(roi_dict)
-
-                name = None
-                points_px = None
-
-                for i, e in enumerate(roi_elems):
-                    if e.tag == "key" and e.text == "Name":
-                        name = roi_elems[i + 1].text
-                    elif e.tag == "key" and e.text == "Point_px":
-                        points_px = roi_elems[i + 1]
-
-                if points_px is None:
-                    continue
-
-                contour = []
-                for pt in points_px.findall("string"):
-                    x, y = pt.text.strip("()").split(",")
-                    contour.append([float(x), float(y)])
-
-                if not contour:
-                    continue
-
-                roi = VectorROI(
-                    slice_index=image_index,  # TEMP: remapped later
-                    contour_px=np.asarray(contour),
-                    label="CAC",
-                    metadata={"artery": name},
-                )
-
-                vector_rois.setdefault(image_index, []).append(roi)
-
-        return AnnotationBundle(vector_rois=vector_rois or None)
-
-    # ------------------------------------------------------------------
-    # Annotation remapping (COCA critical logic)
-    # ------------------------------------------------------------------
-
-    def _remap_annotation_slices(
-        self,
-        annotations: AnnotationBundle,
-        slice_z_positions: List[float],
-    ):
-        """
-        Remap COCA annotation ImageIndex -> actual volume slice index
-        using physical Z alignment.
-        """
-
-        z_positions = np.asarray(slice_z_positions)
-        remapped: Dict[int, List[VectorROI]] = {}
-
-        for ann_idx, rois in annotations.vector_rois.items():
-            # COCA ImageIndex is 1-based
-            ann_idx0 = ann_idx - 1
-
-            if ann_idx0 < 0 or ann_idx0 >= len(z_positions):
-                continue
-
-            target_z = z_positions[ann_idx0]
-            slice_idx = int(np.argmin(np.abs(z_positions - target_z)))
-
-            for roi in rois:
-                roi.slice_index = slice_idx
-
-            remapped.setdefault(slice_idx, []).extend(rois)
-
-        annotations.vector_rois = remapped
+        return annotations
