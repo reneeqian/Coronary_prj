@@ -7,18 +7,23 @@
 | ALG-NFR-01 | Model weights shall load deterministically without modification to inference logic. |  |  | UNTESTED |
 | DEP-FR-01 | The system shall expose a callable inference interface for integration into external workflows. |  |  | UNTESTED |
 | DEP-NFR-01 | The deployment module shall not rely on hardcoded file paths. |  |  | UNTESTED |
-| ING-FR-01 | The ingestion module shall validate dataset directory structure before attempting ingestion. | tests/test_coca_dataset.py::test_ING_FR_01_required_subdirectories_present, tests/test_coca_ingestor_contract.py::test_ING_FR_01_ingest_ct_volumes_from_root | coca_dataset_structure_20260212_120935_122734.json, coca_ingestor_contract_20260212_120935_609265.json | PASS |
-| ING-FR-02 | The ingestion module shall enumerate patient IDs in a deterministic order. | tests/test_coca_dataset.py::test_ING_FR_02_deterministic_dataset_ordering | coca_ingestor_determinism_20260212_120935_524457.json | PASS |
-| ING-FR-03 | The ingestion module shall raise a controlled exception if dataset root is missing. | tests/test_coca_ingestor_contract.py::test_ING_FR_03_graceful_failure_on_missing_data | coca_ingestor_missing_data_20260212_120935_614077.json | PASS |
+| ING-FR-01 | The ingestion module shall validate dataset directory structure before attempting ingestion. |  |  | UNTESTED |
+| ING-FR-02 | The ingestion module shall enumerate patient IDs in a deterministic order. |  |  | UNTESTED |
+| ING-FR-03 | The ingestion module shall raise a controlled exception if dataset root is missing. |  |  | UNTESTED |
+| ING-FR-04 | The system shall sort DICOM slices by the Z component of ImagePositionPatient prior to volume construction to ensure anatomically correct volumetric reconstruction. | tests/test_coca_ingestor_synthetic.py::test_slices_sorted_by_z | tests_test_coca_ingestor_synthetic.py_test_slices_sorted_by_z_20260218_113111_958018.json | PASS |
+| ING-FR-05 | The system shall apply RescaleSlope and RescaleIntercept to raw DICOM pixel data to produce clinically accurate Hounsfield Unit (HU) values. | tests/test_coca_ingestor_synthetic.py::test_hounsfield_rescale_applied | tests_test_coca_ingestor_synthetic.py_test_hounsfield_rescale_applied_20260218_113111_959641.json | PASS |
+| ING-FR-06 | The system shall convert 1-based external annotation slice indices into 0-based internal indices and associate annotations with the correct reconstructed slice. |  |  | UNTESTED |
 | SAF-FR-01 | The system shall validate input tensor dimensions and spacing. |  |  | UNTESTED |
 | SAF-FR-02 | Critical failures shall produce structured error messages. |  |  | UNTESTED |
+| SAF-FR-03 | The system shall reject annotations that reference slice indices outside the reconstructed volume bounds and raise a DatasetStructureError. |  |  | UNTESTED |
+| SAF-FR-04 | The system shall validate presence of ImagePositionPatient and required spacing metadata and raise DatasetStructureError if required metadata is missing or invalid. |  |  | UNTESTED |
 | SYS-FR-01 | The system shall accept a CT study directory and produce a deterministic CAC detection output. |  |  | UNTESTED |
 | SYS-NFR-01 | Given identical inputs and model weights, the system shall produce identical outputs. |  |  | UNTESTED |
 
 
 ---
-Total Requirements: 12
+Total Requirements: 17
 
-Tested: 3
+Tested: 2
 
 Failures: 0
