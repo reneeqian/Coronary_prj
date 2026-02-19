@@ -16,7 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 TEST_DIR = PROJECT_ROOT / "tests"
 REQUIREMENTS_YAML = PROJECT_ROOT / "docs" / "requirements.yaml"
 EVIDENCE_ROOT = PROJECT_ROOT / "artifacts" / "evidence_runs"
-OUTPUT_MATRIX = PROJECT_ROOT / "docs" / "traceability_matrix.md"
+OUTPUT_MATRIX = PROJECT_ROOT / "docs" / "06_Traceability_Matrix.md"
 
 
 def run_pytest():
