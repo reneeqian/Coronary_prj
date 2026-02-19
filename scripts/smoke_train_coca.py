@@ -22,7 +22,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 # ---------------------------------------------------------------------
 # TOOLKIT IMPORTS
 # ---------------------------------------------------------------------
-from medical_image_ai_toolkit.datamodules.lazy_patient_datasource import LazyPatientDataSource
+from medical_image_ai_toolkit.datasources.lazy_patient_datasource import LazyPatientDataSource
 from medical_image_ai_toolkit.training.splits import DeterministicHoldoutSplitStrategy
 from regulatory_tools.evidence.evidence_report import EvidenceReport
 from medical_image_ai_toolkit.adapters.patient_sample_to_tensor import PatientSampleTensorAdapter
@@ -31,7 +31,7 @@ from medical_image_ai_toolkit.training.medical_image_trainer import MedicalImage
 # ---------------------------------------------------------------------
 # PROJECT IMPORTS
 # ---------------------------------------------------------------------
-from src.ingestors.coca_gated_ingestor import COCAGatedIngestor
+from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
 
 
 # =====================================================================
