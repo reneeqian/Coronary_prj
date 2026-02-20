@@ -1,130 +1,84 @@
-system:
-  id: SYS-001
-  name: Coronary Artery Calcium (CAC) Detection SaMD
+metadata:
+  project: Coronary_prj
+  version: 1.0
   description: >
-    Software that ingests gated cardiac CT scans and produces
-    coronary artery calcium detection outputs suitable for
-    quantitative scoring and clinical workflow integration.
+    Deterministic medical image AI training pipeline designed to
+    demonstrate regulated software engineering principles.
 
 requirements:
 
-  # =========================
+  # ==============================
   # System-Level Requirements
-  # =========================
+  # ==============================
 
-  - id: SYS-FR-01
-    title: End-to-End Inference Pipeline
+  - id: SYS-001
+    title: Deterministic System Behavior
     description: >
-      The system shall accept a CT study directory and produce
-      a deterministic CAC detection output.
+      The system shall produce reproducible outputs when executed
+      with identical inputs and configuration parameters.
 
-  - id: SYS-NFR-01
-    title: Deterministic Behavior
+  - id: SYS-002
+    title: Controlled Data Splitting
     description: >
-      Given identical inputs and model weights, the system shall
-      produce identical outputs.
+      The system shall generate deterministic train, validation,
+      and test splits based on a defined strategy.
 
-  # =========================
+  - id: SYS-003
+    title: Traceable Verification
+    description: >
+      The system shall provide traceability between defined
+      requirements and verification evidence.
+
+  # ==============================
   # Data Ingestion Requirements
-  # =========================
+  # ==============================
 
-  - id: ING-FR-01
-    title: Dataset Root Validation
+  - id: DAT-001
+    title: Dataset Validation
     description: >
-      The ingestion module shall validate dataset directory structure
-      before attempting ingestion.
+      The system shall validate dataset structure and required
+      files prior to training execution.
 
-  - id: ING-FR-02
-    title: Deterministic Patient Enumeration
+  - id: DAT-002
+    title: Deterministic Data Access
     description: >
-      The ingestion module shall enumerate patient IDs in a deterministic order.
+      The system shall provide indexed access to patient volumes
+      and slices in a deterministic manner.
 
-  - id: ING-FR-03
-    title: Graceful Failure on Missing Dataset
+  - id: DAT-003
+    title: Boundary Condition Handling
     description: >
-      The ingestion module shall raise a controlled exception if dataset root is missing.
-  
-  - id: ING-FR-04
-    title: CT Slice Ordering by Spatial Position
+      The system shall detect and reject invalid dataset indices
+      or access requests outside defined bounds.
+
+  # ==============================
+  # Training Requirements
+  # ==============================
+
+  - id: TRN-001
+    title: Controlled Model Initialization
     description: >
-      The system shall sort DICOM slices by the Z component of
-      ImagePositionPatient prior to volume construction to ensure
-      anatomically correct volumetric reconstruction.
+      The system shall initialize model parameters in a controlled
+      and reproducible manner.
 
-  - id: ING-FR-05
-    title: Hounsfield Unit Rescale Application
+  - id: TRN-002
+    title: Training Artifact Generation
     description: >
-      The system shall apply RescaleSlope and RescaleIntercept
-      to raw DICOM pixel data to produce clinically accurate
-      Hounsfield Unit (HU) values.
+      The system shall generate structured artifacts describing
+      training configuration and execution outcomes.
 
-  - id: ING-FR-06
-    title: Annotation Index Remapping
+  # ==============================
+  # Verification Requirements
+  # ==============================
+
+  - id: VER-001
+    title: Automated Verification Execution
     description: >
-      The system shall convert 1-based external annotation slice
-      indices into 0-based internal indices and associate
-      annotations with the correct reconstructed slice.
+      The system shall provide automated tests to verify
+      dataset integrity, determinism, and boundary handling.
 
-  # =========================
-  # Algorithm Requirements
-  # =========================
-
-  - id: ALG-FR-01
-    title: Volume-Based Inference
+  - id: VER-002
+    title: Evidence Capture
     description: >
-      The algorithm shall accept a 3D CT volume and output CAC predictions.
-
-  - id: ALG-FR-02
-    title: Output Shape Consistency
-    description: >
-      The output prediction shall maintain consistent spatial dimensions
-      relative to input volume.
-
-  - id: ALG-NFR-01
-    title: Reproducible Model Loading
-    description: >
-      Model weights shall load deterministically without modification
-      to inference logic.
-
-  # =========================
-  # Deployment Requirements
-  # =========================
-
-  - id: DEP-FR-01
-    title: Deployment Wrapper Interface
-    description: >
-      The system shall expose a callable inference interface
-      for integration into external workflows.
-
-  - id: DEP-NFR-01
-    title: No Hardcoded Paths
-    description: >
-      The deployment module shall not rely on hardcoded file paths.
-
-  # =========================
-  # Safety Requirements
-  # =========================
-
-  - id: SAF-FR-01
-    title: Input Validation
-    description: >
-      The system shall validate input tensor dimensions and spacing.
-
-  - id: SAF-FR-02
-    title: Failure Mode Logging
-    description: >
-      Critical failures shall produce structured error messages.
-
-  - id: SAF-FR-03
-    title: Annotation Bounds Validation
-    description: >
-      The system shall reject annotations that reference
-      slice indices outside the reconstructed volume bounds
-      and raise a DatasetStructureError.
-
-  - id: SAF-FR-04
-    title: Mandatory DICOM Spatial Metadata Validation
-    description: >
-      The system shall validate presence of ImagePositionPatient
-      and required spacing metadata and raise DatasetStructureError
-      if required metadata is missing or invalid.
+      The system shall generate machine-readable verification
+      evidence suitable for traceability reporting.
