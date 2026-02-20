@@ -82,3 +82,5 @@ This repository demonstrates engineering patterns aligned with:
 
 It does NOT represent a cleared or approved medical device.
 
+
+Requirements follow the convention defined in regulatory_tools/docs/Requirements_Convention.md
