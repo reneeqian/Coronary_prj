@@ -9,6 +9,7 @@ from regulatory_tools.traceability.generator import (
 )
 from regulatory_tools.traceability.validate_traceability import (
     validate_traceability,
+    find_unmarked_tests,
 )
 
 
@@ -41,6 +42,9 @@ def generate_traceability_matrix():
         test_dir=TEST_DIR,
     )
 
+    unmarked_tests = find_unmarked_tests(TEST_DIR)
+
+
     if missing:
         print("[Traceability] Requirements declared but not tested:")
         for r in sorted(missing):
@@ -50,6 +54,12 @@ def generate_traceability_matrix():
         print("[Traceability] Tests reference undeclared requirements:")
         for r in sorted(untracked):
             print(f"  - {r}")
+            
+    if unmarked_tests:
+        print("[Traceability] Tests without requirement markers:")
+        for t in unmarked_tests:
+            print(f"  - {t}")
+
 
 
     matrix = build_trace_matrix(

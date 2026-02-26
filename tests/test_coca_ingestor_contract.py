@@ -8,9 +8,8 @@ from regulatory_tools.evidence.evidence_report import EvidenceReport
 
 
 @pytest.mark.requires_dataset
-@pytest.mark.requirement("ING-FR-01")
-@pytest.mark.requirement("SAF-FR-01")
-def test_ING_FR_01_ingest_ct_volumes_from_root(coca_dataset_root,
+@pytest.mark.requirement("DAT-004")
+def test_ingest_ct_volumes_from_root(coca_dataset_root,
     coca_dataset_available,
     request,
     evidence_output_dir,
@@ -30,7 +29,7 @@ def test_ING_FR_01_ingest_ct_volumes_from_root(coca_dataset_root,
     if dataset_root.exists():
         report.info(
             message="Using real COCA dataset", 
-            requirement_id="ING-FR-01",
+            requirement_id="DAT-004",
             context=str(dataset_root))
         ingestor = COCAGatedIngestor(dataset_root=dataset_root)
         sample = ingestor.ingest_patient("0")
@@ -45,8 +44,8 @@ def test_ING_FR_01_ingest_ct_volumes_from_root(coca_dataset_root,
 
     assert not report.has_errors, report.summary()
 
-@pytest.mark.requirement("ING-FR-03")
-def test_ING_FR_03_graceful_failure_on_missing_data(tmp_path, request, evidence_output_dir):
+@pytest.mark.requirement("DAT-005")
+def test_graceful_failure_on_missing_data(tmp_path, request, evidence_output_dir):
     report = EvidenceReport(
         subject="COCA Ingestor → Missing Dataset Failure Mode",
         test_id=request.node.nodeid,
@@ -61,7 +60,7 @@ def test_ING_FR_03_graceful_failure_on_missing_data(tmp_path, request, evidence_
 
         report.info(
             message="Ingestor failed as expected",
-            requirement_id="ING-FR-03",
+            requirement_id="DAT-005",
             context=str(exc.value),
         )
 

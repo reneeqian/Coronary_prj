@@ -14,20 +14,24 @@ requirements:
   - id: SYS-001
     title: Deterministic System Behavior
     description: >
-      The system shall produce reproducible outputs when executed
-      with identical inputs and configuration parameters.
+      The system shall produce identical model parameters, 
+      dataset splits, and recorded metrics when executed with 
+      identical input data, configuration parameters, and 
+      random seeds.
 
   - id: SYS-002
     title: Controlled Data Splitting
     description: >
-      The system shall generate deterministic train, validation,
-      and test splits based on a defined strategy.
+      The system shall generate train, validation, and test 
+      splits deterministically according to a specified split 
+      strategy and random seed.
 
   - id: SYS-003
     title: Traceable Verification
     description: >
-      The system shall provide traceability between defined
-      requirements and verification evidence.
+      The system shall provide automated generation of a 
+      requirement-to-test traceability matrix derived from machine-
+      readable requirement definitions and test annotations.
 
   # ==============================
   # Data Ingestion Requirements
@@ -36,20 +40,34 @@ requirements:
   - id: DAT-001
     title: Dataset Validation
     description: >
-      The system shall validate dataset structure and required
-      files prior to training execution.
+      Prior to training execution, the system shall verify that the
+       dataset root directory contains all required subdirectories 
+       and files defined by the dataset specification.
 
   - id: DAT-002
     title: Deterministic Data Access
     description: >
-      The system shall provide indexed access to patient volumes
-      and slices in a deterministic manner.
+      Indexed access to patient volumes and slices shall return 
+      identical data across repeated calls given the same dataset state.
 
   - id: DAT-003
     title: Boundary Condition Handling
     description: >
-      The system shall detect and reject invalid dataset indices
-      or access requests outside defined bounds.
+      The system shall raise a defined exception when dataset indices 
+      or slice indices are outside valid bounds.
+
+  - id: DAT-004
+    title: Successful Data Ingestion
+    description: >
+      The system shall load patient volume and slice data from the 
+      dataset root directory into memory in the expected dimensional 
+      format defined by the dataset contract.
+
+  - id: DAT-005
+    title: Data Ingestion Failure Modes
+    description: >
+      The system shall raise a defined exception with a descriptive error 
+      message when required dataset files or directories are missing.
 
   # ==============================
   # Training Requirements
@@ -58,14 +76,15 @@ requirements:
   - id: TRN-001
     title: Controlled Model Initialization
     description: >
-      The system shall initialize model parameters in a controlled
-      and reproducible manner.
+      Model parameter initialization shall be deterministic given a fixed 
+      random seed and identical model configuration.
 
   - id: TRN-002
     title: Training Artifact Generation
     description: >
-      The system shall generate structured artifacts describing
-      training configuration and execution outcomes.
+      Each training run shall produce structured artifacts that record 
+      configuration parameters, random seeds, dataset split identifiers, 
+      and final performance metrics.
 
   # ==============================
   # Verification Requirements
@@ -74,11 +93,11 @@ requirements:
   - id: VER-001
     title: Automated Verification Execution
     description: >
-      The system shall provide automated tests to verify
-      dataset integrity, determinism, and boundary handling.
+      The project shall include automated tests verifying dataset integrity, 
+      deterministic behavior, and boundary condition enforcement.
 
   - id: VER-002
     title: Evidence Capture
     description: >
-      The system shall generate machine-readable verification
-      evidence suitable for traceability reporting.
+      The system shall generate machine-readable verification artifacts 
+      suitable for automated traceability reporting.

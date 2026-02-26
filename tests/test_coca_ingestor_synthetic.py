@@ -31,12 +31,12 @@ class SimpleDicom:
         self.RescaleIntercept = 0.0
         self.pixel_array = np.zeros((2, 2), dtype=np.float32)
 
-
 # =============================================================================
-# ING-FR-04 — Slice Sorting
+# Tests
 # =============================================================================
 
-@pytest.mark.requirement("ING-FR-04")
+
+@pytest.mark.requirement("DAT-004")
 def test_slices_sorted_by_z(tmp_path, request, evidence_output_dir):
 
     report = EvidenceReport(
@@ -79,18 +79,13 @@ def test_slices_sorted_by_z(tmp_path, request, evidence_output_dir):
     
     report.info(
         "Slices correctly sorted by z-position",
-        requirement_id="ING-FR-04"
+        requirement_id="DAT-004"
     )
 
     report.auto_save(request.node.nodeid, evidence_output_dir)
 
 
-
-# =============================================================================
-# ING-FR-05 — HU Rescale
-# =============================================================================
-
-@pytest.mark.requirement("ING-FR-05")
+@pytest.mark.requirement("DAT-004")
 def test_hounsfield_rescale_applied(tmp_path, request, evidence_output_dir):
 
     report = EvidenceReport(
@@ -124,18 +119,13 @@ def test_hounsfield_rescale_applied(tmp_path, request, evidence_output_dir):
     
     report.info(
         "Hounsfield rescale applied correctly",
-        requirement_id="ING-FR-05"
+        requirement_id="DAT-004"
     )
 
     report.auto_save(request.node.nodeid, evidence_output_dir)
 
 
-
-# =============================================================================
-# ING-FR-07 — Bounds Validation
-# =============================================================================
-
-@pytest.mark.requirement("ING-FR-07")
+@pytest.mark.requirement("DAT-004")
 def test_annotation_out_of_bounds_raises(tmp_path, request, evidence_output_dir):
 
     report = EvidenceReport(
@@ -161,7 +151,7 @@ def test_annotation_out_of_bounds_raises(tmp_path, request, evidence_output_dir)
     
     report.info(
         "Out-of-bounds annotation correctly rejected",
-        requirement_id="ING-FR-07"
+        requirement_id="DAT-004"
     )
 
     report.auto_save(request.node.nodeid, evidence_output_dir)
