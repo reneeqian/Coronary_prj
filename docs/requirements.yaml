@@ -101,3 +101,19 @@ requirements:
     description: >
       The system shall generate machine-readable verification artifacts 
       suitable for automated traceability reporting.
+
+# ==============================
+# Documentation Requirements
+# ==============================
+
+  - id: DOC-001
+    title: Machine-Readable Requirements Definition
+    description: >
+      The project shall include a machine-readable
+      requirements.yaml file defining system requirements.
+
+  - id: DOC-002
+    title: Basic Project Documentation
+    description: >
+      The project shall include a README file describing
+      system purpose, configuration, and execution steps.
