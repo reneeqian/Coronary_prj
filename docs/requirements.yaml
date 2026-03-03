@@ -68,6 +68,12 @@ requirements:
     description: >
       The system shall raise a defined exception with a descriptive error 
       message when required dataset files or directories are missing.
+  
+  - id: DAT-006
+    title: Patient Indexing without Loading
+    description: >
+      The system shall support indexing patients IDs, volumes, and slices 
+      without loading the full dataset into memory.
 
   # ==============================
   # Training Requirements

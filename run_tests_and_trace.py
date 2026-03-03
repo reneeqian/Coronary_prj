@@ -31,6 +31,32 @@ def run_pytest():
     if result.returncode != 0:
         print("\n[Runner] Pytest failed. Aborting traceability generation.")
         sys.exit(1)
+        
+def run_pytest_with_coverage():
+    print("\n[Runner] Running pytest with coverage...\n")
+
+    coverage_dir = PROJECT_ROOT / "artifacts" / "coverage"
+    coverage_dir.mkdir(parents=True, exist_ok=True)
+
+    result = subprocess.run(
+        [
+            "pytest",
+            str(TEST_DIR),
+            "--cov=Coronary_prj",
+            "--cov-report=term",
+            f"--cov-report=html:{coverage_dir / 'html'}",
+            f"--cov-report=xml:{coverage_dir / 'coverage.xml'}",
+            "--cov-fail-under=85",
+
+        ],
+        cwd=PROJECT_ROOT,
+    )
+
+    if result.returncode != 0:
+        print("\n[Runner] Pytest failed. Aborting traceability generation.")
+        sys.exit(1)
+
+    print(f"\n[Coverage] Reports saved to: {coverage_dir}\n")
 
 
 def generate_traceability_matrix():
@@ -88,5 +114,5 @@ def generate_traceability_matrix():
 
 
 if __name__ == "__main__":
-    run_pytest()
+    run_pytest_with_coverage()
     generate_traceability_matrix()
