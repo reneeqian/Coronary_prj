@@ -32,9 +32,21 @@ class SimpleDicom:
         self.pixel_array = np.zeros((2, 2), dtype=np.float32)
 
 # =============================================================================
-# Tests
+# Dataset Structure / Validation Tests
 # =============================================================================
+        
+@pytest.mark.requirement("DAT-001")
+def test_dataset_structure_validation(tmp_path):
 
+    # Root exists but missing patient folder
+    ingestor = COCAGatedIngestor(dataset_root=tmp_path)
+
+    with pytest.raises(DatasetStructureError):
+        ingestor.list_patient_ids()
+
+# =============================================================================
+# Ingestion Behavior Tests
+# =============================================================================
 
 @pytest.mark.requirement("DAT-004")
 def test_slices_sorted_by_z(tmp_path, request, evidence_output_dir):
@@ -44,7 +56,7 @@ def test_slices_sorted_by_z(tmp_path, request, evidence_output_dir):
         test_id=request.node.nodeid,
     )
 
-    patient_dir = tmp_path / "0"
+    patient_dir = tmp_path / "patient" / "0"
     series_dir = patient_dir / "seriesA"
     series_dir.mkdir(parents=True)
 
@@ -60,7 +72,7 @@ def test_slices_sorted_by_z(tmp_path, request, evidence_output_dir):
         str(files[2]): FakeDicom(7, 7),
     }
 
-    def fake_dcmread(path):
+    def fake_dcmread(path, *args, **kwargs):
         return fake_dicoms[str(path)]
 
     with patch("pydicom.dcmread", side_effect=fake_dcmread):
@@ -93,7 +105,7 @@ def test_hounsfield_rescale_applied(tmp_path, request, evidence_output_dir):
         test_id=request.node.nodeid,
     )
 
-    patient_dir = tmp_path / "0"
+    patient_dir = tmp_path / "patient" / "0"
     series_dir = patient_dir / "seriesA"
     series_dir.mkdir(parents=True)
 
@@ -133,15 +145,34 @@ def test_annotation_out_of_bounds_raises(tmp_path, request, evidence_output_dir)
         test_id=request.node.nodeid,
     )
 
-    patient_dir = tmp_path / "0"
+    patient_dir = tmp_path / "patient" / "0"
     series_dir = patient_dir / "seriesA"
     series_dir.mkdir(parents=True)
 
     f = series_dir / "a.dcm"
     f.write_text("fake")
+    
+    xml_dir = tmp_path / "calcium_xml"
+    xml_dir.mkdir()
 
-    annotation_file = patient_dir / "annotations.txt"
-    annotation_file.write_text("5,stenosis\n")
+    xml_file = xml_dir / "0.xml"
+
+    xml_file.write_text("""
+    <?xml version="1.0" encoding="UTF-8"?>
+    <plist version="1.0">
+    <dict>
+        <key>Images</key>
+        <array>
+            <dict>
+                <key>ImageIndex</key>
+                <integer>5</integer>
+                <key>ROIs</key>
+                <array/>
+            </dict>
+        </array>
+    </dict>
+    </plist>
+    """)
 
     with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
@@ -155,3 +186,81 @@ def test_annotation_out_of_bounds_raises(tmp_path, request, evidence_output_dir)
     )
 
     report.auto_save(request.node.nodeid, evidence_output_dir)
+
+@pytest.mark.requirement("DAT-003")
+def test_invalid_patient_id_raises(tmp_path):
+
+    (tmp_path / "patient" / "999").mkdir(parents=True)
+
+    ingestor = COCAGatedIngestor(dataset_root=tmp_path)
+
+    with pytest.raises(DatasetStructureError):
+        ingestor.ingest_patient("999")
+
+@pytest.mark.requirement("DAT-006")
+def test_lazy_patient_loading(tmp_path):
+
+    # Create two patients
+    for pid in ["0", "1"]:
+        series_dir = tmp_path / "patient" / pid / "seriesA"
+        series_dir.mkdir(parents=True)
+        (series_dir / "a.dcm").write_text("fake")
+
+    with patch.object(
+        COCAGatedIngestor,
+        "_load_image_volume",
+        return_value=(
+            np.zeros((1, 2, 2)),
+            (1.0, 1.0, 1.0),
+            {}
+        )
+    ) as mock_loader:
+
+        ingestor = COCAGatedIngestor(dataset_root=tmp_path)
+
+        # Only ingest patient 0
+        ingestor.ingest_patient("0")
+
+        # Should only load once
+        assert mock_loader.call_count == 1
+
+@pytest.mark.requirement("DAT-007")
+def test_slice_index_out_of_bounds(tmp_path):
+
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
+    patient_dir.mkdir(parents=True)
+    (patient_dir / "a.dcm").write_text("fake")
+
+    with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
+        ingestor = COCAGatedIngestor(dataset_root=tmp_path)
+
+        with pytest.raises(DatasetStructureError):
+            ingestor.get_slice("0", 5)  # only 1 slice exists
+
+@pytest.mark.requirement("DAT-008")
+def test_deterministic_slice_retrieval(tmp_path):
+
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
+    patient_dir.mkdir(parents=True)
+    (patient_dir / "a.dcm").write_text("fake")
+
+    with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
+        ingestor = COCAGatedIngestor(dataset_root=tmp_path)
+
+        slice1 = ingestor.get_slice("0", 0)
+        slice2 = ingestor.get_slice("0", 0)
+
+        assert np.array_equal(slice1, slice2)
+
+@pytest.mark.requirement("DAT-005")
+def test_missing_dicom_files(tmp_path):
+
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
+    patient_dir.mkdir(parents=True)
+
+    # No DICOM files created
+
+    ingestor = COCAGatedIngestor(dataset_root=tmp_path)
+
+    with pytest.raises(DatasetStructureError):
+        ingestor.ingest_patient("0")

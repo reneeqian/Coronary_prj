@@ -1,9 +1,25 @@
 import pytest
 import numpy as np
-
+from unittest.mock import patch
 
 from regulatory_tools.evidence.evidence_report import EvidenceReport
-from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
+from Coronary_prj.ingestors.coca_gated_ingestor import (
+    COCAGatedIngestor,
+    DatasetStructureError,
+)
+
+# =============================================================================
+# Synthetic DICOM Helpers
+# =============================================================================
+
+class SimpleDicom:
+    def __init__(self, z=0):
+        self.ImagePositionPatient = [0.0, 0.0, float(z)]
+        self.PixelSpacing = [1.0, 1.0]
+        self.SliceThickness = 1.0
+        self.RescaleSlope = 1.0
+        self.RescaleIntercept = 0.0
+        self.pixel_array = np.zeros((2, 2), dtype=np.float32)
 
 @pytest.mark.requires_dataset
 @pytest.mark.requirement("DAT-001")
@@ -93,3 +109,18 @@ def test_deterministic_dataset_ordering(coca_dataset_root,
 
     report.auto_save("coca_ingestor_determinism", evidence_output_dir)
     assert not report.has_errors, report.summary()
+
+@pytest.mark.requirement("DAT-007")
+def test_slice_index_out_of_bounds(tmp_path):
+
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
+    patient_dir.mkdir(parents=True)
+
+    (patient_dir / "a.dcm").write_text("fake")
+    (patient_dir / "b.dcm").write_text("fake")
+    
+    with patch("pydicom.dcmread", return_value=SimpleDicom()):
+        ingestor = COCAGatedIngestor(dataset_root=tmp_path)
+
+        with pytest.raises(DatasetStructureError):
+            ingestor.get_slice("0", 10)

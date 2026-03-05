@@ -58,11 +58,11 @@ def test_graceful_failure_on_missing_data(tmp_path, request, evidence_output_dir
     with pytest.raises(DatasetStructureError) as exc:
         ingestor.ingest_patient("0")
 
-        report.info(
-            message="Ingestor failed as expected",
-            requirement_id="DAT-005",
-            context=str(exc.value),
-        )
+    report.info(
+        message="Ingestor failed as expected",
+        requirement_id="DAT-005",
+        context=str(exc.value),
+    )
 
-        report.auto_save("coca_ingestor_missing_data", evidence_output_dir)
-        assert not report.has_errors, report.summary()
+    report.auto_save("coca_ingestor_missing_data", evidence_output_dir)
+    assert not report.has_errors, report.summary()

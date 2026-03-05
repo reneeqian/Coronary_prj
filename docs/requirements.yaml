@@ -47,21 +47,25 @@ requirements:
   - id: DAT-002
     title: Deterministic Data Access
     description: >
-      Indexed access to patient volumes and slices shall return 
-      identical data across repeated calls given the same dataset state.
+      Indexed access to dataset contents shall be deterministic.
+      Retrieval of a patient sample, full volume, or individual slice
+      using dataset access interfaces shall return identical data
+      across repeated calls given the same dataset state.
 
   - id: DAT-003
-    title: Boundary Condition Handling
+    title: Patient Index Boundary Handling
     description: >
-      The system shall raise a defined exception when dataset indices 
-      or slice indices are outside valid bounds.
+      The system shall raise DatasetStructureError when a requested
+      patient identifier does not exist in the dataset.
 
   - id: DAT-004
     title: Successful Data Ingestion
     description: >
-      The system shall load patient volume and slice data from the 
-      dataset root directory into memory in the expected dimensional 
-      format defined by the dataset contract.
+      The system shall load patient imaging data from the dataset
+      root directory into a structured in-memory representation.
+      The resulting volume shall have consistent dimensional ordering,
+      correct voxel spacing metadata, and shall preserve the physical
+      slice ordering defined by the dataset.
 
   - id: DAT-005
     title: Data Ingestion Failure Modes
@@ -70,10 +74,38 @@ requirements:
       message when required dataset files or directories are missing.
   
   - id: DAT-006
-    title: Patient Indexing without Loading
+    title: Lazy Patient Access
     description: >
-      The system shall support indexing patients IDs, volumes, and slices 
-      without loading the full dataset into memory.
+      The system shall support retrieval of an individual patient
+      sample or image volume without requiring ingestion of the
+      entire dataset into memory.
+
+  - id: DAT-007
+    title: Volume and Slice Index Boundary Handling
+    description: >
+      The system shall raise DatasetStructureError when a requested
+      slice index or dataset element index is outside the valid
+      bounds of the available patient data.
+
+  - id: DAT-008
+    title: Deterministic Slice Retrieval
+    description: >
+      Repeated retrieval of the same patient volume or slice shall
+      return identical numerical data given unchanged dataset state.
+
+  - id: DAT-009
+    title: Annotation Geometry Integrity
+    description: >
+      Parsed annotation regions shall contain valid polygon geometry
+      consisting of at least three coordinate points.
+
+  - id: DAT-010
+    title: Optional Annotation Handling
+    description: >
+      The system shall allow datasets that contain no annotation files
+      and shall return an empty annotation container without raising
+      an exception.
+
 
   # ==============================
   # Training Requirements
@@ -99,8 +131,9 @@ requirements:
   - id: VER-001
     title: Automated Verification Execution
     description: >
-      The project shall include automated tests verifying dataset integrity, 
-      deterministic behavior, and boundary condition enforcement.
+      The project shall include automated tests verifying dataset
+      integrity, deterministic behavior, boundary condition
+      enforcement, and annotation validity.
 
   - id: VER-002
     title: Evidence Capture
