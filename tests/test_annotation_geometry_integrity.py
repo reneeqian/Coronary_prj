@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import plistlib
 from unittest.mock import patch
 from pathlib import Path
 
@@ -104,35 +105,26 @@ def test_invalid_polygon_skipped(tmp_path):
 
     xml_file = xml_dir / "0.xml"
 
-    xml_file.write_text(
-"""<?xml version="1.0" encoding="UTF-8"?>
-<plist version="1.0">
-<dict>
-    <key>Images</key>
-    <array>
-        <dict>
-            <key>ImageIndex</key>
-            <integer>1</integer>
-            <key>ROIs</key>
-            <array>
-                <dict>
-                    <key>Name</key>
-                    <string>LAD</string>
-                    <key>NumberOfPoints</key>
-                    <integer>2</integer>
-                    <key>Point_px</key>
-                    <array>
-                        <string>(1,1)</string>
-                        <string>(2,1)</string>
-                    </array>
-                </dict>
-            </array>
-        </dict>
-    </array>
-</dict>
-</plist>
-"""
-    )
+    plist_data = {
+        "Images": [
+            {
+                "ImageIndex": 1,
+                "ROIs": [
+                    {
+                        "Name": "LAD",
+                        "NumberOfPoints": 2,
+                        "Point_px": [
+                            "(1,1)",
+                            "(2,1)"
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+
+    with open(xml_file, "wb") as f:
+        plistlib.dump(plist_data, f)
 
     with patch("pydicom.dcmread", return_value=SimpleDicom()):
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
@@ -153,3 +145,37 @@ def test_missing_annotation_file_returns_empty(tmp_path):
         sample = ingestor.ingest_patient("0")
 
     assert sample.annotations.vector_rois is None
+
+@pytest.mark.requirement("SYS-001")
+def test_volume_sorted_by_z_position(tmp_path):
+
+    class FakeDicom:
+        def __init__(self, z):
+            self.ImagePositionPatient = [0,0,z]
+            self.PixelSpacing=[1,1]
+            self.SliceThickness=1
+            self.pixel_array=np.full((2,2),z)
+            self.RescaleSlope=1
+            self.RescaleIntercept=0
+
+    patient_dir = tmp_path/"patient"/"0"/"seriesA"
+    patient_dir.mkdir(parents=True)
+
+    (patient_dir/"a.dcm").write_text("fake")
+    (patient_dir/"b.dcm").write_text("fake")
+    (patient_dir/"c.dcm").write_text("fake")
+
+    fake_dicoms = {
+        "a.dcm": FakeDicom(5),
+        "b.dcm": FakeDicom(1),
+        "c.dcm": FakeDicom(3),
+    }
+
+    def fake_dcmread(path, *args, **kwargs):
+        return fake_dicoms[path.name]
+
+    with patch("pydicom.dcmread", side_effect=fake_dcmread):
+        ingestor = COCAGatedIngestor(tmp_path)
+        volume = ingestor.get_volume("0")
+
+        assert list(volume[:,0,0]) == [1,3,5]

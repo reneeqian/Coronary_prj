@@ -83,3 +83,35 @@ def test_annotation_xml_parse_failure(tmp_path):
 
         with pytest.raises(DatasetStructureError):
             ingestor.ingest_patient("0")
+
+@pytest.mark.requirement("DAT-005")
+def test_invalid_dicom_file(tmp_path):
+
+    patient_dir = tmp_path/"patient"/"0"/"seriesA"
+    patient_dir.mkdir(parents=True)
+
+    (patient_dir/"slice1.dcm").write_text("fake")
+
+    from pydicom.errors import InvalidDicomError
+
+    with patch("pydicom.dcmread", side_effect=InvalidDicomError()):
+        ingestor = COCAGatedIngestor(tmp_path)
+
+        with pytest.raises(DatasetStructureError):
+            ingestor.get_slice("0",0)
+
+@pytest.mark.requirement("DAT-005")
+def test_invalid_dicom_file(tmp_path):
+
+    patient_dir = tmp_path/"patient"/"0"/"seriesA"
+    patient_dir.mkdir(parents=True)
+
+    (patient_dir/"slice1.dcm").write_text("fake")
+
+    from pydicom.errors import InvalidDicomError
+
+    with patch("pydicom.dcmread", side_effect=InvalidDicomError()):
+        ingestor = COCAGatedIngestor(tmp_path)
+
+        with pytest.raises(DatasetStructureError):
+            ingestor.get_slice("0",0)

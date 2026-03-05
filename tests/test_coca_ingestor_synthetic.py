@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import plistlib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -264,3 +265,111 @@ def test_missing_dicom_files(tmp_path):
 
     with pytest.raises(DatasetStructureError):
         ingestor.ingest_patient("0")
+        
+@pytest.mark.requirement("DAT-006")
+def test_get_patient_api(tmp_path):
+
+    patient_dir = tmp_path/"patient"/"0"/"seriesA"
+    patient_dir.mkdir(parents=True)
+
+    (patient_dir/"slice1.dcm").write_text("fake")
+
+    class FakeDicom:
+        ImagePositionPatient=[0,0,0]
+        PixelSpacing=[1,1]
+        SliceThickness=1
+        pixel_array=np.zeros((2,2))
+        RescaleSlope=1
+        RescaleIntercept=0
+
+    with patch("pydicom.dcmread", return_value=FakeDicom()):
+        ingestor = COCAGatedIngestor(tmp_path)
+
+        patient = ingestor.get_patient("0")
+
+        assert patient.patient_id == "0"
+    
+@pytest.mark.requirement("DAT-006")
+def test_get_volume_api(tmp_path):
+
+    patient_dir = tmp_path/"patient"/"0"/"seriesA"
+    patient_dir.mkdir(parents=True)
+
+    (patient_dir/"slice1.dcm").write_text("fake")
+
+    class FakeDicom:
+        ImagePositionPatient=[0,0,0]
+        PixelSpacing=[1,1]
+        SliceThickness=1
+        pixel_array=np.ones((2,2))
+        RescaleSlope=1
+        RescaleIntercept=0
+
+    with patch("pydicom.dcmread", return_value=FakeDicom()):
+        ingestor = COCAGatedIngestor(tmp_path)
+
+        vol = ingestor.get_volume("0")
+
+        assert vol.shape == (1,2,2)
+
+@pytest.mark.requirement("DAT-004")
+def test_ingest_dataset_multiple_patients(tmp_path):
+
+    for pid in ["0","1"]:
+        patient_dir = tmp_path/"patient"/pid/"seriesA"
+        patient_dir.mkdir(parents=True)
+        (patient_dir/"slice1.dcm").write_text("fake")
+
+    class FakeDicom:
+        ImagePositionPatient=[0,0,0]
+        PixelSpacing=[1,1]
+        SliceThickness=1
+        pixel_array=np.zeros((2,2))
+        RescaleSlope=1
+        RescaleIntercept=0
+
+    with patch("pydicom.dcmread", return_value=FakeDicom()):
+        ingestor = COCAGatedIngestor(tmp_path)
+
+        ds = ingestor.ingest_dataset()
+
+        assert len(ds) == 2
+
+@pytest.mark.requirement("DAT-009")
+def test_annotation_with_missing_image_index(tmp_path):
+
+    patient_dir = tmp_path/"patient"/"0"/"seriesA"
+    patient_dir.mkdir(parents=True)
+
+    (patient_dir/"slice1.dcm").write_text("fake")
+
+    xml_dir = tmp_path/"calcium_xml"
+    xml_dir.mkdir()
+
+    xml_file = xml_dir/"0.xml"
+
+    plist_data = {
+        "Images": [
+            {
+                "ROIs": []
+            }
+        ]
+    }
+
+    with open(xml_file, "wb") as f:
+        plistlib.dump(plist_data, f)
+
+    class FakeDicom:
+        ImagePositionPatient=[0,0,0]
+        PixelSpacing=[1,1]
+        SliceThickness=1
+        pixel_array=np.zeros((2,2))
+        RescaleSlope=1
+        RescaleIntercept=0
+
+    with patch("pydicom.dcmread", return_value=FakeDicom()):
+        ingestor = COCAGatedIngestor(tmp_path)
+
+        sample = ingestor.ingest_patient("0")
+
+        assert sample.annotations.vector_rois is None
