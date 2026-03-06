@@ -32,6 +32,18 @@ requirements:
       The system shall provide automated generation of a 
       requirement-to-test traceability matrix derived from machine-
       readable requirement definitions and test annotations.
+  
+  - id: SYS-004
+    title: Coronary Model Development
+    description: >
+      The system shall support development of a machine learning
+      model using the coronary imaging dataset.
+
+  - id: SYS-005
+    title: Model Improvement Capability
+    description: >
+      The system shall support improvement of the coronary model
+      through retraining using updated or expanded datasets.
 
   # ==============================
   # Data Ingestion Requirements
@@ -106,6 +118,12 @@ requirements:
       and shall return an empty annotation container without raising
       an exception.
 
+  - id: DAT-011
+    title: Dataset Partition Generation
+    description: >
+      The system shall generate training, validation, and test
+      partitions from the coronary dataset according to a
+      specified split strategy.
 
   # ==============================
   # Training Requirements
@@ -124,6 +142,40 @@ requirements:
       configuration parameters, random seeds, dataset split identifiers, 
       and final performance metrics.
 
+  - id: TRN-003
+    title: Coronary Model Training
+    description: >
+      The system shall support training of a machine learning
+      model using the coronary dataset.
+
+  - id: TRN-004
+    title: Coronary Model Retraining
+    description: >
+      The system shall support retraining the coronary model
+      when additional labeled data becomes available.
+
+  # ==============================
+  # Model Requirements
+  # ==============================
+
+  - id: MOD-001
+    title: Model Artifact Generation
+    description: >
+      The training process shall produce a model artifact
+      representing the trained coronary model.
+
+  - id: MOD-002
+    title: Model Artifact Persistence
+    description: >
+      The trained coronary model artifact shall be stored in a
+      persistent format suitable for later loading and evaluation.
+
+  - id: MOD-003
+    title: Model Evaluation Capability
+    description: >
+      The system shall support evaluation of the trained coronary
+      model using a held-out dataset partition.
+
   # ==============================
   # Verification Requirements
   # ==============================
@@ -141,6 +193,12 @@ requirements:
       The system shall generate machine-readable verification artifacts 
       suitable for automated traceability reporting.
 
+  - id: VER-003
+    title: Model Performance Verification
+    description: >
+      Verification activities shall evaluate the performance
+      of the trained coronary model on held-out data.
+
 # ==============================
 # Documentation Requirements
 # ==============================
@@ -156,3 +214,10 @@ requirements:
     description: >
       The project shall include a README file describing
       system purpose, configuration, and execution steps.
+
+  - id: DOC-003
+    title: Traceability Documentation
+    description: >
+      The project shall generate documentation describing
+      traceability relationships between requirements
+      and verification artifacts.
