@@ -141,6 +141,15 @@ class COCAGatedIngestor:
                 f"for patient {patient_id}"
             ) from e
 
+    def get_sample(self, patient_id):
+        patient = self.get_patient(patient_id)
+
+        volume = patient.image_volume
+
+        slice_idx = volume.shape[0] // 2
+
+        return volume[slice_idx]
+
     # ------------------------------------------------------------------
     # INTERNAL HELPERS (may raise FileNotFoundError/RuntimeError)
     # These MUST NOT leak outside public API.
