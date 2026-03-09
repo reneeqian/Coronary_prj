@@ -26,7 +26,7 @@ from medical_image_ai_toolkit.datasources.lazy_patient_datasource import LazyPat
 from medical_image_ai_toolkit.training.splits import DeterministicHoldoutSplitStrategy
 from regulatory_tools.evidence.evidence_report import EvidenceReport
 from medical_image_ai_toolkit.adapters.patient_sample_to_tensor import PatientSampleTensorAdapter
-from medical_image_ai_toolkit.training.trainer import MedicalImageTrainer
+from medical_image_ai_toolkit.training.medical_image_trainer import MedicalImageTrainer
 
 # ---------------------------------------------------------------------
 # PROJECT IMPORTS

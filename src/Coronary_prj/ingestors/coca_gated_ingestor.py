@@ -270,7 +270,11 @@ class COCAGatedIngestor:
                         continue
 
                     contour_array = np.array(contour_points, dtype=np.float32)
-
+                    
+                    # close contour if needed
+                    if not np.allclose(contour_array[0], contour_array[-1]):
+                        contour_array = np.vstack([contour_array, contour_array[0]])
+                        
                     roi_obj = VectorROI(
                         slice_index=slice_idx,
                         contour_px=contour_array,
