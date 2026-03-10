@@ -32,7 +32,7 @@ jobs:
       
       - name: Install project
         run: |
-          pip install -e Coronary_prj
+          pip install -e 
 
       - name: Run tests
         run: |
