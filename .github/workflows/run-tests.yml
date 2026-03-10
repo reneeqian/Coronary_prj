@@ -34,6 +34,6 @@ jobs:
         run: |
           pip install -e .
 
-      - name: Run tests
+      - name: Run verification suite
         run: |
-          pytest tests --cov=Coronary_prj --cov-report=xml
+          python run_tests_and_trace.py
