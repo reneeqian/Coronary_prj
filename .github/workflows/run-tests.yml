@@ -28,6 +28,12 @@ jobs:
         run: |
           pip install -e Coronary_prj
 
+      - name: Show repo structure
+        run: |
+          pwd
+          ls -la
+          ls -R
+
       - name: Run tests
         run: |
           pytest Coronary_prj/tests --cov=Coronary_prj --cov-report=xml
