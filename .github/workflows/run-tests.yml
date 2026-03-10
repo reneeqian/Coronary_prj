@@ -36,4 +36,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest Coronary_prj/tests --cov=Coronary_prj --cov-report=xml
+          pytest tests --cov=Coronary_prj --cov-report=xml
