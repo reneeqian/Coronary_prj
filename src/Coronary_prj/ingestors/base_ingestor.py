@@ -1,7 +1,7 @@
 # src/ingestors/base_ingestor.py
 
 from abc import ABC, abstractmethod
-from medical_image_ai_toolkit.data.patient_sample import PatientSample
+from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
 
 
 class BaseIngestor(ABC):
