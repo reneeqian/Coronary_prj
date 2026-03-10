@@ -20,7 +20,7 @@ TEST_DIR = PROJECT_ROOT / "tests"
 REQUIREMENTS_YAML = PROJECT_ROOT / "docs" /"requirements.yaml"
 EVIDENCE_ROOT = PROJECT_ROOT / "artifacts" / "evidence_runs"
 OUTPUT_MATRIX = PROJECT_ROOT / "docs" / "traceability_matrix.md"
-
+ 
 
 def run_pytest():
     print("\n[Runner] Running pytest...\n")

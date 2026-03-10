@@ -251,10 +251,12 @@ class COCAGatedIngestor:
 
                 slice_idx = int(image_index) - 1
 
-                if not (0 <= slice_idx < num_slices):
-                    raise DatasetStructureError(
-                        f"Annotation slice index out of bounds: {slice_idx}"
+                if slice_idx < 0 or slice_idx >= num_slices:
+                    print(
+                        f"Warning: invalid slice index {slice_idx} "
+                        f"in {xml_file}, skipping annotation"
                     )
+                    continue
 
                 for roi in rois:
                     num_points = roi.get("NumberOfPoints", 0)
