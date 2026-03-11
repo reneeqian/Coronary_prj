@@ -377,3 +377,43 @@ def test_annotation_with_missing_image_index(tmp_path):
         sample = ingestor.ingest_patient("0")
 
         assert sample.annotations.vector_rois is None
+        
+# =============================================================================
+# CT slices must be sorted by Z position before stacking
+# =============================================================================
+
+@pytest.mark.requirement("DAT-012")
+def test_ct_volume_sorted_by_z_position(tmp_path):
+
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
+    patient_dir.mkdir(parents=True)
+
+    # intentionally create files in reverse order
+    (patient_dir / "sliceB.dcm").write_text("fake")
+    (patient_dir / "sliceA.dcm").write_text("fake")
+
+    class FakeDicom:
+        def __init__(self, z):
+            self.ImagePositionPatient = [0.0, 0.0, float(z)]
+            self.PixelSpacing = [1.0, 1.0]
+            self.SliceThickness = 1.0
+            self.RescaleSlope = 1.0
+            self.RescaleIntercept = 0.0
+            self.pixel_array = np.full((2,2), z, dtype=np.float32)
+    
+    def fake_dcmread(path, *args, **kwargs):
+        if "sliceA" in str(path):
+            return FakeDicom(0)
+        elif "sliceB" in str(path):
+            return FakeDicom(10)
+        return FakeDicom(0)
+
+    with patch("pydicom.dcmread", side_effect=fake_dcmread):
+
+        ingestor = COCAGatedIngestor(tmp_path)
+        patient = ingestor.load_patient("0")
+
+        volume = patient.image_volume
+
+        assert np.all(volume[0] == 0)
+        assert np.all(volume[1] == 10)

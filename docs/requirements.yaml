@@ -127,6 +127,11 @@ requirements:
       partitions from the coronary dataset according to a
       specified split strategy.
 
+  - id: DAT-012
+    title: CT slices must be sorted by ImagePositionPatient[2] before volume construction
+    description: >
+      CT slices must be sorted by ImagePositionPatient[2] before volume construction
+
   # ==============================
   # Training Requirements
   # ==============================
