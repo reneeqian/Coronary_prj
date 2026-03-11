@@ -3,6 +3,7 @@ import random
 import torch
 import torch.nn as nn
 
+from Coronary_prj.tasks.coca_classification_task import CocaClassificationTask
 from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource import MedicalImageDataSource
 from medical_image_ai_toolkit.training.training_config import TrainingConfig
 from medical_image_ai_toolkit.training.medical_image_trainer import MedicalImageTrainer
@@ -116,13 +117,13 @@ def main():
     slice_img = datasource.load_slice(train_ids[pnum], 10)
 
     print("Slice shape:", slice_img.shape)
-
-    """ datasource.show_slice(
+    
+    datasource.show_slice(
         train_ids[pnum],
         annotated_only=True,
         show_annotations=True,
         show_bboxes=True
-    ) """
+    )
     
     config = TrainingConfig(
         epochs=5,
@@ -134,7 +135,8 @@ def main():
     trainer = MedicalImageTrainer(
         datasource,
         model,
-        config
+        task=CocaClassificationTask(),
+        training_config = config
     )
     
     trainer.sanity_check()
