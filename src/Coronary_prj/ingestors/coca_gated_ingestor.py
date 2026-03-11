@@ -55,7 +55,7 @@ class COCAGatedIngestor:
         except OSError as e:
             raise DatasetStructureError(str(e)) from e
 
-    def ingest_patient(self, patient_id: str) -> PatientSample:
+    def load_patient(self, patient_id: str) -> PatientSample:
         try:
             patient_dir = self.dataset_root / "patient" / patient_id
             if not patient_dir.exists():
@@ -81,74 +81,17 @@ class COCAGatedIngestor:
         except Exception as e:
             # Convert all unexpected failures to domain-safe error
             raise DatasetStructureError(str(e)) from e
-
-    def ingest_dataset(self) -> List[PatientSample]:
-        try:
-            patient_ids = self.list_patient_ids()
-            return [self.ingest_patient(pid) for pid in patient_ids]
-        except DatasetStructureError:
-            raise
-        except Exception as e:
-            raise DatasetStructureError(str(e)) from e
     
-    # ------------------------------------------------------------------
-    # DATA ACCESS API (Dataset-Specific)
-    # ------------------------------------------------------------------
+    def get_sample(self, patient_id):
+        sample = self.load_patient(patient_id)
 
-    def get_patient(self, patient_id: str) -> PatientSample:
-        """
-        Load and return a single patient sample.
-        """
-        return self.ingest_patient(patient_id)
-
-    def get_volume(self, patient_id: str) -> np.ndarray:
-        """
-        Return 3D volume for a single patient without loading entire dataset.
-        """
-        sample = self.ingest_patient(patient_id)
         return sample.image_volume
 
-    def get_slice(self, patient_id: str, slice_index: int) -> np.ndarray:
-        try:
-            patient_dir = self.dataset_root / "patient" / patient_id
-            if not patient_dir.exists():
-                raise DatasetStructureError(
-                    f"Patient directory not found: {patient_dir}"
-                )
+    def ingest_patient(self, patient_id):
+        return self.load_patient(patient_id)
 
-            series_dir = self._resolve_gated_series_dir(patient_dir)
-            sorted_files = self._get_sorted_dicom_files(series_dir)
-
-            if not (0 <= slice_index < len(sorted_files)):
-                raise DatasetStructureError(
-                    f"Slice index {slice_index} out of bounds "
-                    f"(0–{len(sorted_files)-1})"
-                )
-
-            ds = pydicom.dcmread(sorted_files[slice_index])
-            image = ds.pixel_array.astype(np.float32)
-
-            slope = float(getattr(ds, "RescaleSlope", 1.0))
-            intercept = float(getattr(ds, "RescaleIntercept", 0.0))
-
-            return image * slope + intercept
-
-        except DatasetStructureError:
-            raise
-        except Exception as e:
-            raise DatasetStructureError(
-                f"Failed to load slice {slice_index} "
-                f"for patient {patient_id}"
-            ) from e
-
-    def get_sample(self, patient_id):
-        patient = self.get_patient(patient_id)
-
-        volume = patient.image_volume
-
-        slice_idx = volume.shape[0] // 2
-
-        return volume[slice_idx]
+    def ingest_dataset(self):
+        return [self.load_patient(pid) for pid in self.list_patient_ids()]
 
     # ------------------------------------------------------------------
     # INTERNAL HELPERS (may raise FileNotFoundError/RuntimeError)

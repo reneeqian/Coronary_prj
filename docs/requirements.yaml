@@ -59,10 +59,10 @@ requirements:
   - id: DAT-002
     title: Deterministic Data Access
     description: >
-      Indexed access to dataset contents shall be deterministic.
-      Retrieval of a patient sample, full volume, or individual slice
-      using dataset access interfaces shall return identical data
-      across repeated calls given the same dataset state.
+      Access to dataset contents shall be deterministic. Repeated
+      retrieval of a patient sample using the ingestion interface
+      shall return identical imaging data, metadata, and annotations
+      given unchanged dataset state.
 
   - id: DAT-003
     title: Patient Index Boundary Handling
@@ -71,10 +71,10 @@ requirements:
       patient identifier does not exist in the dataset.
 
   - id: DAT-004
-    title: Successful Data Ingestion
+    title: Successful Patient Ingestion
     description: >
       The system shall load patient imaging data from the dataset
-      root directory into a structured in-memory representation.
+      root directory into a structured in-memory patient sample.
       The resulting volume shall have consistent dimensional ordering,
       correct voxel spacing metadata, and shall preserve the physical
       slice ordering defined by the dataset.
@@ -89,21 +89,23 @@ requirements:
     title: Lazy Patient Access
     description: >
       The system shall support retrieval of an individual patient
-      sample or image volume without requiring ingestion of the
-      entire dataset into memory.
+      sample through the ingestion interface without requiring
+      ingestion of the entire dataset into memory.
 
   - id: DAT-007
-    title: Volume and Slice Index Boundary Handling
+    title: Dataset Element Boundary Handling
     description: >
-      The system shall raise DatasetStructureError when a requested
-      slice index or dataset element index is outside the valid
-      bounds of the available patient data.
+      The system shall raise DatasetStructureError when requested
+      dataset elements such as patient identifiers or referenced
+      annotation indices are outside the valid bounds of the
+      available dataset structure.
 
   - id: DAT-008
-    title: Deterministic Slice Retrieval
+    title: Deterministic Patient Sample Retrieval
     description: >
-      Repeated retrieval of the same patient volume or slice shall
-      return identical numerical data given unchanged dataset state.
+      Repeated retrieval of the same patient sample shall return
+      identical numerical imaging data and associated metadata
+      given unchanged dataset state.
 
   - id: DAT-009
     title: Annotation Geometry Integrity

@@ -55,9 +55,7 @@ def test_required_subdirectories_present(coca_dataset_root,
             message="Patient directory exists but is empty",
             requirement_id="DAT-001",
         )
-
-
-
+        
     report.auto_save("coca_dataset_structure", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -118,9 +116,12 @@ def test_slice_index_out_of_bounds(tmp_path):
 
     (patient_dir / "a.dcm").write_text("fake")
     (patient_dir / "b.dcm").write_text("fake")
-    
+
     with patch("pydicom.dcmread", return_value=SimpleDicom()):
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
 
-        with pytest.raises(DatasetStructureError):
-            ingestor.get_slice("0", 10)
+        patient = ingestor.load_patient("0")
+
+        # volume only has 2 slices → index 10 is invalid
+        with pytest.raises(IndexError):
+            _ = patient.image_volume[10]

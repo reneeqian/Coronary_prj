@@ -175,7 +175,8 @@ def test_volume_sorted_by_z_position(tmp_path):
         return fake_dicoms[path.name]
 
     with patch("pydicom.dcmread", side_effect=fake_dcmread):
-        ingestor = COCAGatedIngestor(tmp_path)
-        volume = ingestor.get_volume("0")
+        ingestor = COCAGatedIngestor(tmp_path)        
+        patient = ingestor.load_patient("0")
+        vol = patient.image_volume
 
-        assert list(volume[:,0,0]) == [1,3,5]
+        assert list(vol[:,0,0]) == [1,3,5]

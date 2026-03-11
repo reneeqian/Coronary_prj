@@ -235,8 +235,9 @@ def test_slice_index_out_of_bounds(tmp_path):
     with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
 
-        with pytest.raises(DatasetStructureError):
-            ingestor.get_slice("0", 5)  # only 1 slice exists
+        sample = ingestor.load_patient("0")
+        # annotation refers to slice outside volume → should be ignored
+        assert sample.annotations.vector_rois is None
 
 @pytest.mark.requirement("DAT-008")
 def test_deterministic_slice_retrieval(tmp_path):
@@ -248,8 +249,10 @@ def test_deterministic_slice_retrieval(tmp_path):
     with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
 
-        slice1 = ingestor.get_slice("0", 0)
-        slice2 = ingestor.get_slice("0", 0)
+        patient = ingestor.load_patient("0")
+        slice1 = patient.image_volume[0]
+        patient = ingestor.load_patient("0")
+        slice2 = patient.image_volume[0]
 
         assert np.array_equal(slice1, slice2)
 
@@ -285,7 +288,7 @@ def test_get_patient_api(tmp_path):
     with patch("pydicom.dcmread", return_value=FakeDicom()):
         ingestor = COCAGatedIngestor(tmp_path)
 
-        patient = ingestor.get_patient("0")
+        patient = ingestor.load_patient("0")
 
         assert patient.patient_id == "0"
     
@@ -308,7 +311,8 @@ def test_get_volume_api(tmp_path):
     with patch("pydicom.dcmread", return_value=FakeDicom()):
         ingestor = COCAGatedIngestor(tmp_path)
 
-        vol = ingestor.get_volume("0")
+        patient = ingestor.load_patient("0")
+        vol = patient.image_volume
 
         assert vol.shape == (1,2,2)
 

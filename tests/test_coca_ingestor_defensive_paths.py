@@ -98,7 +98,8 @@ def test_invalid_dicom_file(tmp_path):
         ingestor = COCAGatedIngestor(tmp_path)
 
         with pytest.raises(DatasetStructureError):
-            ingestor.get_slice("0",0)
+            patient = ingestor.load_patient("0")
+            patient.image_volume[0]
 
 @pytest.mark.requirement("DAT-005")
 def test_invalid_dicom_file(tmp_path):
@@ -114,4 +115,5 @@ def test_invalid_dicom_file(tmp_path):
         ingestor = COCAGatedIngestor(tmp_path)
 
         with pytest.raises(DatasetStructureError):
-            ingestor.get_slice("0",0)
+            patient = ingestor.load_patient("0")
+            slice_img = patient.image_volume[0]

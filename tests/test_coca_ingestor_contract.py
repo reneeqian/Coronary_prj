@@ -32,7 +32,7 @@ def test_ingest_ct_volumes_from_root(coca_dataset_root,
             requirement_id="DAT-004",
             context=str(dataset_root))
         ingestor = COCAGatedIngestor(dataset_root=dataset_root)
-        sample = ingestor.ingest_patient("0")
+        sample = ingestor.load_patient("0")
 
     contract_report = enforce_patient_sample_contract(
         sample,
@@ -66,3 +66,30 @@ def test_graceful_failure_on_missing_data(tmp_path, request, evidence_output_dir
 
     report.auto_save("coca_ingestor_missing_data", evidence_output_dir)
     assert not report.has_errors, report.summary()
+
+@pytest.mark.requirement("DAT-004")
+def test_patient_sample_contract(tmp_path):
+
+    # create minimal dataset structure
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
+    patient_dir.mkdir(parents=True)
+
+    (patient_dir / "slice1.dcm").write_text("fake")
+
+    class FakeDicom:
+        ImagePositionPatient = [0.0, 0.0, 0.0]
+        PixelSpacing = [1.0, 1.0]
+        SliceThickness = 1.0
+        RescaleSlope = 1.0
+        RescaleIntercept = 0.0
+        pixel_array = np.zeros((2, 2), dtype=np.float32)
+
+    from unittest.mock import patch
+
+    with patch("pydicom.dcmread", return_value=FakeDicom()):
+        ingestor = COCAGatedIngestor(tmp_path)
+
+        patient = ingestor.load_patient("0")
+
+        assert patient.patient_id == "0"
+        assert patient.image_volume.ndim == 3
