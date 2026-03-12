@@ -59,7 +59,7 @@ def test_annotation_slice_out_of_bounds(tmp_path):
     with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
         ingestor = COCAGatedIngestor(tmp_path)
 
-        sample = ingestor.load_patient("0")
+        sample = ingestor.load_patient_sample("0")
 
         # annotation refers to slice outside volume → should be ignored
         assert sample.annotations.vector_rois is None
@@ -115,7 +115,7 @@ def test_roi_with_insufficient_points_ignored(tmp_path):
     with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
         ingestor = COCAGatedIngestor(tmp_path)
 
-        sample = ingestor.load_patient("0")
+        sample = ingestor.load_patient_sample("0")
 
         assert sample.annotations.vector_rois is None
 
@@ -135,7 +135,7 @@ def test_dataset_without_annotations(tmp_path):
     with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
         ingestor = COCAGatedIngestor(tmp_path)
 
-        sample = ingestor.load_patient("0")
+        sample = ingestor.load_patient_sample("0")
 
         assert sample.annotations.vector_rois is None
 
@@ -160,7 +160,7 @@ def test_missing_image_position_patient(tmp_path):
         ingestor = COCAGatedIngestor(tmp_path)
 
         with pytest.raises(DatasetStructureError):
-            patient = ingestor.load_patient("0")
+            patient = ingestor.load_patient_sample("0")
             slice_img = patient.image_volume[0]
 
 
@@ -188,7 +188,7 @@ def test_get_slice_success(tmp_path):
     with patch("pydicom.dcmread", return_value=GoodDicom()):
         ingestor = COCAGatedIngestor(tmp_path)
 
-        patient = ingestor.load_patient("0")
+        patient = ingestor.load_patient_sample("0")
         slice_img = patient.image_volume[0]
 
         assert slice_img.shape == (2,2)
@@ -208,7 +208,7 @@ def test_no_series_directories(tmp_path):
     ingestor = COCAGatedIngestor(tmp_path)
 
     with pytest.raises(DatasetStructureError):
-        ingestor.load_patient("0")
+        ingestor.load_patient_sample("0")
 
 
 # =============================================================================
@@ -224,7 +224,7 @@ def test_no_dicom_files(tmp_path):
     ingestor = COCAGatedIngestor(tmp_path)
 
     with pytest.raises(DatasetStructureError):
-        patient = ingestor.load_patient("0")
+        patient = ingestor.load_patient_sample("0")
         patient.image_volume[10]
 
 
@@ -258,10 +258,10 @@ def test_slice_determinism(tmp_path):
     with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
         ingestor = COCAGatedIngestor(tmp_path)
 
-        patient = ingestor.load_patient("0")
+        patient = ingestor.load_patient_sample("0")
         s1 = patient.image_volume[0]
         
-        patient = ingestor.load_patient("0")
+        patient = ingestor.load_patient_sample("0")
         s2 = patient.image_volume[0]
 
         assert np.array_equal(s1, s2)

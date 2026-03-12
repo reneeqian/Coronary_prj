@@ -7,6 +7,7 @@ import pydicom
 import plistlib
 from pydicom.errors import InvalidDicomError
 from pydicom.dataset import Dataset
+from skimage.draw import polygon
 
 from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
 from medical_image_ai_toolkit.dataobjects.annotation_bundle import AnnotationBundle, VectorROI
@@ -55,7 +56,7 @@ class COCAGatedIngestor:
         except OSError as e:
             raise DatasetStructureError(str(e)) from e
 
-    def load_patient(self, patient_id: str) -> PatientSample:
+    def load_patient_sample(self, patient_id: str) -> PatientSample:
         try:
             patient_dir = self.dataset_root / "patient" / patient_id
             if not patient_dir.exists():
@@ -82,16 +83,65 @@ class COCAGatedIngestor:
             # Convert all unexpected failures to domain-safe error
             raise DatasetStructureError(str(e)) from e
     
-    def get_sample(self, patient_id):
-        sample = self.load_patient(patient_id)
+    def get_sample(self, patient_id: str):
+        sample = self.load_patient_sample(patient_id)
 
-        return sample.image_volume
+        volume = sample.image_volume
+        num_slices, H, W = volume.shape
+
+        vector_rois = None
+        if sample.annotations is not None:
+            vector_rois = sample.annotations.vector_rois
+
+        # If no annotations exist, return empty tensors
+        if not vector_rois:
+            return (
+                np.empty((0, H, W), dtype=np.float32),
+                np.empty((0, H, W), dtype=np.uint8),
+            )
+
+        X_slices = []
+        Y_masks = []
+
+        for slice_idx, rois in vector_rois.items():
+
+            if slice_idx < 0 or slice_idx >= num_slices:
+                continue
+
+            img = volume[slice_idx]
+
+            mask = np.zeros((H, W), dtype=np.uint8)
+
+            for roi in rois:
+
+                contour = roi.contour_px
+
+                if contour is None or len(contour) < 3:
+                    continue
+
+                rr, cc = self._polygon_to_mask(contour, H, W)
+
+                mask[rr, cc] = 1
+
+            X_slices.append(img)
+            Y_masks.append(mask)
+
+        if not X_slices:
+            return (
+                np.empty((0, H, W), dtype=np.float32),
+                np.empty((0, H, W), dtype=np.uint8),
+            )
+
+        X = np.stack(X_slices).astype(np.float32)
+        Y = np.stack(Y_masks).astype(np.uint8)
+
+        return X, Y
 
     def ingest_patient(self, patient_id):
-        return self.load_patient(patient_id)
+        return self.load_patient_sample(patient_id)
 
     def ingest_dataset(self):
-        return [self.load_patient(pid) for pid in self.list_patient_ids()]
+        return [self.load_patient_sample(pid) for pid in self.list_patient_ids()]
 
     # ------------------------------------------------------------------
     # INTERNAL HELPERS (may raise FileNotFoundError/RuntimeError)
@@ -279,3 +329,13 @@ class COCAGatedIngestor:
 
         sorted_indices = np.argsort(z_positions)
         return [dicom_files[i] for i in sorted_indices]
+    
+    
+    def _polygon_to_mask(self, contour: np.ndarray, H: int, W: int):
+
+        x = contour[:, 0]
+        y = contour[:, 1]
+
+        rr, cc = polygon(y, x, shape=(H, W))
+
+        return rr, cc

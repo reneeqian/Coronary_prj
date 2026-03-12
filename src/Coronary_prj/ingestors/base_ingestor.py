@@ -13,7 +13,7 @@ class BaseIngestor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load_patient(self, patient_id: str) -> PatientSample:
+    def load_patient_sample(self, patient_id: str) -> PatientSample:
         raise NotImplementedError
 
     @abstractmethod

@@ -235,7 +235,7 @@ def test_slice_index_out_of_bounds(tmp_path):
     with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
 
-        sample = ingestor.load_patient("0")
+        sample = ingestor.load_patient_sample("0")
         # annotation refers to slice outside volume → should be ignored
         assert sample.annotations.vector_rois is None
 
@@ -249,9 +249,9 @@ def test_deterministic_slice_retrieval(tmp_path):
     with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
 
-        patient = ingestor.load_patient("0")
+        patient = ingestor.load_patient_sample("0")
         slice1 = patient.image_volume[0]
-        patient = ingestor.load_patient("0")
+        patient = ingestor.load_patient_sample("0")
         slice2 = patient.image_volume[0]
 
         assert np.array_equal(slice1, slice2)
@@ -288,7 +288,7 @@ def test_get_patient_api(tmp_path):
     with patch("pydicom.dcmread", return_value=FakeDicom()):
         ingestor = COCAGatedIngestor(tmp_path)
 
-        patient = ingestor.load_patient("0")
+        patient = ingestor.load_patient_sample("0")
 
         assert patient.patient_id == "0"
     
@@ -311,7 +311,7 @@ def test_get_volume_api(tmp_path):
     with patch("pydicom.dcmread", return_value=FakeDicom()):
         ingestor = COCAGatedIngestor(tmp_path)
 
-        patient = ingestor.load_patient("0")
+        patient = ingestor.load_patient_sample("0")
         vol = patient.image_volume
 
         assert vol.shape == (1,2,2)
@@ -411,9 +411,196 @@ def test_ct_volume_sorted_by_z_position(tmp_path):
     with patch("pydicom.dcmread", side_effect=fake_dcmread):
 
         ingestor = COCAGatedIngestor(tmp_path)
-        patient = ingestor.load_patient("0")
+        patient = ingestor.load_patient_sample("0")
 
         volume = patient.image_volume
 
         assert np.all(volume[0] == 0)
         assert np.all(volume[1] == 10)
+        
+
+@pytest.mark.requirement("DAT-004")
+@pytest.mark.requirement("DAT-006")
+def test_get_sample_generates_image_and_mask(tmp_path):
+
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
+    patient_dir.mkdir(parents=True)
+
+    (patient_dir / "slice1.dcm").write_text("fake")
+
+    xml_dir = tmp_path / "calcium_xml"
+    xml_dir.mkdir()
+
+    xml_file = xml_dir / "0.xml"
+
+    plist_data = {
+        "Images": [
+            {
+                "ImageIndex": 1,
+                "ROIs": [
+                    {
+                        "Name": "calcium",
+                        "NumberOfPoints": 4,
+                        "Point_px": [
+                            "(0,0)",
+                            "(1,0)",
+                            "(1,1)",
+                            "(0,1)"
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+
+    with open(xml_file, "wb") as f:
+        plistlib.dump(plist_data, f)
+
+    class FakeDicom:
+        ImagePositionPatient=[0,0,0]
+        PixelSpacing=[1,1]
+        SliceThickness=1
+        pixel_array=np.ones((4,4))
+        RescaleSlope=1
+        RescaleIntercept=0
+
+    with patch("pydicom.dcmread", return_value=FakeDicom()):
+
+        ingestor = COCAGatedIngestor(tmp_path)
+
+        X, Y = ingestor.get_sample("0")
+
+        assert X.shape == (1,4,4)
+        assert Y.shape == (1,4,4)
+
+        assert np.sum(Y) > 0
+
+@pytest.mark.requirement("DAT-004")
+def test_get_sample_no_annotations_returns_empty(tmp_path):
+
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
+    patient_dir.mkdir(parents=True)
+
+    (patient_dir / "slice1.dcm").write_text("fake")
+
+    class FakeDicom:
+        ImagePositionPatient=[0,0,0]
+        PixelSpacing=[1,1]
+        SliceThickness=1
+        pixel_array=np.ones((4,4))
+        RescaleSlope=1
+        RescaleIntercept=0
+
+    with patch("pydicom.dcmread", return_value=FakeDicom()):
+
+        ingestor = COCAGatedIngestor(tmp_path)
+
+        X, Y = ingestor.get_sample("0")
+
+        assert X.shape[0] == 0
+        assert Y.shape[0] == 0
+        
+@pytest.mark.requirement("DAT-004")
+def test_get_sample_multiple_rois_same_slice(tmp_path):
+
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
+    patient_dir.mkdir(parents=True)
+
+    (patient_dir / "slice1.dcm").write_text("fake")
+
+    xml_dir = tmp_path / "calcium_xml"
+    xml_dir.mkdir()
+
+    xml_file = xml_dir / "0.xml"
+
+    plist_data = {
+        "Images": [
+            {
+                "ImageIndex": 1,
+                "ROIs": [
+                    {
+                        "Name":"calcium",
+                        "NumberOfPoints":4,
+                        "Point_px":[
+                            "(0,0)",
+                            "(1,0)",
+                            "(1,1)",
+                            "(0,1)"
+                        ]
+                    },
+                    {
+                        "Name":"calcium",
+                        "NumberOfPoints":4,
+                        "Point_px":[
+                            "(2,2)",
+                            "(3,2)",
+                            "(3,3)",
+                            "(2,3)"
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+
+    with open(xml_file, "wb") as f:
+        plistlib.dump(plist_data, f)
+
+    class FakeDicom:
+        ImagePositionPatient=[0,0,0]
+        PixelSpacing=[1,1]
+        SliceThickness=1
+        pixel_array=np.ones((4,4))
+        RescaleSlope=1
+        RescaleIntercept=0
+
+    with patch("pydicom.dcmread", return_value=FakeDicom()):
+
+        ingestor = COCAGatedIngestor(tmp_path)
+
+        X, Y = ingestor.get_sample("0")
+
+        assert X.shape[0] == 1
+        assert np.sum(Y) > 2
+        
+@pytest.mark.requirement("DAT-007")
+def test_get_sample_skips_invalid_slice_annotations(tmp_path):
+
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
+    patient_dir.mkdir(parents=True)
+
+    (patient_dir / "slice1.dcm").write_text("fake")
+
+    xml_dir = tmp_path / "calcium_xml"
+    xml_dir.mkdir()
+
+    xml_file = xml_dir / "0.xml"
+
+    plist_data = {
+        "Images":[
+            {
+                "ImageIndex":10,
+                "ROIs":[]
+            }
+        ]
+    }
+
+    with open(xml_file,"wb") as f:
+        plistlib.dump(plist_data,f)
+
+    class FakeDicom:
+        ImagePositionPatient=[0,0,0]
+        PixelSpacing=[1,1]
+        SliceThickness=1
+        pixel_array=np.ones((4,4))
+        RescaleSlope=1
+        RescaleIntercept=0
+
+    with patch("pydicom.dcmread",return_value=FakeDicom()):
+
+        ingestor = COCAGatedIngestor(tmp_path)
+
+        X,Y = ingestor.get_sample("0")
+
+        assert X.shape[0] == 0
+        assert Y.shape[0] == 0

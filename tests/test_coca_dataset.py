@@ -120,8 +120,47 @@ def test_slice_index_out_of_bounds(tmp_path):
     with patch("pydicom.dcmread", return_value=SimpleDicom()):
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
 
-        patient = ingestor.load_patient("0")
+        patient = ingestor.load_patient_sample("0")
 
         # volume only has 2 slices → index 10 is invalid
         with pytest.raises(IndexError):
             _ = patient.image_volume[10]
+
+@pytest.mark.requires_dataset
+@pytest.mark.requirement("DAT-006")
+@pytest.mark.requirement("DAT-004")
+def test_get_sample_on_real_dataset(
+    coca_dataset_root,
+    coca_dataset_available,
+    request,
+    evidence_output_dir,
+):
+
+    if not coca_dataset_available:
+        pytest.skip("COCA dataset not available")
+
+    report = EvidenceReport(
+        subject="COCA Ingestor → get_sample Real Data Validation",
+        test_id=request.node.nodeid,
+    )
+
+    ingestor = COCAGatedIngestor(coca_dataset_root)
+
+    patient_ids = ingestor.list_patient_ids()
+    pid = patient_ids[0]
+
+    X, Y = ingestor.get_sample(pid)
+
+    report.info(
+        message=f"Generated {X.shape[0]} training slices",
+        requirement_id="DAT-006",
+    )
+
+    assert X.ndim == 3
+    assert Y.ndim == 3
+    assert X.shape == Y.shape
+
+    if X.shape[0] > 0:
+        assert np.sum(Y) > 0
+
+    report.auto_save("coca_get_sample_validation", evidence_output_dir)

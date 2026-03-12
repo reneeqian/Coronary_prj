@@ -44,6 +44,14 @@ requirements:
     description: >
       The system shall support improvement of the coronary model
       through retraining using updated or expanded datasets.
+  
+  - id: SYS-006
+    title: Dataset Task Encapsulation
+    description: >
+      Dataset ingestion implementations shall encapsulate dataset-
+      specific interpretation logic including extraction of training
+      inputs and targets, preventing dataset-specific logic from
+      appearing in the generic training pipeline.
 
   # ==============================
   # Data Ingestion Requirements
@@ -131,6 +139,13 @@ requirements:
     title: CT slices must be sorted by ImagePositionPatient[2] before volume construction
     description: >
       CT slices must be sorted by ImagePositionPatient[2] before volume construction
+  
+  - id: DAT-013
+    title: Annotation Rasterization
+    description: >
+      Vector annotation contours shall be converted into rasterized
+      binary masks aligned with the corresponding image slices to
+      produce training targets.
 
   # ==============================
   # Training Requirements
@@ -162,17 +177,11 @@ requirements:
       when additional labeled data becomes available.
 
   - id: TRN-005
-    title: Coronary Training Task Definition
+    title: Coronary Dataset Training Interface
     description: >
-      The project shall define a TaskDefinition specifying the
-      model architecture, loss function, and training parameters
-      used for coronary model training.
-
-  - id: TRN-006
-    title: Task Configuration Traceability
-    description: >
-      Training artifacts shall record the TaskDefinition
-      configuration used for each coronary model training run.
+      The coronary dataset ingestion interface shall expose aligned
+      training input and target tensors derived from annotated CT
+      slices suitable for model training.
 
   # ==============================
   # Model Requirements

@@ -32,7 +32,7 @@ def test_ingest_ct_volumes_from_root(coca_dataset_root,
             requirement_id="DAT-004",
             context=str(dataset_root))
         ingestor = COCAGatedIngestor(dataset_root=dataset_root)
-        sample = ingestor.load_patient("0")
+        sample = ingestor.load_patient_sample("0")
 
     contract_report = enforce_patient_sample_contract(
         sample,
@@ -89,7 +89,7 @@ def test_patient_sample_contract(tmp_path):
     with patch("pydicom.dcmread", return_value=FakeDicom()):
         ingestor = COCAGatedIngestor(tmp_path)
 
-        patient = ingestor.load_patient("0")
+        patient = ingestor.load_patient_sample("0")
 
         assert patient.patient_id == "0"
         assert patient.image_volume.ndim == 3
