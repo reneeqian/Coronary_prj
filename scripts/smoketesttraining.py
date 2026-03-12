@@ -118,13 +118,6 @@ def main():
 
     print("Slice shape:", slice_img.shape)
     
-    datasource.show_slice(
-        train_ids[pnum],
-        annotated_only=True,
-        show_annotations=True,
-        show_bboxes=True
-    )
-    
     config = TrainingConfig(
         epochs=5,
         batch_size=2

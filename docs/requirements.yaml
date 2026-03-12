@@ -161,6 +161,19 @@ requirements:
       The system shall support retraining the coronary model
       when additional labeled data becomes available.
 
+  - id: TRN-005
+    title: Coronary Training Task Definition
+    description: >
+      The project shall define a TaskDefinition specifying the
+      model architecture, loss function, and training parameters
+      used for coronary model training.
+
+  - id: TRN-006
+    title: Task Configuration Traceability
+    description: >
+      Training artifacts shall record the TaskDefinition
+      configuration used for each coronary model training run.
+
   # ==============================
   # Model Requirements
   # ==============================
