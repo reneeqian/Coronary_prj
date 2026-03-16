@@ -1,7 +1,5 @@
 # Coronary Artery Calcium (CAC) Detection – Engineering Demonstration Project
 
-## 1. Purpose
-
 This repository demonstrates structured development of a medical imaging AI
 pipeline under Software as a Medical Device (SaMD) design control principles.
 
@@ -11,76 +9,66 @@ This project is for demonstration only and is NOT intended for clinical use.
 
 ---
 
-## 2. Scope
+## Purpose
 
-The system:
+This project demonstrates:
 
-- Ingests gated cardiac CT DICOM studies
-- Constructs deterministic 3D volumes
-- Applies preprocessing
-- Produces coronary artery calcium (CAC) detection outputs
-- Captures traceable verification artifacts
+- deterministic DICOM ingestion
+- structured dataset construction
+- automated verification
+- requirements traceability
+- evidence artifact generation
 
----
-
-## 3. Engineering Objectives
-
-- Deterministic execution
-- Structured requirements
-- Automated verification
-- Traceability to tests
-- Evidence artifact generation
-- Reproducible runs
+The goal is **engineering rigor**, not model performance.
 
 ---
 
-## 4. Repository Structure
+## Repository Structure
 
 ```
 Coronary_prj/
 ├── docs/
-│ ├── requirements.yaml
-│ └── 02_Software_Requirements_Specification.md
+│ └── requirements.yaml
+├── src/
+│ └── Coronary_prj/
 ├── tests/
 ├── artifacts/
-├── run_tests_and_trace.py
-├── environment.yml
-└── README.md
+└── runtests.py
 ```
 
 
 ---
 
-## 5. How to Run
-
-### Create Environment
-
-```bash
-conda env create -f environment.yml
-conda activate coronary-prj-env
-```
+## How to Run
 
 ### Run Tests + Evidence Capture
 
 ```
-pytest
+python runtests.py
 ```
 
-or 
+
+This will:
+
+1. run all tests
+2. compute code coverage
+3. validate requirement traceability
+4. generate a traceability matrix
+5. record uncovered code
+
+Outputs:
 
 ```
-python run_tests_and_trace.py
+artifacts/
+docs/traceability_matrix.md
 ```
 
-## 6. Regulatory Position
 
-This repository demonstrates engineering patterns aligned with:
-* Deterministic processing
-* Structured requirement definition
-* Traceability
-* Verification documentation
+---
 
-It does NOT represent a cleared or approved medical device.
+## Dependencies
 
+- `medical_image_ai_toolkit`
+- `regulatory_tools`
 
 Requirements follow the convention defined in regulatory_tools/docs/Requirements_Convention.md
