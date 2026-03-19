@@ -2,12 +2,13 @@ from pathlib import Path
 import random
 import torch
 import torch.nn as nn
+import numpy as np
 
-from Coronary_prj.tasks.coca_classification_task import CocaClassificationTask
 from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource import MedicalImageDataSource
 from medical_image_ai_toolkit.training.training_config import TrainingConfig
 from medical_image_ai_toolkit.training.medical_image_trainer import MedicalImageTrainer
 from medical_image_ai_toolkit.results.medical_image_training_results import MedicalImageTrainingResults
+from medical_image_ai_toolkit.training.task_definition import TrainingTaskDefinition
 
 # import your existing ingestor
 from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
@@ -44,34 +45,78 @@ class DeterministicHoldoutSplitStrategy:
 
         return train_ids, val_ids, test_ids
 
-class SmallSliceCNN(nn.Module):
-    """
-    Minimal CNN for testing trainer wiring.
-    Accepts single-channel medical image slices.
-    """
+class SmallSegmentationCNN(nn.Module):
 
     def __init__(self):
-
         super().__init__()
 
         self.net = nn.Sequential(
-
-            nn.Conv2d(1, 8, kernel_size=3, padding=1),
+            nn.Conv2d(1, 8, 3, padding=1),
             nn.ReLU(),
 
-            nn.Conv2d(8, 16, kernel_size=3, padding=1),
+            nn.Conv2d(8, 16, 3, padding=1),
             nn.ReLU(),
 
-            nn.AdaptiveAvgPool2d((1, 1)),
-
-            nn.Flatten(),
-
-            nn.Linear(16, 1)
+            nn.Conv2d(16, 1, 1)  # output mask
         )
 
     def forward(self, x):
+        return self.net(x)  # (B,1,H,W)
+    
+    
+class CoronaryCalciumTask(TrainingTaskDefinition):
 
-        return self.net(x)
+    def generate_training_samples(self, patient_sample):
+
+        volume = patient_sample.image_volume
+        annotations = patient_sample.annotations
+
+        Z, H, W = volume.shape
+
+        vector_rois = None
+        if annotations is not None:
+            vector_rois = annotations.vector_rois
+
+        for slice_idx in range(Z):
+
+            img = torch.tensor(
+                volume[slice_idx],
+                dtype=torch.float32
+            ).unsqueeze(0).unsqueeze(0)   # (1,1,H,W)
+
+            mask = np.zeros((H, W), dtype=np.float32)
+
+            if vector_rois and slice_idx in vector_rois:
+
+                for roi in vector_rois[slice_idx]:
+
+                    contour = roi.contour_px
+                    if contour is None or len(contour) < 3:
+                        continue
+
+                    rr, cc = self._polygon_to_mask(contour, H, W)
+                    mask[rr, cc] = 1.0
+
+            mask_tensor = torch.tensor(mask).unsqueeze(0).unsqueeze(0)  # (1,1,H,W)
+
+            yield {
+                "input": img,
+                "target": mask_tensor
+            }
+
+    def compute_loss(self, prediction, target):
+        return torch.nn.functional.binary_cross_entropy_with_logits(
+            prediction, target
+        )
+
+    def _polygon_to_mask(self, contour, H, W):
+        from skimage.draw import polygon
+
+        x = contour[:, 0]
+        y = contour[:, 1]
+
+        rr, cc = polygon(y, x, shape=(H, W))
+        return rr, cc
 
 def main():
 
@@ -90,7 +135,7 @@ def main():
     patient_ids = datasource.patient_ids
 
     print("Generating partitions...")
-    train_ids, val_ids, test_ids = datasource.create_partitions(
+    datasource.create_partitions(
         DeterministicHoldoutSplitStrategy()
     )
     
@@ -100,7 +145,7 @@ def main():
     print("Loading first sample...")
     
     pnum = 50
-
+    train_ids = datasource.get_train_ids()
     sample = datasource.get_patient(train_ids[pnum])
 
     print("Loaded sample type:", type(sample))
@@ -120,19 +165,23 @@ def main():
     
     config = TrainingConfig(
         epochs=5,
-        batch_size=2
+        batch_size=2,
+        task=CoronaryCalciumTask()
     )
 
-    model = SmallSliceCNN()
+    model = SmallSegmentationCNN()
     
     trainer = MedicalImageTrainer(
         datasource,
         model,
-        task=CocaClassificationTask(),
         training_config = config
     )
     
     trainer.sanity_check()
+    
+    img = torch.randn(1, 1, 512, 512)
+    out = model(img)
+    print("Output shape:", out.shape)
     
     results = trainer.train()
 

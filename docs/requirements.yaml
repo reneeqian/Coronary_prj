@@ -148,6 +148,33 @@ requirements:
       produce training targets.
 
   # ==============================
+  # Task Requirements
+  # ==============================
+
+  - id: TSK-001
+    title: Task Definition Interface
+    description: >
+      The system shall define a task interface that converts ingested patient samples
+      into training inputs and targets and defines loss and evaluation metrics.
+
+  - id: TSK-002
+    title: Coronary Calcium Detection Task
+    description: >
+      The system shall implement a task for coronary calcium detection that produces
+      binary targets aligned with CT image volumes.
+
+  - id: TSK-003
+    title: Task Determinism
+    description: >
+      Task preprocessing and target generation shall be deterministic given identical inputs.
+  
+  - id: TSK-004
+    title: Calcium Thresholding Support
+    description: >
+      The system shall support applying intensity-based thresholds to identify candidate
+      coronary calcium regions.
+
+  # ==============================
   # Training Requirements
   # ==============================
 
@@ -204,6 +231,33 @@ requirements:
     description: >
       The system shall support evaluation of the trained coronary
       model using a held-out dataset partition.
+
+  # ==============================
+  # Inference Requirements
+  # ==============================
+  - id: INF-001
+    title: Inference Capability
+    description: >
+      The system shall support running inference on new unseen data using a trained model.
+
+  - id: INF-002
+    title: Inference Determinism
+    description: >
+      Model inference shall produce identical outputs given identical inputs and model state.
+
+  # ==============================
+  # Reporting Requirements
+  # ==============================
+  - id: REP-001
+    title: Training Report Generation
+    description: >
+      The system shall generate a structured report summarizing training configuration,
+      dataset partitions, and model performance metrics.
+
+  - id: REP-002
+    title: Visualization Support
+    description: >
+      The system shall support visualization of training curves and sample predictions.
 
   # ==============================
   # Verification Requirements
