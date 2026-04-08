@@ -243,7 +243,8 @@ class COCAGatedIngestor:
                 if image_index is None:
                     continue
 
-                slice_idx = int(image_index)-1 # COCA uses 1-based indexing for slices
+                # COCA uses 1-based ImageIndex; convert to 0-based slice index
+                slice_idx = int(image_index) - 1
 
                 if slice_idx < 0 or slice_idx >= num_slices:
                     if self.report:
@@ -252,7 +253,7 @@ class COCAGatedIngestor:
                             requirement_tag="annotation_validation",
                             context=f"file={xml_file} | raw_index={image_index} | computed_index={slice_idx} | num_slices={num_slices}"
                         )
-                    print(f"Warning: annotation slice index {slice_idx} out of bounds for {xml_file}")
+                    #print(f"Warning: annotation slice index {slice_idx} out of bounds for {xml_file}")
                     continue
 
                 for roi in rois:
@@ -316,6 +317,8 @@ class COCAGatedIngestor:
             )
 
         z_positions = []
+        valid_dicom_files = []
+        skipped = []
         for f in dicom_files:
             try:
                 ds = pydicom.dcmread(f, stop_before_pixels=True)
@@ -325,11 +328,29 @@ class COCAGatedIngestor:
                 ) from e
 
             if not hasattr(ds, "ImagePositionPatient"):
-                raise DatasetStructureError(
-                    f"Missing ImagePositionPatient in {f}"
-                )
+                skipped.append(f.name)
+                continue
 
             z_positions.append(float(ds.ImagePositionPatient[2]))
+            valid_dicom_files.append(f)
+
+        if skipped:
+            print(
+                f"Warning: skipped {len(skipped)} DICOM file(s) missing "
+                f"ImagePositionPatient in {series_dir.name}: {skipped}"
+            )
+            if self.report:
+                self.report.warn(
+                    message=f"Skipped {len(skipped)} DICOM file(s) missing ImagePositionPatient",
+                    requirement_tag="dataset_validation",
+                    context=f"series={series_dir} | skipped={skipped}",
+                )
+
+        dicom_files = valid_dicom_files
+        if not dicom_files:
+            raise DatasetStructureError(
+                f"No DICOM files with valid ImagePositionPatient found in {series_dir}"
+            )
 
         sorted_indices = np.argsort(z_positions)
         return [dicom_files[i] for i in sorted_indices]
