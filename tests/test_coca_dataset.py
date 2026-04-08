@@ -41,19 +41,19 @@ def test_required_subdirectories_present(coca_dataset_root,
     images_dir = coca_dataset_root / "patient"
     report.info(
         message="Checking image directory existence",
-        requirement_id="DAT-001",
+        requirement_tag="DAT-001",
         context=str(images_dir),
     )
 
     if not images_dir.exists():
         report.error(
             message="Patient directory missing",
-            requirement_id="DAT-001",
+            requirement_tag="DAT-001",
         )
     elif not any(images_dir.iterdir()):
         report.error(
             message="Patient directory exists but is empty",
-            requirement_id="DAT-001",
+            requirement_tag="DAT-001",
         )
         
     report.auto_save("coca_dataset_structure", evidence_output_dir)
@@ -81,7 +81,7 @@ def test_deterministic_dataset_ordering(coca_dataset_root,
     if not dataset_root.exists():
         report.warn(
             message="Dataset not found; determinism check skipped",
-            requirement_id="DAT-002",
+            requirement_tag="DAT-002",
         )
     else:
         ingestor = COCAGatedIngestor(dataset_root=dataset_root)
@@ -102,7 +102,7 @@ def test_deterministic_dataset_ordering(coca_dataset_root,
 
         report.info(
             message="Repeated ingestion of same patient ID is deterministic",
-            requirement_id="DAT-002",
+            requirement_tag="DAT-002",
         )
 
     report.auto_save("coca_ingestor_determinism", evidence_output_dir)
@@ -153,7 +153,7 @@ def test_get_sample_on_real_dataset(
 
     report.info(
         message=f"Generated {X.shape[0]} training slices",
-        requirement_id="DAT-006",
+        requirement_tag="DAT-006",
     )
 
     assert X.ndim == 3

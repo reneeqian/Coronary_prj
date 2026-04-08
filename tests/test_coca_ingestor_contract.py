@@ -29,7 +29,7 @@ def test_ingest_ct_volumes_from_root(coca_dataset_root,
     if dataset_root.exists():
         report.info(
             message="Using real COCA dataset", 
-            requirement_id="DAT-004",
+            requirement_tag="DAT-004",
             context=str(dataset_root))
         ingestor = COCAGatedIngestor(dataset_root=dataset_root)
         sample = ingestor.load_patient_sample("0")
@@ -60,7 +60,7 @@ def test_graceful_failure_on_missing_data(tmp_path, request, evidence_output_dir
 
     report.info(
         message="Ingestor failed as expected",
-        requirement_id="DAT-005",
+        requirement_tag="DAT-005",
         context=str(exc.value),
     )
 

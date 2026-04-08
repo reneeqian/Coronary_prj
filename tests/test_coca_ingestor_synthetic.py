@@ -92,7 +92,7 @@ def test_slices_sorted_by_z(tmp_path, request, evidence_output_dir):
     
     report.info(
         "Slices correctly sorted by z-position",
-        requirement_id="DAT-004"
+        requirement_tag="DAT-004"
     )
 
     report.auto_save(request.node.nodeid, evidence_output_dir)
@@ -132,7 +132,7 @@ def test_hounsfield_rescale_applied(tmp_path, request, evidence_output_dir):
     
     report.info(
         "Hounsfield rescale applied correctly",
-        requirement_id="DAT-004"
+        requirement_tag="DAT-004"
     )
 
     report.auto_save(request.node.nodeid, evidence_output_dir)
@@ -183,7 +183,7 @@ def test_annotation_out_of_bounds_raises(tmp_path, request, evidence_output_dir)
     
     report.info(
         "Out-of-bounds annotation correctly rejected",
-        requirement_id="DAT-004"
+        requirement_tag="DAT-004"
     )
 
     report.auto_save(request.node.nodeid, evidence_output_dir)
