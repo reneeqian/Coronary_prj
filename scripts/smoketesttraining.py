@@ -1,20 +1,21 @@
 from pathlib import Path
 import random
+from xml.parsers.expat import model
 import torch
 import torch.nn as nn
 import numpy as np
 
 from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource import MedicalImageDataSource
 from medical_image_ai_toolkit.training.training_config import TrainingConfig
-from medical_image_ai_toolkit.training.medical_image_trainer import MedicalImageTrainer
-from medical_image_ai_toolkit.results.medical_image_training_results import MedicalImageTrainingResults
 from medical_image_ai_toolkit.training.task_definition import TrainingTaskDefinition
+from medical_image_ai_toolkit.pipeline.training_pipeline import TrainingPipeline
+from regulatory_tools.requirements.yaml_requirement_provider import YamlRequirementProvider
 
-# import your existing ingestor
 from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
 
-
-DATASET_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "coca" / "cocacoronarycalciumandchestcts-2" / "Gated_release_final"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "coca" / "cocacoronarycalciumandchestcts-2" / "Gated_release_final"
+REQUIREMENT_PATH = PROJECT_ROOT / "docs" / "requirements.yaml"
 
 
 class DeterministicHoldoutSplitStrategy:
@@ -128,62 +129,20 @@ def main():
         dataset_root=DATASET_PATH,
         ingestor=ingestor,
     )
-
-    n_patients = datasource.get_num_patients()
-    print(f"Patients discovered: {n_patients}")
-
-    patient_ids = datasource.patient_ids
-
-    print("Generating partitions...")
-    datasource.create_partitions(
-        DeterministicHoldoutSplitStrategy()
-    )
     
-    datasource.partition_summary()
+    provider = YamlRequirementProvider(REQUIREMENT_PATH)
 
-    # Test loading a sample
-    print("Loading first sample...")
-    
-    pnum = 50
-    train_ids = datasource.get_train_ids()
-    sample = datasource.get_patient(train_ids[pnum])
-
-    print("Loaded sample type:", type(sample))
-    print("Patient ID:", sample.patient_id)
-    print("Image shape:", sample.image_volume.shape)
-    print("Spacing:", sample.spacing)
-    print("Has annotations:", sample.annotations is not None)
-
-    if sample.annotations:
-        print("Annotation slices:", len(sample.annotations.vector_rois or {}))
-        
-    print("Loading slice...")
-
-    slice_img = datasource.load_slice(train_ids[pnum], 10)
-
-    print("Slice shape:", slice_img.shape)
-    
     config = TrainingConfig(
         epochs=5,
         batch_size=2,
-        task=CoronaryCalciumTask()
+        task=CoronaryCalciumTask(),
+        split_strategy=DeterministicHoldoutSplitStrategy(train=0.7, val=0.15, seed=42)
     )
 
     model = SmallSegmentationCNN()
     
-    trainer = MedicalImageTrainer(
-        datasource,
-        model,
-        training_config = config
-    )
-    
-    trainer.sanity_check()
-    
-    img = torch.randn(1, 1, 512, 512)
-    out = model(img)
-    print("Output shape:", out.shape)
-    
-    results = trainer.train()
+    pipeline = TrainingPipeline(datasource, model, config, req_provider=provider)
+    outputs = pipeline.run()
 
     
 if __name__ == "__main__":

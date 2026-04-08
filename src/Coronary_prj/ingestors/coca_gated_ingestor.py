@@ -27,8 +27,9 @@ class COCAGatedIngestor:
         - No raw FileNotFoundError or RuntimeError escapes the boundary.
     """
 
-    def __init__(self, dataset_root: Path):
+    def __init__(self, dataset_root: Path, report=None):
         self.dataset_root = Path(dataset_root)
+        self.report = report
 
     # ------------------------------------------------------------------
     # PUBLIC API
@@ -242,13 +243,16 @@ class COCAGatedIngestor:
                 if image_index is None:
                     continue
 
-                slice_idx = int(image_index) - 1
+                slice_idx = int(image_index)
 
                 if slice_idx < 0 or slice_idx >= num_slices:
-                    print(
-                        f"Warning: invalid slice index {slice_idx} "
-                        f"in {xml_file}, skipping annotation"
-                    )
+                    if self.report:
+                        self.report.warn(
+                            message="Invalid slice index in annotation",
+                            requirement_tag="annotation_validation",
+                            context=f"file={xml_file} | raw_index={image_index} | computed_index={slice_idx} | num_slices={num_slices}"
+                        )
+                    print(f"Warning: annotation slice index {slice_idx} out of bounds for {xml_file}")
                     continue
 
                 for roi in rois:

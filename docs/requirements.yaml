@@ -18,6 +18,8 @@ requirements:
       dataset splits, and recorded metrics when executed with 
       identical input data, configuration parameters, and 
       random seeds.
+    tags: [determinism, reproducibility, system_determinism]
+
 
   - id: SYS-002
     title: Controlled Data Splitting
@@ -25,6 +27,8 @@ requirements:
       The system shall generate train, validation, and test 
       splits deterministically according to a specified split 
       strategy and random seed.
+    tags: [data_split, determinism, partitioning]
+
 
   - id: SYS-003
     title: Traceable Verification
@@ -32,18 +36,24 @@ requirements:
       The system shall provide automated generation of a 
       requirement-to-test traceability matrix derived from machine-
       readable requirement definitions and test annotations.
+    tags: [traceability, verification, reporting]
+
   
   - id: SYS-004
     title: Coronary Model Development
     description: >
       The system shall support development of a machine learning
       model using the coronary imaging dataset.
+    tags: [training, coronary_model]
+
 
   - id: SYS-005
     title: Model Improvement Capability
     description: >
       The system shall support improvement of the coronary model
       through retraining using updated or expanded datasets.
+    tags: [retraining, lifecycle]
+
   
   - id: SYS-006
     title: Dataset Task Encapsulation
@@ -52,6 +62,7 @@ requirements:
       specific interpretation logic including extraction of training
       inputs and targets, preventing dataset-specific logic from
       appearing in the generic training pipeline.
+    tags: [architecture, separation_of_concerns, ingestion_design]
 
   # ==============================
   # Data Ingestion Requirements
@@ -63,6 +74,8 @@ requirements:
       Prior to training execution, the system shall verify that the
        dataset root directory contains all required subdirectories 
        and files defined by the dataset specification.
+    tags: [dataset_validation, dataset_structure]
+
 
   - id: DAT-002
     title: Deterministic Data Access
@@ -71,12 +84,16 @@ requirements:
       retrieval of a patient sample using the ingestion interface
       shall return identical imaging data, metadata, and annotations
       given unchanged dataset state.
+    tags: [determinism, data_access]
+
 
   - id: DAT-003
     title: Patient Index Boundary Handling
     description: >
       The system shall raise DatasetStructureError when a requested
       patient identifier does not exist in the dataset.
+    tags: [boundary_check, patient_index]
+
 
   - id: DAT-004
     title: Successful Patient Ingestion
@@ -86,12 +103,16 @@ requirements:
       The resulting volume shall have consistent dimensional ordering,
       correct voxel spacing metadata, and shall preserve the physical
       slice ordering defined by the dataset.
+    tags: [patient_loading, ingestion_success]
+
 
   - id: DAT-005
     title: Data Ingestion Failure Modes
     description: >
       The system shall raise a defined exception with a descriptive error 
       message when required dataset files or directories are missing.
+    tags: [patient_load_failure, ingestion_error]
+
   
   - id: DAT-006
     title: Lazy Patient Access
@@ -99,6 +120,8 @@ requirements:
       The system shall support retrieval of an individual patient
       sample through the ingestion interface without requiring
       ingestion of the entire dataset into memory.
+    tags: [lazy_loading, performance]
+
 
   - id: DAT-007
     title: Dataset Element Boundary Handling
@@ -107,6 +130,8 @@ requirements:
       dataset elements such as patient identifiers or referenced
       annotation indices are outside the valid bounds of the
       available dataset structure.
+    tags: [boundary_check, annotation_bounds]
+
 
   - id: DAT-008
     title: Deterministic Patient Sample Retrieval
@@ -114,12 +139,16 @@ requirements:
       Repeated retrieval of the same patient sample shall return
       identical numerical imaging data and associated metadata
       given unchanged dataset state.
+    tags: [determinism, patient_retrieval]
+
 
   - id: DAT-009
     title: Annotation Geometry Integrity
     description: >
       Parsed annotation regions shall contain valid polygon geometry
       consisting of at least three coordinate points.
+    tags: [annotation_validation, geometry]
+
 
   - id: DAT-010
     title: Optional Annotation Handling
@@ -127,6 +156,8 @@ requirements:
       The system shall allow datasets that contain no annotation files
       and shall return an empty annotation container without raising
       an exception.
+    tags: [annotation_optional]
+
 
   - id: DAT-011
     title: Dataset Partition Generation
@@ -134,11 +165,15 @@ requirements:
       The system shall generate training, validation, and test
       partitions from the coronary dataset according to a
       specified split strategy.
+    tags: [partitioning, dataset_split]
+
 
   - id: DAT-012
     title: CT slices must be sorted by ImagePositionPatient[2] before volume construction
     description: >
       CT slices must be sorted by ImagePositionPatient[2] before volume construction
+    tags: [slice_sorting, dicom_integrity]
+
   
   - id: DAT-013
     title: Annotation Rasterization
@@ -146,6 +181,7 @@ requirements:
       Vector annotation contours shall be converted into rasterized
       binary masks aligned with the corresponding image slices to
       produce training targets.
+    tags: [annotation_processing, mask_generation]
 
   # ==============================
   # Task Requirements
@@ -156,23 +192,30 @@ requirements:
     description: >
       The system shall define a task interface that converts ingested patient samples
       into training inputs and targets and defines loss and evaluation metrics.
+    tags: [task_interface]
+
 
   - id: TSK-002
     title: Coronary Calcium Detection Task
     description: >
       The system shall implement a task for coronary calcium detection that produces
       binary targets aligned with CT image volumes.
+    tags: [coronary_task, calcium_detection]
+
 
   - id: TSK-003
     title: Task Determinism
     description: >
       Task preprocessing and target generation shall be deterministic given identical inputs.
+    tags: [determinism, task_processing]
+
   
   - id: TSK-004
     title: Calcium Thresholding Support
     description: >
       The system shall support applying intensity-based thresholds to identify candidate
       coronary calcium regions.
+    tags: [thresholding, preprocessing]
 
   # ==============================
   # Training Requirements
@@ -183,6 +226,8 @@ requirements:
     description: >
       Model parameter initialization shall be deterministic given a fixed 
       random seed and identical model configuration.
+    tags: [determinism, model_init]
+
 
   - id: TRN-002
     title: Training Artifact Generation
@@ -190,18 +235,24 @@ requirements:
       Each training run shall produce structured artifacts that record 
       configuration parameters, random seeds, dataset split identifiers, 
       and final performance metrics.
+    tags: [artifact_generation, training_report]
+
 
   - id: TRN-003
     title: Coronary Model Training
     description: >
       The system shall support training of a machine learning
       model using the coronary dataset.
+    tags: [training]
+
 
   - id: TRN-004
     title: Coronary Model Retraining
     description: >
       The system shall support retraining the coronary model
       when additional labeled data becomes available.
+    tags: [retraining]
+
 
   - id: TRN-005
     title: Coronary Dataset Training Interface
@@ -209,6 +260,7 @@ requirements:
       The coronary dataset ingestion interface shall expose aligned
       training input and target tensors derived from annotated CT
       slices suitable for model training.
+    tags: [training_interface]
 
   # ==============================
   # Model Requirements
@@ -219,18 +271,23 @@ requirements:
     description: >
       The training process shall produce a model artifact
       representing the trained coronary model.
+    tags: [model_artifact]
+
 
   - id: MOD-002
     title: Model Artifact Persistence
     description: >
       The trained coronary model artifact shall be stored in a
       persistent format suitable for later loading and evaluation.
+    tags: [model_persistence]
+
 
   - id: MOD-003
     title: Model Evaluation Capability
     description: >
       The system shall support evaluation of the trained coronary
       model using a held-out dataset partition.
+    tags: [model_evaluation]
 
   # ==============================
   # Inference Requirements
@@ -239,11 +296,14 @@ requirements:
     title: Inference Capability
     description: >
       The system shall support running inference on new unseen data using a trained model.
+    tags: [inference]
+
 
   - id: INF-002
     title: Inference Determinism
     description: >
       Model inference shall produce identical outputs given identical inputs and model state.
+    tags: [determinism, inference]
 
   # ==============================
   # Reporting Requirements
@@ -253,11 +313,14 @@ requirements:
     description: >
       The system shall generate a structured report summarizing training configuration,
       dataset partitions, and model performance metrics.
+    tags: [training_report]
+
 
   - id: REP-002
     title: Visualization Support
     description: >
       The system shall support visualization of training curves and sample predictions.
+    tags: [visualization, training_report]
 
   # ==============================
   # Verification Requirements
@@ -269,18 +332,23 @@ requirements:
       The project shall include automated tests verifying dataset
       integrity, deterministic behavior, boundary condition
       enforcement, and annotation validity.
+    tags: [verification, automated_tests]
+
 
   - id: VER-002
     title: Evidence Capture
     description: >
       The system shall generate machine-readable verification artifacts 
       suitable for automated traceability reporting.
+    tags: [evidence_generation]
+
 
   - id: VER-003
     title: Model Performance Verification
     description: >
       Verification activities shall evaluate the performance
       of the trained coronary model on held-out data.
+    tags: [performance_validation]
 
 # ==============================
 # Documentation Requirements
@@ -291,12 +359,16 @@ requirements:
     description: >
       The project shall include a machine-readable
       requirements.yaml file defining system requirements.
+    tags: [requirements_definition]
+
 
   - id: DOC-002
     title: Basic Project Documentation
     description: >
       The project shall include a README file describing
       system purpose, configuration, and execution steps.
+    tags: [documentation]
+
 
   - id: DOC-003
     title: Traceability Documentation
@@ -304,3 +376,4 @@ requirements:
       The project shall generate documentation describing
       traceability relationships between requirements
       and verification artifacts.
+    tags: [traceability]
