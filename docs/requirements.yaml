@@ -359,7 +359,7 @@ requirements:
     description: >
       The project shall include a machine-readable
       requirements.yaml file defining system requirements.
-    tags: [requirements_definition]
+    tags: [documentation]
 
 
   - id: DOC-002
