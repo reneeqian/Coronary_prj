@@ -243,7 +243,7 @@ class COCAGatedIngestor:
                 if image_index is None:
                     continue
 
-                slice_idx = int(image_index)
+                slice_idx = int(image_index)-1 # COCA uses 1-based indexing for slices
 
                 if slice_idx < 0 or slice_idx >= num_slices:
                     if self.report:
