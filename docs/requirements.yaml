@@ -166,6 +166,13 @@ requirements:
       aligned with the source image slices.
     tags: [annotation_processing, mask_generation]
 
+  - id: DAT-014
+    title: Domain-Safe Ingestion Errors
+    description: >
+      Public ingestion APIs shall normalize dataset structure and
+      integrity failures into a defined project-level exception type.
+    tags: [ingestion_error, api_boundary]
+
   # ==============================
   # Task Requirements
   # ==============================
