@@ -92,7 +92,7 @@ def main():
         task=CoronaryCalciumTask(),
         split_strategy = DeterministicHoldoutSplitStrategy(
             train=0.7, val=0.15, seed=42,
-            #max_train=100, max_val=100, max_test=100
+            max_train=100, max_val=100, max_test=100
         )
     )
 
