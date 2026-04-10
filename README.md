@@ -1,74 +1,54 @@
 # Coronary Artery Calcium (CAC) Detection – Engineering Demonstration Project
 
-This repository demonstrates structured development of a medical imaging AI
-pipeline under Software as a Medical Device (SaMD) design control principles.
+Application example built on top of `medical_image_ai_toolkit` for coronary
+calcium detection from gated CT data.
 
-The goal is **engineering rigor**, not model performance.
+This project is an engineering demonstration. It is not a clinical product,
+and the goal is disciplined structure rather than model performance.
 
-This project is for demonstration only and is NOT intended for clinical use.
+## Mission
 
----
+This repository exists to show how a concrete medical imaging project can keep:
 
-## Purpose
+- dataset-specific ingestion logic in project code
+- reusable training and validation logic in the toolkit
+- machine-readable requirements and executable tests close together
+- documentation lightweight and stable
 
-This project demonstrates:
+## Scope
 
-- deterministic DICOM ingestion
-- structured dataset construction
-- automated verification
-- requirements traceability
-- evidence artifact generation
+The project focuses on:
 
-The goal is **engineering rigor**, not model performance.
+- deterministic ingestion of the coronary dataset
+- generation of training targets for the coronary calcium task
+- verification evidence and traceability around that project-specific code
 
----
+It does not aim to document a full clinical workflow or deployment system.
 
-## Repository Structure
+## Repository Layout
 
-```
-Coronary_prj/
-├── docs/
-│ └── requirements.yaml
-├── src/
-│ └── Coronary_prj/
-├── tests/
-├── artifacts/
-└── runtests.py
-```
+- `src/Coronary_prj/`: coronary-specific ingestors and task definitions
+- `docs/requirements.yaml`: stable project requirements
+- `tests/`: executable verification and evidence capture
+- `runtests.py`: project verification entry point
 
+## Verification
 
----
+Run:
 
-## How to Run
-
-### Run Tests + Evidence Capture
-
-```
+```bash
 python runtests.py
 ```
 
+This runs the project test suite, coverage, and traceability generation.
 
-This will:
+## Documentation Approach
 
-1. run all tests
-2. compute code coverage
-3. validate requirement traceability
-4. generate a traceability matrix
-5. record uncovered code
+The primary documentation for this project is:
 
-Outputs:
+- this README for mission and boundaries
+- `docs/requirements.yaml` for behavioral expectations
+- tests for executable examples of project behavior
 
-```
-artifacts/
-docs/traceability_matrix.md
-```
-
-
----
-
-## Dependencies
-
-- `medical_image_ai_toolkit`
-- `regulatory_tools`
-
-Requirements follow the convention defined in regulatory_tools/docs/Requirements_Convention.md
+Requirements follow the convention defined in
+`regulatory_tools/docs/Requirements_Convention.md`.
