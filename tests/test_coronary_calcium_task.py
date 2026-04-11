@@ -66,7 +66,7 @@ def test_coca_gated_ingestor_skips_dicom_without_image_positionpatient(tmp_path)
     assert "Skipped" in report.warnings[0][0]
 
 
-@pytest.mark.requirement("TRN001")
+@pytest.mark.requirement("TSK-002")
 def test_coronary_calcium_task_yields_masks_for_annotated_slices():
     task = CoronaryCalciumTask()
     volume = np.zeros((2, 4, 4), dtype=np.float32)
@@ -104,7 +104,7 @@ def test_coronary_calcium_task_yields_masks_for_annotated_slices():
     assert outputs[0]["target"].sum().item() > 0.0
 
 
-@pytest.mark.requirement("TRN002")
+@pytest.mark.requirement("TSK-002")
 def test_coronary_calcium_task_ignores_short_contours():
     task = CoronaryCalciumTask()
     volume = np.ones((1, 3, 3), dtype=np.float32)
@@ -134,7 +134,7 @@ def test_coronary_calcium_task_ignores_short_contours():
     assert outputs[0]["target"].sum().item() == 0.0
 
 
-@pytest.mark.requirement("TRN003")
+@pytest.mark.requirement("TRN-003")
 def test_coronary_calcium_task_compute_loss_returns_finite_scalar():
     task = CoronaryCalciumTask()
     prediction = torch.zeros((1, 1, 2, 2), dtype=torch.float32)
