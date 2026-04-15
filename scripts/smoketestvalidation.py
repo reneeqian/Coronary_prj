@@ -1,8 +1,7 @@
+import sys
 from pathlib import Path
-import random
 import torch
 import torch.nn as nn
-import numpy as np
 
 from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource import MedicalImageDataSource
 from medical_image_ai_toolkit.training.training_config import TrainingConfig
@@ -11,66 +10,42 @@ from medical_image_ai_toolkit.pipeline.validation_pipeline import ValidationPipe
 from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
 from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "coca" / "cocacoronarycalciumandchestcts-2" / "Gated_release_final"
-REQUIREMENT_PATH = PROJECT_ROOT / "docs" / "requirements.yaml"
-MODEL_PATH = PROJECT_ROOT / "artifacts" / "training_runs"   # adjust to point at a specific run if needed
-
-
-class DeterministicHoldoutSplitStrategy:
-
-    def __init__(self, train=0.7, val=0.15, seed=42):
-
-        self.train = train
-        self.val = val
-        self.seed = seed
-
-    def split(self, patient_ids):
-
-        rng = random.Random(self.seed)
-
-        ids = list(patient_ids)
-
-        rng.shuffle(ids)
-
-        n = len(ids)
-
-        train_end = int(self.train * n)
-        val_end = train_end + int(self.val * n)
-
-        train_ids = ids[:train_end]
-        val_ids = ids[train_end:val_end]
-        test_ids = ids[val_end:]
-
-        return train_ids, val_ids, test_ids
+PROJECT_ROOT  = Path(__file__).resolve().parents[1]
+DATASET_PATH  = PROJECT_ROOT / "data" / "raw" / "coca" / "cocacoronarycalciumandchestcts-2" / "Gated_release_final"
+TRAINING_RUNS = PROJECT_ROOT / "artifacts" / "training_runs"
 
 
 class SmallSegmentationCNN(nn.Module):
 
     def __init__(self):
         super().__init__()
-
         self.net = nn.Sequential(
             nn.Conv2d(1, 8, 3, padding=1),
             nn.ReLU(),
-
             nn.Conv2d(8, 16, 3, padding=1),
             nn.ReLU(),
-
-            nn.Conv2d(16, 1, 1)  # output mask
+            nn.Conv2d(16, 1, 1),
         )
 
     def forward(self, x):
-        return self.net(x)  # (B,1,H,W)
+        return self.net(x)  # (B, 1, H, W)
 
 
-def _find_latest_model(training_runs_root: Path) -> Path | None:
+def _find_latest_run(training_runs_root: Path) -> tuple[Path | None, Path | None]:
     """
-    Scans training_runs_root for the most recently created model.pt
-    and returns its path, or None if none exist.
+    Scan training_runs_root for the most recently created run directory
+    that contains both model.pt and partitions.json.  Returns
+    (model_path, partitions_path) or (None, None) if none exist.
     """
     candidates = sorted(training_runs_root.glob("*/model.pt"))
-    return candidates[-1] if candidates else None
+    for model_pt in reversed(candidates):
+        partitions = model_pt.parent / "partitions.json"
+        if partitions.exists():
+            return model_pt, partitions
+    # Fall back to most recent model even without partitions
+    if candidates:
+        return candidates[-1], None
+    return None, None
 
 
 def main():
@@ -84,22 +59,13 @@ def main():
         ingestor=ingestor,
     )
 
-    print("Partitioning datasource...")
-    split_strategy = DeterministicHoldoutSplitStrategy(train=0.7, val=0.15, seed=42)
-    datasource.create_partitions(split_strategy)
-    datasource.partition_summary()
-
     print("Building model...")
     model = SmallSegmentationCNN()
 
-    # Attempt to load weights from the most recent training run so that
-    # the smoke test exercises a real trained model.  If no saved model
-    # is found, the test proceeds with randomly initialised weights and
-    # prints a clear warning — this is intentional; it lets the pipeline
-    # plumbing be exercised even before a full training run exists.
-    model_pt = _find_latest_model(MODEL_PATH)
+    model_pt, partitions_path = _find_latest_run(TRAINING_RUNS)
+
     if model_pt is not None:
-        print(f"Loading model weights from: {model_pt}")
+        print(f"Loading model weights from:  {model_pt}")
         model.load_state_dict(torch.load(model_pt, map_location="cpu"))
     else:
         print(
@@ -107,14 +73,29 @@ def main():
             "Proceeding with randomly initialised weights."
         )
 
+    if partitions_path is None:
+        print(
+            "ERROR: No partitions.json found in artifacts/training_runs. "
+            "Run smoketesttraining.py first to produce a trained model and "
+            "partition file before running validation."
+        )
+        sys.exit(1)
+
+    # TrainingConfig is required by ValidationPipeline for device and task;
+    # the split_strategy field is unused here because partitions are loaded
+    # from file rather than re-computed.
     config = TrainingConfig(
-        epochs=5,
+        epochs=2,
         batch_size=2,
         task=CoronaryCalciumTask(),
-        split_strategy=split_strategy,
     )
 
-    pipeline = ValidationPipeline(datasource, model, config)
+    pipeline = ValidationPipeline(
+        datasource=datasource,
+        model=model,
+        config=config,
+        partitions_path=partitions_path,
+    )
     results = pipeline.run()
 
 
