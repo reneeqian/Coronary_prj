@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 import torch
-import torch.nn as nn
 
 from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource import MedicalImageDataSource
 from medical_image_ai_toolkit.training.training_config import TrainingConfig
@@ -9,26 +8,13 @@ from medical_image_ai_toolkit.pipeline.validation_pipeline import ValidationPipe
 
 from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
 from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
+from Coronary_prj.models.small_segmentation_cnn import SmallSegmentationCNN
+from Coronary_prj.models.unet2d import UNet2D
+
 
 PROJECT_ROOT  = Path(__file__).resolve().parents[1]
 DATASET_PATH  = PROJECT_ROOT / "data" / "raw" / "coca" / "cocacoronarycalciumandchestcts-2" / "Gated_release_final"
 TRAINING_RUNS = PROJECT_ROOT / "artifacts" / "training_runs"
-
-
-class SmallSegmentationCNN(nn.Module):
-
-    def __init__(self):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Conv2d(1, 8, 3, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(8, 16, 3, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(16, 1, 1),
-        )
-
-    def forward(self, x):
-        return self.net(x)  # (B, 1, H, W)
 
 
 def _find_latest_run(training_runs_root: Path) -> tuple[Path | None, Path | None]:
@@ -60,7 +46,7 @@ def main():
     )
 
     print("Building model...")
-    model = SmallSegmentationCNN()
+    model = UNet2D()
 
     model_pt, partitions_path = _find_latest_run(TRAINING_RUNS)
 

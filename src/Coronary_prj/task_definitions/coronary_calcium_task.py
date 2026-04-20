@@ -19,10 +19,10 @@ class CoronaryCalciumTask(TrainingTaskDefinition):
 
         for slice_idx in range(Z):
 
-            img = torch.tensor(
-                volume[slice_idx],
-                dtype=torch.float32
-            ).unsqueeze(0).unsqueeze(0)   # (1,1,H,W)
+            hu = volume[slice_idx].astype(np.float32)
+            hu = np.clip(hu, -160.0, 240.0)   # cardiac soft-tissue window (WL=40, WW=400)
+            hu = (hu - 40.0) / 200.0          # centre on WL, scale to roughly [-1, 1]
+            img = torch.tensor(hu).unsqueeze(0).unsqueeze(0)   # (1,1,H,W)
 
             mask = np.zeros((H, W), dtype=np.float32)
 
@@ -45,9 +45,13 @@ class CoronaryCalciumTask(TrainingTaskDefinition):
             }
 
     def compute_loss(self, prediction, target):
-        return torch.nn.functional.binary_cross_entropy_with_logits(
+        bce = torch.nn.functional.binary_cross_entropy_with_logits(
             prediction, target
         )
+        prob = torch.sigmoid(prediction)
+        intersection = (prob * target).sum()
+        dice = 1.0 - (2.0 * intersection + 1.0) / (prob.sum() + target.sum() + 1.0)
+        return 0.5 * bce + 0.5 * dice
 
     def _polygon_to_mask(self, contour, H, W):
         from skimage.draw import polygon

@@ -9,6 +9,7 @@ from Coronary_prj.ingestors.coca_gated_ingestor import DatasetStructureError
 from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
 from medical_image_ai_toolkit.dataobjects.annotation_bundle import AnnotationBundle, VectorROI
 from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
+from regulatory_tools.evidence.evidence_report import EvidenceReport
 
 
 class FakeReport:
@@ -145,3 +146,85 @@ def test_coronary_calcium_task_compute_loss_returns_finite_scalar():
     assert torch.isfinite(loss)
     assert loss.dim() == 0
     assert loss.item() > 0.0
+
+
+@pytest.mark.requirement("TSK-002")
+def test_coronary_calcium_task_input_is_hu_normalised(evidence_output_dir):
+    report = EvidenceReport(subject="CoronaryCalciumTask HU window normalisation")
+
+    task = CoronaryCalciumTask()
+    volume = np.array(
+        [
+            np.full((4, 4), -2000.0, dtype=np.float32),
+            np.full((4, 4), 3000.0, dtype=np.float32),
+        ]
+    )
+    sample = PatientSample(
+        patient_id="0",
+        image_volume=volume,
+        spacing=(1.0, 1.0, 1.0),
+        annotations=None,
+        metadata={},
+    )
+
+    outputs = list(task.generate_training_samples(sample))
+    low_slice  = outputs[0]["input"]   # -2000 HU → clipped to -160 → normalised to -1.0
+    high_slice = outputs[1]["input"]   # +3000 HU → clipped to +240 → normalised to +1.0
+
+    if abs(low_slice.min().item() - (-1.0)) > 1e-4:
+        report.error(
+            f"Below-window HU not clamped correctly: got {low_slice.min().item():.4f}, expected -1.0",
+            "TSK-002",
+        )
+    if abs(high_slice.max().item() - 1.0) > 1e-4:
+        report.error(
+            f"Above-window HU not clamped correctly: got {high_slice.max().item():.4f}, expected +1.0",
+            "TSK-002",
+        )
+
+    report.auto_save("TSK002_hu_normalisation", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("TRN-003")
+def test_coronary_calcium_task_loss_near_zero_on_perfect_prediction(evidence_output_dir):
+    report = EvidenceReport(subject="CoronaryCalciumTask combined loss near zero on perfect prediction")
+
+    task = CoronaryCalciumTask()
+    prediction = torch.full((1, 1, 4, 4), 10.0)   # sigmoid ≈ 1 — matches foreground
+    target = torch.ones((1, 1, 4, 4))
+
+    loss = task.compute_loss(prediction, target)
+
+    if not torch.isfinite(loss):
+        report.error("Combined loss is not finite on perfect prediction", "TRN-003")
+    if loss.item() >= 0.1:
+        report.error(
+            f"Combined loss unexpectedly high on perfect prediction: {loss.item():.4f}",
+            "TRN-003",
+        )
+
+    report.auto_save("TRN003_loss_perfect_prediction", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("TRN-003")
+def test_coronary_calcium_task_loss_penalises_wrong_predictions(evidence_output_dir):
+    report = EvidenceReport(subject="CoronaryCalciumTask loss ordering: wrong > correct")
+
+    task = CoronaryCalciumTask()
+    target      = torch.ones((1, 1, 4, 4))
+    correct_pred = torch.full((1, 1, 4, 4), 10.0)   # sigmoid ≈ 1 — matches target
+    wrong_pred   = torch.full((1, 1, 4, 4), -10.0)  # sigmoid ≈ 0 — misses target
+
+    loss_correct = task.compute_loss(correct_pred, target).item()
+    loss_wrong   = task.compute_loss(wrong_pred, target).item()
+
+    if loss_wrong <= loss_correct:
+        report.error(
+            f"Wrong prediction loss ({loss_wrong:.4f}) should exceed correct ({loss_correct:.4f})",
+            "TRN-003",
+        )
+
+    report.auto_save("TRN003_loss_penalises_wrong_predictions", evidence_output_dir)
+    assert not report.has_errors, report.summary()

@@ -4,11 +4,11 @@
 
 ## Requirement Coverage
 
-**Coverage:** 38.1% (16 / 42 requirements tested)
+**Coverage:** 40.5% (17 / 42 requirements tested)
 
 ## Code Coverage
 
-**Line Coverage:** 93.9%
+**Line Coverage:** 94.2%
 
 Detailed uncovered lines saved in `artifacts/coverage/uncovered_lines.txt`
 
@@ -33,7 +33,7 @@ Detailed uncovered lines saved in `artifacts/coverage/uncovered_lines.txt`
 | DOC-003 | Traceability Documentation |  |  | UNTESTED |
 | INF-001 | Inference Capability |  |  | UNTESTED |
 | INF-002 | Inference Determinism |  |  | UNTESTED |
-| MOD-001 | Model Artifact Generation |  |  | UNTESTED |
+| MOD-001 | Model Artifact Generation | tests/test_models.py::test_small_segmentation_cnn_output_shape, tests/test_models.py::test_unet2d_configurable_channels, tests/test_models.py::test_unet2d_gradient_flows_through_network, tests/test_models.py::test_unet2d_output_shape_matches_input, tests/test_models.py::test_unet2d_produces_finite_outputs |  | LINKED |
 | MOD-002 | Model Artifact Persistence |  |  | UNTESTED |
 | MOD-003 | Model Evaluation Capability |  |  | UNTESTED |
 | REP-001 | Training Report Generation |  |  | UNTESTED |
@@ -46,11 +46,11 @@ Detailed uncovered lines saved in `artifacts/coverage/uncovered_lines.txt`
 | SYS-006 | Dataset Task Encapsulation |  |  | UNTESTED |
 | TRN-001 | Controlled Model Initialization |  |  | UNTESTED |
 | TRN-002 | Training Artifact Generation |  |  | UNTESTED |
-| TRN-003 | Coronary Model Training | tests/test_coronary_calcium_task.py::test_coronary_calcium_task_compute_loss_returns_finite_scalar |  | LINKED |
+| TRN-003 | Coronary Model Training | tests/test_coronary_calcium_task.py::test_coronary_calcium_task_compute_loss_returns_finite_scalar, tests/test_coronary_calcium_task.py::test_coronary_calcium_task_loss_near_zero_on_perfect_prediction, tests/test_coronary_calcium_task.py::test_coronary_calcium_task_loss_penalises_wrong_predictions |  | LINKED |
 | TRN-004 | Coronary Model Retraining |  |  | UNTESTED |
 | TRN-005 | Coronary Dataset Training Interface |  |  | UNTESTED |
 | TSK-001 | Task Definition Interface |  |  | UNTESTED |
-| TSK-002 | Coronary Calcium Detection Task | tests/test_coronary_calcium_task.py::test_coronary_calcium_task_ignores_short_contours, tests/test_coronary_calcium_task.py::test_coronary_calcium_task_yields_masks_for_annotated_slices |  | LINKED |
+| TSK-002 | Coronary Calcium Detection Task | tests/test_coronary_calcium_task.py::test_coronary_calcium_task_ignores_short_contours, tests/test_coronary_calcium_task.py::test_coronary_calcium_task_input_is_hu_normalised, tests/test_coronary_calcium_task.py::test_coronary_calcium_task_yields_masks_for_annotated_slices |  | LINKED |
 | TSK-003 | Task Determinism |  |  | UNTESTED |
 | TSK-004 | Calcium Thresholding Support |  |  | UNTESTED |
 | VER-001 | Automated Verification Execution |  |  | UNTESTED |
@@ -68,7 +68,6 @@ Detailed uncovered lines saved in `artifacts/coverage/uncovered_lines.txt`
 - DOC-003
 - INF-001
 - INF-002
-- MOD-001
 - MOD-002
 - MOD-003
 - REP-001
@@ -93,6 +92,6 @@ Detailed uncovered lines saved in `artifacts/coverage/uncovered_lines.txt`
 ---
 Total Requirements: 42
 
-Tested: 16
+Tested: 17
 
 Failures: 0

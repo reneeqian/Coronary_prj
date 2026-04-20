@@ -11,6 +11,7 @@ from skimage.draw import polygon
 
 from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
 from medical_image_ai_toolkit.dataobjects.annotation_bundle import AnnotationBundle, VectorROI
+from Coronary_prj.ingestors.base_ingestor import BaseIngestor
 
 
 class DatasetStructureError(RuntimeError):
@@ -18,7 +19,7 @@ class DatasetStructureError(RuntimeError):
     pass
 
 
-class COCAGatedIngestor:
+class COCAGatedIngestor(BaseIngestor):
     """
     Ingests COCA gated CT dataset into PatientSample objects.
 
