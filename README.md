@@ -1,5 +1,7 @@
 # Coronary Artery Calcium (CAC) Detection – Engineering Demonstration Project
 
+[![Coronary CI](https://github.com/reneeqian/Coronary_prj/actions/workflows/run-tests.yml/badge.svg)](https://github.com/reneeqian/Coronary_prj/actions/workflows/run-tests.yml)
+
 Application example built on top of `medical_image_ai_toolkit` for coronary
 calcium detection from gated CT data.
 
@@ -52,3 +54,4 @@ The primary documentation for this project is:
 
 Requirements follow the convention defined in
 `regulatory_tools/docs/Requirements_Convention.md`.
+
