@@ -68,10 +68,15 @@ artifacts/
 evidence_runs/
 runs/
 checkpoints/
-models/
 outputs/
 predictions/
 logs/
+
+# Saved model weight files — but NOT src/*/models/ source packages
+*.pt
+*.pth
+*.ckpt
+*.safetensors
 
 ###############################################################################
 # Datasets (never version raw data)
