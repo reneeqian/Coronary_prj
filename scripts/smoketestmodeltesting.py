@@ -4,7 +4,7 @@ import torch
 
 from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource import MedicalImageDataSource
 from medical_image_ai_toolkit.training.training_config import TrainingConfig
-from medical_image_ai_toolkit.pipeline.validation_pipeline import ValidationPipeline
+from medical_image_ai_toolkit.pipeline.model_testing_pipeline import ModelTestingPipeline
 
 from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
 from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
@@ -63,11 +63,11 @@ def main():
         print(
             "ERROR: No partitions.json found in artifacts/training_runs. "
             "Run smoketesttraining.py first to produce a trained model and "
-            "partition file before running validation."
+            "partition file before running model testing."
         )
         sys.exit(1)
 
-    # TrainingConfig is required by ValidationPipeline for device and task;
+    # TrainingConfig is required by ModelTestingPipeline for device and task;
     # the split_strategy field is unused here because partitions are loaded
     # from file rather than re-computed.
     config = TrainingConfig(
@@ -76,7 +76,7 @@ def main():
         task=CoronaryCalciumTask(),
     )
 
-    pipeline = ValidationPipeline(
+    pipeline = ModelTestingPipeline(
         datasource=datasource,
         model=model,
         config=config,

@@ -8,7 +8,7 @@
 
 ## Code Coverage
 
-**Line Coverage:** 94.2%
+**Line Coverage:** 93.9%
 
 Detailed uncovered lines saved in `artifacts/coverage/uncovered_lines.txt`
 

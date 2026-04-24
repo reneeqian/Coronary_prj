@@ -7,7 +7,7 @@ from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource i
 from medical_image_ai_toolkit.dataobjects.datasources.deterministic_split import DeterministicHoldoutSplit
 from medical_image_ai_toolkit.training.training_config import TrainingConfig
 from medical_image_ai_toolkit.pipeline.training_pipeline import TrainingPipeline
-from medical_image_ai_toolkit.pipeline.validation_pipeline import ValidationPipeline
+from medical_image_ai_toolkit.pipeline.model_testing_pipeline import ModelTestingPipeline
 from regulatory_tools.requirements.yaml_requirement_provider import YamlRequirementProvider
 
 from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
@@ -35,12 +35,12 @@ def main():
     provider = YamlRequirementProvider(REQUIREMENT_PATH)
 
     config = TrainingConfig(
-        epochs=50,     
+        epochs=5,     
         batch_size=2,
         task=CoronaryCalciumTask(),
         split_strategy = DeterministicHoldoutSplit(
             train=0.7, val=0.15, seed=42,
-            #max_train=100, max_val=100, max_test=100
+            max_train=100, max_val=100, max_test=100
         )
     )
 
