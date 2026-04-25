@@ -1,11 +1,11 @@
-import pytest
-import numpy as np
 from unittest.mock import patch
 
+import numpy as np
+import pytest
 from regulatory_tools.evidence.evidence_report import EvidenceReport
+
 from Coronary_prj.ingestors.coca_gated_ingestor import (
     COCAGatedIngestor,
-    DatasetStructureError,
 )
 
 # =============================================================================
@@ -32,7 +32,7 @@ def test_required_subdirectories_present(coca_dataset_root,
         pytest.skip("COCA dataset not available — skipping integration test.")
 
     assert coca_dataset_root.exists()
-    
+
     report = EvidenceReport(
         subject="COCA Dataset → Directory Structure Contract",
         test_id=request.node.nodeid,
@@ -55,7 +55,7 @@ def test_required_subdirectories_present(coca_dataset_root,
             message="Patient directory exists but is empty",
             requirement_tag="DAT-001",
         )
-        
+
     report.auto_save("coca_dataset_structure", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -70,14 +70,14 @@ def test_deterministic_dataset_ordering(coca_dataset_root,
         pytest.skip("COCA dataset not available — skipping integration test.")
 
     assert coca_dataset_root.exists()
-    
+
     report = EvidenceReport(
         subject="COCA Ingestor → Deterministic Ingestion",
         test_id=request.node.nodeid,
     )
 
     dataset_root = coca_dataset_root
-    
+
     if not dataset_root.exists():
         report.warn(
             message="Dataset not found; determinism check skipped",

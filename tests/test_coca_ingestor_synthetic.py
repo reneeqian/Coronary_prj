@@ -1,13 +1,11 @@
-import numpy as np
-import pytest
 import plistlib
-from pathlib import Path
 from unittest.mock import patch
 
-from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
-from Coronary_prj.ingestors.coca_gated_ingestor import DatasetStructureError
+import numpy as np
+import pytest
 from regulatory_tools.evidence.evidence_report import EvidenceReport
 
+from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor, DatasetStructureError
 
 # =============================================================================
 # Synthetic DICOM Helpers
@@ -35,7 +33,7 @@ class SimpleDicom:
 # =============================================================================
 # Dataset Structure / Validation Tests
 # =============================================================================
-        
+
 @pytest.mark.requirement("DAT-001")
 def test_dataset_structure_validation(tmp_path):
 
@@ -89,7 +87,7 @@ def test_slices_sorted_by_z(tmp_path, request, evidence_output_dir):
     # Attach artifact
     artifact_path = evidence_output_dir / "sorted_volume.npy"
     np.save(artifact_path, volume)
-    
+
     report.info(
         "Slices correctly sorted by z-position",
         requirement_tag="DAT-004"
@@ -129,7 +127,7 @@ def test_hounsfield_rescale_applied(tmp_path, request, evidence_output_dir):
 
     artifact_path = evidence_output_dir / "rescaled_volume.npy"
     np.save(artifact_path, sample.image_volume)
-    
+
     report.info(
         "Hounsfield rescale applied correctly",
         requirement_tag="DAT-004"
@@ -152,7 +150,7 @@ def test_annotation_out_of_bounds_raises(tmp_path, request, evidence_output_dir)
 
     f = series_dir / "a.dcm"
     f.write_text("fake")
-    
+
     xml_dir = tmp_path / "calcium_xml"
     xml_dir.mkdir()
 
@@ -180,7 +178,7 @@ def test_annotation_out_of_bounds_raises(tmp_path, request, evidence_output_dir)
 
         with pytest.raises(DatasetStructureError):
             ingestor.ingest_patient("0")
-    
+
     report.info(
         "Out-of-bounds annotation correctly rejected",
         requirement_tag="DAT-004"
@@ -268,7 +266,7 @@ def test_missing_dicom_files(tmp_path):
 
     with pytest.raises(DatasetStructureError):
         ingestor.ingest_patient("0")
-        
+
 @pytest.mark.requirement("DAT-006")
 def test_get_patient_api(tmp_path):
 
@@ -291,7 +289,7 @@ def test_get_patient_api(tmp_path):
         patient = ingestor.load_patient_sample("0")
 
         assert patient.patient_id == "0"
-    
+
 @pytest.mark.requirement("DAT-006")
 def test_get_volume_api(tmp_path):
 
@@ -317,6 +315,7 @@ def test_get_volume_api(tmp_path):
         assert vol.shape == (1,2,2)
 
 @pytest.mark.requirement("DAT-004")
+@pytest.mark.requirement("DAT-011")
 def test_ingest_dataset_multiple_patients(tmp_path):
 
     for pid in ["0","1"]:
@@ -377,7 +376,7 @@ def test_annotation_with_missing_image_index(tmp_path):
         sample = ingestor.ingest_patient("0")
 
         assert sample.annotations.vector_rois is None
-        
+
 # =============================================================================
 # CT slices must be sorted by Z position before stacking
 # =============================================================================
@@ -400,7 +399,7 @@ def test_ct_volume_sorted_by_z_position(tmp_path):
             self.RescaleSlope = 1.0
             self.RescaleIntercept = 0.0
             self.pixel_array = np.full((2,2), z, dtype=np.float32)
-    
+
     def fake_dcmread(path, *args, **kwargs):
         if "sliceA" in str(path):
             return FakeDicom(0)
@@ -417,7 +416,7 @@ def test_ct_volume_sorted_by_z_position(tmp_path):
 
         assert np.all(volume[0] == 0)
         assert np.all(volume[1] == 10)
-        
+
 
 @pytest.mark.requirement("DAT-004")
 @pytest.mark.requirement("DAT-006")
@@ -499,7 +498,7 @@ def test_get_sample_no_annotations_returns_empty(tmp_path):
 
         assert X.shape[0] == 0
         assert Y.shape[0] == 0
-        
+
 @pytest.mark.requirement("DAT-004")
 def test_get_sample_multiple_rois_same_slice(tmp_path):
 
@@ -562,7 +561,7 @@ def test_get_sample_multiple_rois_same_slice(tmp_path):
 
         assert X.shape[0] == 1
         assert np.sum(Y) > 2
-        
+
 @pytest.mark.requirement("DAT-007")
 def test_get_sample_skips_invalid_slice_annotations(tmp_path):
 

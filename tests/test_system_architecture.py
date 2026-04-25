@@ -1,0 +1,112 @@
+import numpy as np
+import pytest
+import torch
+from medical_image_ai_toolkit.dataobjects.annotation_bundle import AnnotationBundle, VectorROI
+from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
+from medical_image_ai_toolkit.training.task_definition import TrainingTaskDefinition
+from regulatory_tools.evidence.evidence_report import EvidenceReport
+
+from Coronary_prj.ingestors.base_ingestor import BaseIngestor
+from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
+from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
+
+
+def _make_patient_sample() -> PatientSample:
+    rng = np.random.default_rng(0)
+    volume = rng.uniform(-160, 240, size=(3, 32, 32)).astype(np.float32)
+    contour = np.array([[4, 4], [16, 4], [16, 16], [4, 16]], dtype=np.float32)
+    roi = VectorROI(slice_index=1, contour_px=contour, label="lesion")
+    return PatientSample(
+        image_volume=volume,
+        spacing=(1.5, 0.7, 0.7),
+        annotations=AnnotationBundle(
+            vector_rois={1: [roi]}, segmentation_masks=None, label_map={"lesion": 1}
+        ),
+        patient_id="P0",
+        metadata={},
+    )
+
+
+@pytest.mark.requirement("SYS-006")
+def test_ingestor_and_task_are_in_project_not_toolkit(evidence_output_dir):
+    report = EvidenceReport(subject="Dataset task encapsulation — project-level ownership")
+
+    if not CoronaryCalciumTask.__module__.startswith("Coronary_prj"):
+        report.error(
+            f"CoronaryCalciumTask lives in '{CoronaryCalciumTask.__module__}', "
+            "expected 'Coronary_prj.*'",
+            "SYS-006",
+        )
+    if not COCAGatedIngestor.__module__.startswith("Coronary_prj"):
+        report.error(
+            f"COCAGatedIngestor lives in '{COCAGatedIngestor.__module__}', "
+            "expected 'Coronary_prj.*'",
+            "SYS-006",
+        )
+
+    report.auto_save("SYS006_task_encapsulation", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("TSK-001")
+def test_coronary_task_implements_toolkit_interface(evidence_output_dir):
+    report = EvidenceReport(subject="Task definition interface — toolkit contract")
+
+    if not issubclass(CoronaryCalciumTask, TrainingTaskDefinition):
+        report.error(
+            "CoronaryCalciumTask does not subclass TrainingTaskDefinition", "TSK-001"
+        )
+
+    task = CoronaryCalciumTask()
+    for method in ("generate_training_samples", "compute_loss"):
+        if not callable(getattr(task, method, None)):
+            report.error(f"CoronaryCalciumTask missing required method '{method}'", "TSK-001")
+
+    report.auto_save("TSK001_task_definition_interface", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("TSK-003")
+def test_task_output_is_deterministic_for_same_input(evidence_output_dir):
+    report = EvidenceReport(subject="Task determinism — identical inputs produce identical outputs")
+
+    task = CoronaryCalciumTask()
+    sample = _make_patient_sample()
+
+    run_a = list(task.generate_training_samples(sample))
+    run_b = list(task.generate_training_samples(sample))
+
+    if len(run_a) != len(run_b):
+        report.error(
+            f"Different number of samples produced: {len(run_a)} vs {len(run_b)}", "TSK-003"
+        )
+    else:
+        for i, (sa, sb) in enumerate(zip(run_a, run_b, strict=True)):
+            if not torch.equal(sa["input"], sb["input"]):
+                report.error(f"Sample {i} 'input' differs between runs", "TSK-003")
+                break
+            if not torch.equal(sa["target"], sb["target"]):
+                report.error(f"Sample {i} 'target' differs between runs", "TSK-003")
+                break
+
+    report.auto_save("TSK003_task_determinism", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("SYS-004")
+@pytest.mark.requirement("SYS-005")
+def test_coronary_task_and_ingestor_exist_and_are_importable(evidence_output_dir):
+    report = EvidenceReport(subject="Coronary model development — core components importable")
+
+    try:
+        _ = CoronaryCalciumTask()
+    except Exception as e:
+        report.error(f"CoronaryCalciumTask cannot be instantiated: {e}", "SYS-004")
+
+    if not issubclass(COCAGatedIngestor, BaseIngestor):
+        report.error(
+            "COCAGatedIngestor does not subclass BaseIngestor", "SYS-005"
+        )
+
+    report.auto_save("SYS004_SYS005_coronary_model_development", evidence_output_dir)
+    assert not report.has_errors, report.summary()

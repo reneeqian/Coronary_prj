@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+import plistlib
 from pathlib import Path
-from typing import Tuple, Dict, List
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 import pydicom
-import plistlib
+from medical_image_ai_toolkit.dataobjects.annotation_bundle import AnnotationBundle, VectorROI
+from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
 from pydicom.errors import InvalidDicomError
-from pydicom.dataset import Dataset
 from skimage.draw import polygon
 
-from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
-from medical_image_ai_toolkit.dataobjects.annotation_bundle import AnnotationBundle, VectorROI
 from Coronary_prj.ingestors.base_ingestor import BaseIngestor
+
+if TYPE_CHECKING:
+    from regulatory_tools.evidence.evidence_report import EvidenceReport
 
 
 class DatasetStructureError(RuntimeError):
@@ -28,7 +31,7 @@ class COCAGatedIngestor(BaseIngestor):
         - No raw FileNotFoundError or RuntimeError escapes the boundary.
     """
 
-    def __init__(self, dataset_root: Path, report=None):
+    def __init__(self, dataset_root: Path, report: EvidenceReport | None = None) -> None:
         self.dataset_root = Path(dataset_root)
         self.report = report
 
@@ -36,7 +39,7 @@ class COCAGatedIngestor(BaseIngestor):
     # PUBLIC API
     # ------------------------------------------------------------------
 
-    def list_patient_ids(self) -> List[str]:
+    def list_patient_ids(self) -> list[str]:
         patient_root = self.dataset_root / "patient"
         try:
             if not patient_root.exists():
@@ -84,8 +87,8 @@ class COCAGatedIngestor(BaseIngestor):
         except Exception as e:
             # Convert all unexpected failures to domain-safe error
             raise DatasetStructureError(str(e)) from e
-    
-    def get_sample(self, patient_id: str):
+
+    def get_sample(self, patient_id: str) -> tuple[np.ndarray, np.ndarray]:
         sample = self.load_patient_sample(patient_id)
 
         volume = sample.image_volume
@@ -139,10 +142,10 @@ class COCAGatedIngestor(BaseIngestor):
 
         return X, Y
 
-    def ingest_patient(self, patient_id):
+    def ingest_patient(self, patient_id: str) -> PatientSample:
         return self.load_patient_sample(patient_id)
 
-    def ingest_dataset(self):
+    def ingest_dataset(self) -> list[PatientSample]:
         return [self.load_patient_sample(pid) for pid in self.list_patient_ids()]
 
     # ------------------------------------------------------------------
@@ -166,7 +169,7 @@ class COCAGatedIngestor(BaseIngestor):
 
     def _load_image_volume(
         self, series_dir: Path
-    ) -> Tuple[np.ndarray, Tuple[float, float, float], Dict]:
+    ) -> tuple[np.ndarray, tuple[float, float, float], dict[str, Any]]:
 
         # Deterministic, validated, Z-sorted files
         sorted_files = self._get_sorted_dicom_files(series_dir)
@@ -235,7 +238,7 @@ class COCAGatedIngestor(BaseIngestor):
                 plist_data = plistlib.load(f)
 
             images = plist_data.get("Images", [])
-            vectors: Dict[int, List[VectorROI]] = {}
+            vectors: dict[int, list[VectorROI]] = {}
 
             for image_entry in images:
                 image_index = image_entry.get("ImageIndex")
@@ -275,16 +278,16 @@ class COCAGatedIngestor(BaseIngestor):
                         x = float(x_str)
                         y = float(y_str)
                         contour_points.append([x, y])
-                    
+
                     if len(contour_points) < 3:
                         continue
 
                     contour_array = np.array(contour_points, dtype=np.float32)
-                    
+
                     # close contour if needed
                     if not np.allclose(contour_array[0], contour_array[-1]):
                         contour_array = np.vstack([contour_array, contour_array[0]])
-                        
+
                     roi_obj = VectorROI(
                         slice_index=slice_idx,
                         contour_px=contour_array,
@@ -310,7 +313,7 @@ class COCAGatedIngestor(BaseIngestor):
                 f"Failed to parse COCA annotation XML: {xml_file}"
             ) from e
 
-    def _get_sorted_dicom_files(self, series_dir: Path) -> List[Path]:
+    def _get_sorted_dicom_files(self, series_dir: Path) -> list[Path]:
         dicom_files = sorted(series_dir.glob("*.dcm"))
         if not dicom_files:
             raise DatasetStructureError(
@@ -355,9 +358,9 @@ class COCAGatedIngestor(BaseIngestor):
 
         sorted_indices = np.argsort(z_positions)
         return [dicom_files[i] for i in sorted_indices]
-    
-    
-    def _polygon_to_mask(self, contour: np.ndarray, H: int, W: int):
+
+
+    def _polygon_to_mask(self, contour: np.ndarray, H: int, W: int) -> tuple[np.ndarray, np.ndarray]:
 
         x = contour[:, 0]
         y = contour[:, 1]

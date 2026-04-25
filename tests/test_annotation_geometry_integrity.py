@@ -1,15 +1,13 @@
-import numpy as np
-import pytest
 import plistlib
 from unittest.mock import patch
-from pathlib import Path
+
+import numpy as np
+import pytest
+from medical_image_ai_toolkit.dataobjects.annotation_bundle import VectorROI
 
 from Coronary_prj.ingestors.coca_gated_ingestor import (
     COCAGatedIngestor,
-    DatasetStructureError,
 )
-
-from medical_image_ai_toolkit.dataobjects.annotation_bundle import VectorROI
 
 
 class SimpleDicom:
@@ -131,7 +129,7 @@ def test_invalid_polygon_skipped(tmp_path):
         sample = ingestor.ingest_patient("0")
 
     assert sample.annotations.vector_rois is None
-    
+
 @pytest.mark.requirement("DAT-010")
 def test_missing_annotation_file_returns_empty(tmp_path):
 
@@ -175,7 +173,7 @@ def test_volume_sorted_by_z_position(tmp_path):
         return fake_dicoms[path.name]
 
     with patch("pydicom.dcmread", side_effect=fake_dcmread):
-        ingestor = COCAGatedIngestor(tmp_path)        
+        ingestor = COCAGatedIngestor(tmp_path)
         patient = ingestor.load_patient_sample("0")
         vol = patient.image_volume
 
