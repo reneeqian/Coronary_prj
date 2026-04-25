@@ -1,6 +1,7 @@
-import pytest
-import numpy as np
 from unittest.mock import patch
+
+import numpy as np
+import pytest
 
 from Coronary_prj.ingestors.coca_gated_ingestor import (
     COCAGatedIngestor,
@@ -160,8 +161,7 @@ def test_missing_image_position_patient(tmp_path):
         ingestor = COCAGatedIngestor(tmp_path)
 
         with pytest.raises(DatasetStructureError):
-            patient = ingestor.load_patient_sample("0")
-            slice_img = patient.image_volume[0]
+            ingestor.load_patient_sample("0")
 
 
 # =============================================================================
@@ -260,7 +260,7 @@ def test_slice_determinism(tmp_path):
 
         patient = ingestor.load_patient_sample("0")
         s1 = patient.image_volume[0]
-        
+
         patient = ingestor.load_patient_sample("0")
         s2 = patient.image_volume[0]
 

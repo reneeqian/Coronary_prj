@@ -1,12 +1,22 @@
-import torch
-import torch.nn as nn
-import numpy as np
+from __future__ import annotations
 
+from collections.abc import Generator
+from typing import TYPE_CHECKING
+
+import numpy as np
+import torch
 from medical_image_ai_toolkit.training.task_definition import TrainingTaskDefinition
+from skimage.draw import polygon
+
+if TYPE_CHECKING:
+    from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
+
 
 class CoronaryCalciumTask(TrainingTaskDefinition):
 
-    def generate_training_samples(self, patient_sample):
+    def generate_training_samples(
+        self, patient_sample: PatientSample
+    ) -> Generator[dict[str, torch.Tensor], None, None]:
 
         volume = patient_sample.image_volume
         annotations = patient_sample.annotations
@@ -44,7 +54,7 @@ class CoronaryCalciumTask(TrainingTaskDefinition):
                 "target": mask_tensor
             }
 
-    def compute_loss(self, prediction, target):
+    def compute_loss(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         bce = torch.nn.functional.binary_cross_entropy_with_logits(
             prediction, target
         )
@@ -53,9 +63,7 @@ class CoronaryCalciumTask(TrainingTaskDefinition):
         dice = 1.0 - (2.0 * intersection + 1.0) / (prob.sum() + target.sum() + 1.0)
         return 0.5 * bce + 0.5 * dice
 
-    def _polygon_to_mask(self, contour, H, W):
-        from skimage.draw import polygon
-
+    def _polygon_to_mask(self, contour: np.ndarray, H: int, W: int) -> tuple[np.ndarray, np.ndarray]:
         x = contour[:, 0]
         y = contour[:, 1]
 

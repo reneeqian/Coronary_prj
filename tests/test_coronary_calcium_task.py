@@ -1,15 +1,14 @@
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 import torch
-from pathlib import Path
-from unittest.mock import patch
-
-from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
-from Coronary_prj.ingestors.coca_gated_ingestor import DatasetStructureError
-from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
 from medical_image_ai_toolkit.dataobjects.annotation_bundle import AnnotationBundle, VectorROI
 from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
 from regulatory_tools.evidence.evidence_report import EvidenceReport
+
+from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
+from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
 
 
 class FakeReport:
@@ -67,7 +66,9 @@ def test_coca_gated_ingestor_skips_dicom_without_image_positionpatient(tmp_path)
     assert "Skipped" in report.warnings[0][0]
 
 
+@pytest.mark.requirement("TSK-001")
 @pytest.mark.requirement("TSK-002")
+@pytest.mark.requirement("DAT-013")
 def test_coronary_calcium_task_yields_masks_for_annotated_slices():
     task = CoronaryCalciumTask()
     volume = np.zeros((2, 4, 4), dtype=np.float32)
@@ -149,6 +150,7 @@ def test_coronary_calcium_task_compute_loss_returns_finite_scalar():
 
 
 @pytest.mark.requirement("TSK-002")
+@pytest.mark.requirement("TSK-004")
 def test_coronary_calcium_task_input_is_hu_normalised(evidence_output_dir):
     report = EvidenceReport(subject="CoronaryCalciumTask HU window normalisation")
 

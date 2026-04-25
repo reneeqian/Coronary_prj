@@ -1,7 +1,7 @@
-import pytest
-import yaml
 from pathlib import Path
 
+import pytest
+import yaml
 from regulatory_tools.evidence.evidence_report import EvidenceReport
 
 

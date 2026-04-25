@@ -1,10 +1,11 @@
 import numpy as np
 import pytest
+from medical_image_ai_toolkit.dataobjects.patient_sample_contract import (
+    enforce_patient_sample_contract,
+)
+from regulatory_tools.evidence.evidence_report import EvidenceReport
 
 from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor, DatasetStructureError
-from medical_image_ai_toolkit.dataobjects.patient_sample_contract import enforce_patient_sample_contract
-from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
-from regulatory_tools.evidence.evidence_report import EvidenceReport
 
 
 @pytest.mark.requires_dataset
@@ -18,7 +19,7 @@ def test_ingest_ct_volumes_from_root(coca_dataset_root,
         pytest.skip("COCA dataset not available — skipping integration test.")
 
     assert coca_dataset_root.exists()
-    
+
     report = EvidenceReport(
         subject="COCA Ingestor → PatientSample Contract",
         test_id=request.node.nodeid,
@@ -28,7 +29,7 @@ def test_ingest_ct_volumes_from_root(coca_dataset_root,
 
     if dataset_root.exists():
         report.info(
-            message="Using real COCA dataset", 
+            message="Using real COCA dataset",
             requirement_tag="DAT-004",
             context=str(dataset_root))
         ingestor = COCAGatedIngestor(dataset_root=dataset_root)

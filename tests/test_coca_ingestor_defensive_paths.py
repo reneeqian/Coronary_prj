@@ -1,8 +1,13 @@
+from unittest.mock import patch
+
+import numpy as np
 import pytest
+
 from Coronary_prj.ingestors.coca_gated_ingestor import (
     COCAGatedIngestor,
     DatasetStructureError,
 )
+
 
 @pytest.mark.requirement("DAT-001")
 def test_missing_patient_root(tmp_path):
@@ -34,8 +39,6 @@ def test_series_without_dicoms(tmp_path):
     with pytest.raises(DatasetStructureError):
         ingestor.ingest_patient("0")
 
-import numpy as np
-from unittest.mock import patch
 
 class BadDicom:
     PixelSpacing=[1,1]
@@ -76,8 +79,6 @@ def test_annotation_xml_parse_failure(tmp_path):
         SliceThickness=1
         pixel_array=np.zeros((2,2))
 
-    from unittest.mock import patch
-
     with patch("pydicom.dcmread", return_value=SimpleDicom()):
         ingestor = COCAGatedIngestor(tmp_path)
 
@@ -98,22 +99,4 @@ def test_invalid_dicom_file(tmp_path):
         ingestor = COCAGatedIngestor(tmp_path)
 
         with pytest.raises(DatasetStructureError):
-            patient = ingestor.load_patient_sample("0")
-            patient.image_volume[0]
-
-@pytest.mark.requirement("DAT-005")
-def test_invalid_dicom_file(tmp_path):
-
-    patient_dir = tmp_path/"patient"/"0"/"seriesA"
-    patient_dir.mkdir(parents=True)
-
-    (patient_dir/"slice1.dcm").write_text("fake")
-
-    from pydicom.errors import InvalidDicomError
-
-    with patch("pydicom.dcmread", side_effect=InvalidDicomError()):
-        ingestor = COCAGatedIngestor(tmp_path)
-
-        with pytest.raises(DatasetStructureError):
-            patient = ingestor.load_patient_sample("0")
-            slice_img = patient.image_volume[0]
+            ingestor.load_patient_sample("0")

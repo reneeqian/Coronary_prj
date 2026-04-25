@@ -74,14 +74,14 @@ class UNet2D(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         skips = []
-        for enc, pool in zip(self.encoders, self.pools):
+        for enc, pool in zip(self.encoders, self.pools, strict=True):
             x = enc(x)
             skips.append(x)
             x = pool(x)
 
         x = self.bottleneck(x)
 
-        for up, dec, skip in zip(self.upsamples, self.decoders, reversed(skips)):
+        for up, dec, skip in zip(self.upsamples, self.decoders, reversed(skips), strict=True):
             x = F.interpolate(x, size=skip.shape[2:], mode="bilinear", align_corners=False)
             x = up(x)
             x = dec(torch.cat([skip, x], dim=1))

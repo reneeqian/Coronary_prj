@@ -1,7 +1,7 @@
 import pytest
 import torch
-
 from regulatory_tools.evidence.evidence_report import EvidenceReport
+
 from Coronary_prj.models.small_segmentation_cnn import SmallSegmentationCNN
 from Coronary_prj.models.unet2d import UNet2D
 
