@@ -50,14 +50,14 @@ python scripts/smoketestmodeltesting.py
 <!-- forge-health-start -->
 *Last run: 2026-04-28*
 
-**Grade: A** (score: 0.92)
+**Grade: A** (score: 0.93)
 
 | Collector | Score |
 |-----------|-------|
 | Test Metrics | 0.94 |
-| Complexity | 0.74 |
+| Complexity | 0.73 |
 | Dependency Health | 1.00 |
 | Requirements Coverage | 1.00 |
-| Static Analysis | 0.83 |
-| Type Coverage | 0.98 |
+| Static Analysis | 0.89 |
+| Type Coverage | 0.99 |
 <!-- forge-health-end -->
