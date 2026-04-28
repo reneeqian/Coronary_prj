@@ -4,6 +4,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 from medical_image_ai_toolkit.dataobjects.annotation_bundle import VectorROI
+from regulatory_tools.evidence.evidence_report import EvidenceReport
 
 from Coronary_prj.ingestors.coca_gated_ingestor import (
     COCAGatedIngestor,
@@ -20,10 +21,8 @@ class SimpleDicom:
 
 
 @pytest.mark.requirement("DAT-009")
-def test_valid_annotation_geometry(tmp_path):
-    """
-    Ensure parsed ROIs contain valid polygon geometry.
-    """
+def test_valid_annotation_geometry(tmp_path, evidence_output_dir):
+    report = EvidenceReport(subject="Valid annotation geometry: polygon shape and dtype")
 
     patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
@@ -73,25 +72,31 @@ def test_valid_annotation_geometry(tmp_path):
 
     annotations = sample.annotations
 
-    assert annotations.vector_rois is not None
+    if annotations.vector_rois is None:
+        report.error("vector_rois is None; expected parsed ROIs", "DAT-009")
+    else:
+        for slice_idx, rois in annotations.vector_rois.items():
+            if not isinstance(slice_idx, int):
+                report.error(f"slice_idx is not int: {type(slice_idx)}", "DAT-009")
+            for roi in rois:
+                if not isinstance(roi, VectorROI):
+                    report.error(f"ROI is not VectorROI: {type(roi)}", "DAT-009")
+                if roi.contour_px.shape[1] != 2:
+                    report.error(f"contour_px has wrong column count: {roi.contour_px.shape}", "DAT-009")
+                if roi.contour_px.shape[0] < 3:
+                    report.error(f"contour_px has fewer than 3 points: {roi.contour_px.shape}", "DAT-009")
+                if roi.contour_px.dtype != np.float32:
+                    report.error(f"contour_px dtype wrong: {roi.contour_px.dtype}", "DAT-009")
+                if np.isnan(roi.contour_px).any():
+                    report.error("contour_px contains NaN values", "DAT-009")
 
-    for slice_idx, rois in annotations.vector_rois.items():
+    report.auto_save("DAT009_valid_annotation_geometry", evidence_output_dir)
+    assert not report.has_errors, report.summary()
 
-        assert isinstance(slice_idx, int)
-
-        for roi in rois:
-
-            assert isinstance(roi, VectorROI)
-
-            # geometry checks
-            assert roi.contour_px.shape[1] == 2
-            assert roi.contour_px.shape[0] >= 3
-            assert roi.contour_px.dtype == np.float32
-
-            assert not np.isnan(roi.contour_px).any()
 
 @pytest.mark.requirement("DAT-009")
-def test_invalid_polygon_skipped(tmp_path):
+def test_invalid_polygon_skipped(tmp_path, evidence_output_dir):
+    report = EvidenceReport(subject="ROI with <3 points is skipped")
 
     patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
@@ -128,10 +133,20 @@ def test_invalid_polygon_skipped(tmp_path):
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
         sample = ingestor.ingest_patient("0")
 
-    assert sample.annotations.vector_rois is None
+    if sample.annotations.vector_rois is not None:
+        report.error(
+            "Expected vector_rois=None for sub-3-point polygon, "
+            f"got: {sample.annotations.vector_rois}",
+            "DAT-009",
+        )
+
+    report.auto_save("DAT009_invalid_polygon_skipped", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
 
 @pytest.mark.requirement("DAT-010")
-def test_missing_annotation_file_returns_empty(tmp_path):
+def test_missing_annotation_file_returns_empty(tmp_path, evidence_output_dir):
+    report = EvidenceReport(subject="Missing annotation file returns empty annotations")
 
     patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
@@ -142,26 +157,36 @@ def test_missing_annotation_file_returns_empty(tmp_path):
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
         sample = ingestor.ingest_patient("0")
 
-    assert sample.annotations.vector_rois is None
+    if sample.annotations.vector_rois is not None:
+        report.error(
+            "Expected vector_rois=None when annotation file absent, "
+            f"got: {sample.annotations.vector_rois}",
+            "DAT-010",
+        )
+
+    report.auto_save("DAT010_missing_annotation_file_empty", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
 
 @pytest.mark.requirement("SYS-001")
-def test_volume_sorted_by_z_position(tmp_path):
+def test_volume_sorted_by_z_position(tmp_path, evidence_output_dir):
+    report = EvidenceReport(subject="Volume slices are sorted by Z position")
 
     class FakeDicom:
         def __init__(self, z):
-            self.ImagePositionPatient = [0,0,z]
-            self.PixelSpacing=[1,1]
-            self.SliceThickness=1
-            self.pixel_array=np.full((2,2),z)
-            self.RescaleSlope=1
-            self.RescaleIntercept=0
+            self.ImagePositionPatient = [0, 0, z]
+            self.PixelSpacing = [1, 1]
+            self.SliceThickness = 1
+            self.pixel_array = np.full((2, 2), z)
+            self.RescaleSlope = 1
+            self.RescaleIntercept = 0
 
-    patient_dir = tmp_path/"patient"/"0"/"seriesA"
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
 
-    (patient_dir/"a.dcm").write_text("fake")
-    (patient_dir/"b.dcm").write_text("fake")
-    (patient_dir/"c.dcm").write_text("fake")
+    (patient_dir / "a.dcm").write_text("fake")
+    (patient_dir / "b.dcm").write_text("fake")
+    (patient_dir / "c.dcm").write_text("fake")
 
     fake_dicoms = {
         "a.dcm": FakeDicom(5),
@@ -177,4 +202,9 @@ def test_volume_sorted_by_z_position(tmp_path):
         patient = ingestor.load_patient_sample("0")
         vol = patient.image_volume
 
-        assert list(vol[:,0,0]) == [1,3,5]
+    z_vals = list(vol[:, 0, 0])
+    if z_vals != [1, 3, 5]:
+        report.error(f"Volume not sorted by Z: got {z_vals}, expected [1, 3, 5]", "SYS-001")
+
+    report.auto_save("SYS001_volume_sorted_by_z", evidence_output_dir)
+    assert not report.has_errors, report.summary()
