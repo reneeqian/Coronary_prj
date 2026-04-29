@@ -74,16 +74,16 @@ print("Report written to:", pdf)
 ## Forge Health
 
 <!-- forge-health-start -->
-*Last run: 2026-04-26*
+*Last run: 2026-04-29*
 
-**Grade: B** (score: 0.89)
+**Grade: A** (score: 0.92)
 
 | Collector | Score |
 |-----------|-------|
-| Test Metrics | 0.94 |
-| Complexity | 0.76 |
-| Dependency Health | 0.85 |
+| Test Metrics | 0.93 |
+| Complexity | 0.73 |
+| Dependency Health | 1.00 |
 | Requirements Coverage | 1.00 |
-| Static Analysis | 0.83 |
-| Type Coverage | 0.98 |
+| Static Analysis | 0.89 |
+| Type Coverage | 0.99 |
 <!-- forge-health-end -->
