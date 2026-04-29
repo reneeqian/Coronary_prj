@@ -311,6 +311,22 @@ requirements:
       of training behavior or sample outputs.
     tags: [visualization, training_report]
 
+  - id: REP-003
+    title: PDF Report Export
+    description: >
+      The project shall support exporting run reports to PDF using the
+      toolkit's reporting module, covering training, tuning, and model
+      testing runs.
+    tags: [reporting, visualization]
+
+  - id: REP-004
+    title: Status Report
+    description: >
+      The project shall expose a status_report() function that prints a
+      structured console summary of the latest metrics from each run type
+      (training, hyperparameter tuning, model testing).
+    tags: [reporting, observability]
+
   # ==============================
   # Verification Requirements
   # ==============================
