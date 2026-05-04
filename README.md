@@ -36,6 +36,32 @@ python scripts/smoketesttraining.py
 python scripts/smoketestmodeltesting.py
 ```
 
+## Status Report
+
+Print a one-page console summary of the latest training, tuning, and model testing runs:
+
+```bash
+python scripts/status_report.py
+```
+
+Or from Python:
+
+```python
+from Coronary_prj.reporting import status_report
+status_report()
+```
+
+Looks for run artifacts under `artifacts/training_runs/`, `artifacts/tuning_runs/`,
+and `artifacts/model_testing_runs/`. Prints "no runs found" for any missing category.
+
+To export a PDF from a specific run:
+
+```python
+from medical_image_ai_toolkit.reporting import generate_training_pdf
+pdf = generate_training_pdf("artifacts/training_runs")
+print("Report written to:", pdf)
+```
+
 ## Layout
 
 - `src/coronary_prj/ingestors/` — COCA dataset ingestion (`COCAGatedIngestor`)
@@ -47,17 +73,7 @@ python scripts/smoketestmodeltesting.py
 
 ## Forge Health
 
+Latest report: see the [Actions tab](../../actions) or the job summary on any PR's Checks tab.
+
 <!-- forge-health-start -->
-*Last run: 2026-04-28*
-
-**Grade: A** (score: 0.93)
-
-| Collector | Score |
-|-----------|-------|
-| Test Metrics | 0.94 |
-| Complexity | 0.73 |
-| Dependency Health | 1.00 |
-| Requirements Coverage | 1.00 |
-| Static Analysis | 0.89 |
-| Type Coverage | 0.99 |
 <!-- forge-health-end -->
