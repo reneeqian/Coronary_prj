@@ -11,6 +11,10 @@ from medical_image_ai_toolkit.training.task_definition import TrainingTaskDefini
 
 if TYPE_CHECKING:
     from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
+    from regulatory_tools.evidence.evidence_report import EvidenceReport
+
+_OOD_HU_MIN = -200.0
+_OOD_HU_MAX = 400.0
 
 
 class NongatedCalciumScoreTask(TrainingTaskDefinition):
@@ -34,6 +38,9 @@ class NongatedCalciumScoreTask(TrainingTaskDefinition):
     (WL=40, WW=400 → clip [-160, 240], normalise to roughly [-1, 1]).
     """
 
+    def __init__(self, report: EvidenceReport | None = None):
+        self._report = report
+
     def generate_training_samples(
         self, patient_sample: PatientSample
     ) -> Generator[dict[str, torch.Tensor], None, None]:
@@ -41,10 +48,10 @@ class NongatedCalciumScoreTask(TrainingTaskDefinition):
         volume = patient_sample.image_volume
         meta = patient_sample.metadata
 
-        lca = float(meta.get("lca", 0.0))
-        lad = float(meta.get("lad", 0.0))
-        lcx = float(meta.get("lcx", 0.0))
-        rca = float(meta.get("rca", 0.0))
+        lca = max(0.0, float(meta.get("lca", 0.0)))
+        lad = max(0.0, float(meta.get("lad", 0.0)))
+        lcx = max(0.0, float(meta.get("lcx", 0.0)))
+        rca = max(0.0, float(meta.get("rca", 0.0)))
 
         target = torch.tensor(
             [math.log1p(lca), math.log1p(lad), math.log1p(lcx), math.log1p(rca)],
@@ -53,8 +60,17 @@ class NongatedCalciumScoreTask(TrainingTaskDefinition):
 
         Z = volume.shape[0]
         for slice_idx in range(Z):
-            hu = volume[slice_idx].astype(np.float32)
-            hu = np.clip(hu, -160.0, 240.0)
+            hu_raw = volume[slice_idx].astype(np.float32)
+            if self._report is not None:
+                mean_hu = float(hu_raw.mean())
+                if not (_OOD_HU_MIN <= mean_hu <= _OOD_HU_MAX):
+                    self._report.warn(
+                        f"Slice {slice_idx} mean HU={mean_hu:.1f} outside expected range"
+                        " — possible OOD input",
+                        "RSK-003",
+                    )
+
+            hu = np.clip(hu_raw, -160.0, 240.0)
             hu = (hu - 40.0) / 200.0
             img = torch.tensor(hu).unsqueeze(0).unsqueeze(0)  # (1, 1, H, W)
 

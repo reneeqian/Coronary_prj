@@ -59,6 +59,17 @@ requirements:
       project code rather than the shared toolkit core.
     tags: [architecture, separation_of_concerns, ingestion_design]
 
+
+  - id: SYS-007
+    title: Intended Use
+    description: >
+      The system is intended to assist trained radiologists in detecting and
+      quantifying coronary artery calcium from non-contrast CT images
+      (gated and non-gated protocols). It is not intended as a standalone
+      diagnostic device. Output is advisory; clinical decisions remain with
+      the responsible clinician.
+    tags: [intended_use, samd]
+
   # ==============================
   # Data Ingestion Requirements
   # ==============================
@@ -234,6 +245,17 @@ requirements:
       CT slices, suitable for multi-output regression training.
     tags: [nongated_task, score_regression, calcium_scoring]
 
+
+  - id: TSK-006
+    title: Slice-Broadcast Target Design
+    description: >
+      Both task definitions broadcast the patient-level label (mask or
+      score vector) to each 2D slice. This is an explicit design decision:
+      the model learns to estimate the patient-level label from any
+      representative slice, not from a privileged slice. Tests shall confirm
+      all slices within a patient receive an identical target tensor.
+    tags: [task_design, slice_broadcast]
+
   # ==============================
   # Training Requirements
   # ==============================
@@ -310,6 +332,64 @@ requirements:
       single-channel CT slice and outputs per-vessel Agatston score
       predictions as a multi-output scalar vector.
     tags: [regression_model, nongated, calcium_scoring]
+
+
+  - id: MOD-005
+    title: Segmentation Performance Acceptance Criterion
+    description: >
+      The trained segmentation model shall achieve a Dice coefficient of at
+      least SEGMENTATION_MIN_DICE (defined in Coronary_prj.thresholds) on
+      the held-out test partition before being considered release-ready.
+    tags: [performance, segmentation, acceptance_criterion]
+
+
+  - id: MOD-006
+    title: Regression Performance Acceptance Criterion
+    description: >
+      The trained regression model shall achieve a mean absolute error of at
+      most REGRESSION_MAX_MAE_AU Agatston units (defined in
+      Coronary_prj.thresholds) on the held-out test partition before being
+      considered release-ready.
+    tags: [performance, regression, acceptance_criterion]
+
+  # ==============================
+  # Risk Control Requirements
+  # ==============================
+
+  - id: RSK-001
+    title: Missed Calcium Detection (False Negative)
+    description: >
+      The segmentation model shall be evaluated against a minimum Dice
+      threshold (MOD-005) before deployment. A miss rate above the threshold
+      shall be treated as a blocking defect.
+    tags: [risk_control, false_negative, segmentation]
+
+
+  - id: RSK-002
+    title: Over-Estimation of Calcium Score (False Positive)
+    description: >
+      Regression outputs shall be back-transformed via expm1 before
+      reporting. Values below 0 after back-transformation shall be clamped
+      to 0 to prevent negative calcium scores.
+    tags: [risk_control, false_positive, regression]
+
+
+  - id: RSK-003
+    title: Silent Ingestion Failure
+    description: >
+      All ingestor public methods shall raise DatasetStructureError (not
+      raw exceptions) on corrupt or missing DICOM data, ensuring failures
+      surface in the evidence report rather than being silently swallowed.
+    tags: [risk_control, ingestion, error_handling]
+
+
+  - id: RSK-004
+    title: Numerical Instability in Log-Transformed Targets
+    description: >
+      log1p targets shall only be computed for non-negative inputs.
+      Negative score values in the source spreadsheet shall be clamped to
+      0.0 before log1p is applied, preventing NaN propagation into training.
+    tags: [risk_control, numerical_stability, regression]
 
   # ==============================
   # Inference Requirements
