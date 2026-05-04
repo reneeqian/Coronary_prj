@@ -8,6 +8,8 @@ dependencies = [
     "numpy",
     "torch",
     "matplotlib",
+    "openpyxl",
+    "forge-utils @ git+https://github.com/reneeqian/forge.git@main",
 ]
 
 

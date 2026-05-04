@@ -173,6 +173,23 @@ requirements:
       integrity failures into a defined project-level exception type.
     tags: [ingestion_error, api_boundary]
 
+
+  - id: DAT-015
+    title: Nongated Dataset Structure Validation
+    description: >
+      The nongated ingestor shall validate that the dataset root
+      contains patient directories and a scores file before ingestion.
+    tags: [dataset_validation, nongated, dataset_structure]
+
+
+  - id: DAT-016
+    title: Nongated Score Loading
+    description: >
+      The nongated ingestor shall load per-vessel Agatston scores from
+      the scores spreadsheet and attach them to each patient sample's
+      metadata for downstream task use.
+    tags: [score_loading, nongated, patient_metadata]
+
   # ==============================
   # Task Requirements
   # ==============================
@@ -207,6 +224,15 @@ requirements:
       The project shall support task-specific intensity thresholding
       where required by the coronary workflow.
     tags: [thresholding, preprocessing]
+
+
+  - id: TSK-005
+    title: Nongated Calcium Score Regression Task
+    description: >
+      The project shall implement a regression task that produces
+      per-vessel log-transformed Agatston score targets from nongated
+      CT slices, suitable for multi-output regression training.
+    tags: [nongated_task, score_regression, calcium_scoring]
 
   # ==============================
   # Training Requirements
@@ -276,6 +302,15 @@ requirements:
       held-out dataset partition.
     tags: [model_evaluation]
 
+
+  - id: MOD-004
+    title: Calcium Score Regression Model
+    description: >
+      The project shall provide a CNN regression model that accepts a
+      single-channel CT slice and outputs per-vessel Agatston score
+      predictions as a multi-output scalar vector.
+    tags: [regression_model, nongated, calcium_scoring]
+
   # ==============================
   # Inference Requirements
   # ==============================
@@ -310,6 +345,22 @@ requirements:
       The project may support lightweight visualization for inspection
       of training behavior or sample outputs.
     tags: [visualization, training_report]
+
+  - id: REP-003
+    title: PDF Report Export
+    description: >
+      The project shall support exporting run reports to PDF using the
+      toolkit's reporting module, covering training, tuning, and model
+      testing runs.
+    tags: [reporting, visualization]
+
+  - id: REP-004
+    title: Status Report
+    description: >
+      The project shall expose a status_report() function that prints a
+      structured console summary of the latest metrics from each run type
+      (training, hyperparameter tuning, model testing).
+    tags: [reporting, observability]
 
   # ==============================
   # Verification Requirements
