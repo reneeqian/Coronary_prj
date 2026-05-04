@@ -73,17 +73,7 @@ print("Report written to:", pdf)
 
 ## Forge Health
 
+Latest report: see the [Actions tab](../../actions) or the job summary on any PR's Checks tab.
+
 <!-- forge-health-start -->
-*Last run: 2026-05-04*
-
-**Grade: A** (score: 0.92)
-
-| Collector | Score |
-|-----------|-------|
-| Test Metrics | 0.92 |
-| Complexity | 0.74 |
-| Dependency Health | 1.00 |
-| Requirements Coverage | 1.00 |
-| Static Analysis | 0.92 |
-| Type Coverage | 0.99 |
 <!-- forge-health-end -->
