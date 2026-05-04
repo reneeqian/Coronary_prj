@@ -10,9 +10,16 @@ from skimage.draw import polygon
 
 if TYPE_CHECKING:
     from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
+    from regulatory_tools.evidence.evidence_report import EvidenceReport
+
+_OOD_HU_MIN = -200.0
+_OOD_HU_MAX = 400.0
 
 
 class CoronaryCalciumTask(TrainingTaskDefinition):
+
+    def __init__(self, report: EvidenceReport | None = None):
+        self._report = report
 
     def generate_training_samples(
         self, patient_sample: PatientSample
@@ -29,9 +36,18 @@ class CoronaryCalciumTask(TrainingTaskDefinition):
 
         for slice_idx in range(Z):
 
-            hu = volume[slice_idx].astype(np.float32)
-            hu = np.clip(hu, -160.0, 240.0)   # cardiac soft-tissue window (WL=40, WW=400)
-            hu = (hu - 40.0) / 200.0          # centre on WL, scale to roughly [-1, 1]
+            hu_raw = volume[slice_idx].astype(np.float32)
+            if self._report is not None:
+                mean_hu = float(hu_raw.mean())
+                if not (_OOD_HU_MIN <= mean_hu <= _OOD_HU_MAX):
+                    self._report.warn(
+                        f"Slice {slice_idx} mean HU={mean_hu:.1f} outside expected range"
+                        " — possible OOD input",
+                        "RSK-003",
+                    )
+
+            hu = np.clip(hu_raw, -160.0, 240.0)   # cardiac soft-tissue window (WL=40, WW=400)
+            hu = (hu - 40.0) / 200.0              # centre on WL, scale to roughly [-1, 1]
             img = torch.tensor(hu).unsqueeze(0).unsqueeze(0)   # (1,1,H,W)
 
             mask = np.zeros((H, W), dtype=np.float32)

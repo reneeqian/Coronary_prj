@@ -5,9 +5,11 @@ description = "Coronary Artery Calcium SaMD Project"
 requires-python = ">=3.10"
 
 dependencies = [
-    "numpy",
-    "torch",
-    "matplotlib",
+    "numpy==2.2.6",
+    "torch==2.9.1",
+    "matplotlib==3.10.8",
+    "openpyxl==3.1.5",
+    "forge-utils @ git+https://github.com/reneeqian/forge.git@main",
 ]
 
 
