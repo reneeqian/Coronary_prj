@@ -20,16 +20,16 @@ soup:
     license: MIT
 
   - name: forge-utils
-    version: "main"
+    version: "0.1.0"
     purpose: "Regulatory health grading and traceability infrastructure"
     license: Internal
 
   - name: pydicom
-    version: "runtime"
+    version: "3.0.1"
     purpose: "DICOM file reading for gated and nongated CT volumes"
     license: MIT
 
   - name: scikit-image
-    version: "runtime"
+    version: "0.25.2"
     purpose: "Polygon rasterization for segmentation mask generation"
     license: BSD-3-Clause
