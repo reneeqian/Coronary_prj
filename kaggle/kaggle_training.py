@@ -1,20 +1,17 @@
 """
-Coronary calcium segmentation — Kaggle training script.
+Coronary calcium Kaggle training script.
 
-Installs packages from GitHub, detects the Kaggle environment, picks the
-best hyperparameters from the local sweep report (embedded below), and runs
-a full training pipeline with per-epoch checkpointing so the session can be
-resumed if interrupted.
+Change TRAINING_MODE below to select the dataset/task combination:
 
-Run on Kaggle:
-    Add this script as a Kaggle dataset or paste into a notebook cell,
-    then execute.  The COCA dataset must be attached as:
-        reneeqian/coca-gated-release
-    giving a data root of:
-        /kaggle/input/coca-gated-release/Gated_release_final
+  "gated"    — gated CT segmentation    (UNet2D,                COCA Gated)
+  "nongated" — non-gated CT regression  (CalciumScoreRegressor, COCA Non-gated)
 
-Checkpoints are written to /kaggle/working/checkpoints/.
-The final model is saved to /kaggle/working/artifacts/.
+On Kaggle, attach the matching dataset for the chosen mode:
+  gated    → reneeqian/coca-gated-release      (/kaggle/input/coca-gated-release/)
+  nongated → reneeqian/coca-nongated-release   (/kaggle/input/coca-nongated-release/)
+
+Checkpoints go to /kaggle/working/checkpoints/<mode>/ and survive resume.
+Final artifacts go to /kaggle/working/artifacts/<mode>/.
 """
 
 from __future__ import annotations
@@ -26,8 +23,22 @@ import sys
 import time
 from pathlib import Path
 
-# Force unbuffered output so Kaggle shows progress in real time.
 os.environ["PYTHONUNBUFFERED"] = "1"
+
+# ---------------------------------------------------------------------------
+# *** CHANGE THIS LINE TO SWITCH MODES ***
+# ---------------------------------------------------------------------------
+TRAINING_MODE = "gated"   # "gated" | "nongated"
+
+# ---------------------------------------------------------------------------
+# Shared settings
+# ---------------------------------------------------------------------------
+# One-time setup: create an empty private Kaggle dataset at kaggle.com →
+# Datasets → New Dataset with slug "coronary-training-results".
+# Set to "" to skip the push.
+KAGGLE_RESULTS_DATASET = "reneeqian/coronary-training-results"
+
+ON_KAGGLE = Path("/kaggle/working").exists()
 
 
 def _log(msg: str = "") -> None:
@@ -35,56 +46,6 @@ def _log(msg: str = "") -> None:
     print(f"[{ts}] {msg}", flush=True)
 
 
-# ---------------------------------------------------------------------------
-# Persistent results dataset (set to "" to skip the push)
-#   One-time setup: create an empty private dataset at kaggle.com → Datasets
-#   → New Dataset with slug "coronary-training-results", then set this to
-#   "reneeqian/coronary-training-results".  The script pushes a new version
-#   after every successful run so outputs survive session expiry.
-# ---------------------------------------------------------------------------
-KAGGLE_RESULTS_DATASET = "reneeqian/coronary-training-results"
-
-# ---------------------------------------------------------------------------
-# Best hyperparameters from local grid sweep (update after each new sweep)
-# ---------------------------------------------------------------------------
-BEST_PARAMS = {
-    "learning_rate": 0.001,
-    "base_channels": 32,
-}
-TRAIN_EPOCHS = 50
-
-
-# ---------------------------------------------------------------------------
-# Environment detection
-# ---------------------------------------------------------------------------
-ON_KAGGLE = Path("/kaggle/working").exists()
-
-if ON_KAGGLE:
-    WORKING_DIR    = Path("/kaggle/working")
-    DATASET_PATH   = Path("/kaggle/input/coca-gated-release/Gated_release_final")
-    CHECKPOINT_DIR = WORKING_DIR / "checkpoints"
-    ARTIFACTS_DIR  = WORKING_DIR / "artifacts"
-else:
-    # Local fallback — mirrors the smoketesttraining.py paths
-    _PROJECT_ROOT  = Path(__file__).resolve().parents[1]
-    WORKING_DIR    = _PROJECT_ROOT
-    DATASET_PATH   = (
-        _PROJECT_ROOT
-        / "data" / "raw" / "coca"
-        / "cocacoronarycalciumandchestcts-2"
-        / "Gated_release_final"
-    )
-    CHECKPOINT_DIR = _PROJECT_ROOT / "artifacts" / "checkpoints"
-    ARTIFACTS_DIR  = _PROJECT_ROOT / "artifacts" / "training_runs"
-
-CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
-ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
-CHECKPOINT_LATEST = CHECKPOINT_DIR / "checkpoint_latest.pt"
-
-
-# ---------------------------------------------------------------------------
-# Install packages (Kaggle session — packages are not pre-installed)
-# ---------------------------------------------------------------------------
 def _pip_install(package: str) -> None:
     short = package.split("/")[-1].split(".git")[0]
     _log(f"  installing {short} ...")
@@ -104,49 +65,119 @@ if ON_KAGGLE:
 # ---------------------------------------------------------------------------
 # Imports (after install so Kaggle can resolve them)
 # ---------------------------------------------------------------------------
-from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor  # noqa: E402
-from Coronary_prj.models.unet2d import UNet2D  # noqa: E402
-from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask  # noqa: E402
-from medical_image_ai_toolkit.dataobjects.datasources.deterministic_split import (  # noqa: E402
+from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor                      # noqa: E402
+from Coronary_prj.ingestors.coca_nongated_ingestor import COCANongatedIngestor                 # noqa: E402
+from Coronary_prj.models.calcium_score_regressor import CalciumScoreRegressor                  # noqa: E402
+from Coronary_prj.models.unet2d import UNet2D                                                  # noqa: E402
+from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask            # noqa: E402
+from Coronary_prj.task_definitions.nongated_calcium_score_task import NongatedCalciumScoreTask # noqa: E402
+from medical_image_ai_toolkit.dataobjects.datasources.deterministic_split import (             # noqa: E402
     DeterministicHoldoutSplit,
 )
-from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource import (  # noqa: E402
+from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource import (        # noqa: E402
     MedicalImageDataSource,
 )
-from medical_image_ai_toolkit.pipeline.training_pipeline import TrainingPipeline  # noqa: E402
-from medical_image_ai_toolkit.training.training_config import TrainingConfig  # noqa: E402
+from medical_image_ai_toolkit.pipeline.training_pipeline import TrainingPipeline               # noqa: E402
+from medical_image_ai_toolkit.training.training_config import TrainingConfig                   # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# Mode registry
+#
+# kaggle_slug     — folder name under /kaggle/input/ (matches the attached dataset)
+# kaggle_subpath  — subdirectory within that folder that is the ingestor root
+#                   (set to "" if the dataset root IS the ingestor root)
+# local_subpath   — path relative to project root for local fallback
+# best_params     — update these after each local hyperparameter sweep
+# split_kwargs    — passed directly to DeterministicHoldoutSplit
+# ---------------------------------------------------------------------------
+_MODES: dict[str, dict] = {
+    "gated": {
+        "label":          "Gated CT Segmentation (UNet2D)",
+        "kaggle_slug":    "coca-gated-release",
+        "kaggle_subpath": "Gated_release_final",
+        "local_subpath":  "data/raw/coca/cocacoronarycalciumandchestcts-2/Gated_release_final",
+        "ingestor_cls":   COCAGatedIngestor,
+        "task_cls":       CoronaryCalciumTask,
+        "model_cls":      UNet2D,
+        "best_params":    {"learning_rate": 0.001, "base_channels": 32},
+        "train_epochs":   50,
+        "split_kwargs":   {"train": 0.7, "val": 0.15, "seed": 42,
+                           "max_train": 600, "max_val": 100, "max_test": 87},
+    },
+    "nongated": {
+        "label":          "Non-gated CT Regression (CalciumScoreRegressor)",
+        "kaggle_slug":    "coca-nongated-release",
+        "kaggle_subpath": "deidentified_nongated",
+        "local_subpath":  "data/raw/coca/cocacoronarycalciumandchestcts-2/deidentified_nongated",
+        "ingestor_cls":   COCANongatedIngestor,
+        "task_cls":       NongatedCalciumScoreTask,
+        "model_cls":      CalciumScoreRegressor,
+        "best_params":    {"learning_rate": 0.001, "base_channels": 16},
+        "train_epochs":   50,
+        "split_kwargs":   {"train": 0.7, "val": 0.15, "seed": 42,
+                           "max_train": 150, "max_val": 30, "max_test": 30},
+    },
+}
+
+if TRAINING_MODE not in _MODES:
+    raise ValueError(
+        f"Unknown TRAINING_MODE {TRAINING_MODE!r}. Choose from: {list(_MODES)}"
+    )
+
+_cfg = _MODES[TRAINING_MODE]
+
+# ---------------------------------------------------------------------------
+# Path resolution
+# ---------------------------------------------------------------------------
+if ON_KAGGLE:
+    WORKING_DIR  = Path("/kaggle/working")
+    _input_root  = Path("/kaggle/input") / _cfg["kaggle_slug"]
+    DATASET_PATH = (_input_root / _cfg["kaggle_subpath"]
+                    if _cfg["kaggle_subpath"] else _input_root)
+else:
+    _PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    WORKING_DIR   = _PROJECT_ROOT
+    DATASET_PATH  = _PROJECT_ROOT / _cfg["local_subpath"]
+
+CHECKPOINT_DIR    = WORKING_DIR / "checkpoints" / TRAINING_MODE
+ARTIFACTS_DIR     = (WORKING_DIR / "artifacts" / TRAINING_MODE
+                     if ON_KAGGLE else WORKING_DIR / "artifacts" / "training_runs")
+CHECKPOINT_LATEST = CHECKPOINT_DIR / "checkpoint_latest.pt"
+
+CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
-    _log("=" * 56)
-    _log("  Coronary Calcium Segmentation — Kaggle Training")
-    _log("=" * 56)
+    best_params  = _cfg["best_params"]
+    train_epochs = _cfg["train_epochs"]
+
+    _log("=" * 60)
+    _log(f"  Coronary Training — {_cfg['label']}")
+    _log("=" * 60)
+    _log(f"  mode           : {TRAINING_MODE}")
     _log(f"  ON_KAGGLE      : {ON_KAGGLE}")
     _log(f"  DATASET_PATH   : {DATASET_PATH}")
     _log(f"  CHECKPOINT_DIR : {CHECKPOINT_DIR}")
     _log(f"  ARTIFACTS_DIR  : {ARTIFACTS_DIR}")
-    _log(f"  best_params    : {BEST_PARAMS}")
-    _log(f"  epochs         : {TRAIN_EPOCHS}")
+    _log(f"  best_params    : {best_params}")
+    _log(f"  epochs         : {train_epochs}")
 
-    # Auto-resume if a checkpoint exists
     resume_from = CHECKPOINT_LATEST if CHECKPOINT_LATEST.exists() else None
-    if resume_from:
-        _log(f"  resume_from    : {resume_from}")
-    else:
-        _log("  resume_from    : (none — starting fresh)")
+    _log(f"  resume_from    : {resume_from or '(none — starting fresh)'}")
 
-    # --- GPU / environment diagnostics ---
-    _log("-" * 56)
+    _log("-" * 60)
     _log("  Environment:")
     _log(f"    python  : {sys.version.split()[0]}")
     try:
         import torch
         _log(f"    torch   : {torch.__version__}")
         if torch.cuda.is_available():
-            gpu = torch.cuda.get_device_name(0)
+            gpu    = torch.cuda.get_device_name(0)
             mem_gb = torch.cuda.get_device_properties(0).total_memory / 1e9
             _log(f"    GPU     : {gpu}  ({mem_gb:.1f} GB)")
             _log(f"    CUDA    : {torch.version.cuda}")
@@ -154,51 +185,42 @@ def main() -> None:
             _log("    GPU     : not available — running on CPU")
     except ImportError:
         _log("    torch   : not installed yet")
-    _log("=" * 56)
+    _log("=" * 60)
     print(flush=True)
 
     if not DATASET_PATH.exists():
         _log(f"ERROR: dataset not found at {DATASET_PATH}")
-        _log("Make sure the 'reneeqian/coca-gated-release' dataset is attached.")
+        _log(f"Attach the '{_cfg['kaggle_slug']}' dataset to this notebook.")
         sys.exit(1)
 
-    # --- Dataset info ---
+    learning_rate = best_params["learning_rate"]
+    base_channels = best_params["base_channels"]
+
     _log("Loading dataset...")
-    learning_rate = BEST_PARAMS["learning_rate"]
-    base_channels = BEST_PARAMS["base_channels"]
-
-    ingestor   = COCAGatedIngestor(DATASET_PATH)
-    datasource = MedicalImageDataSource(dataset_root=DATASET_PATH, ingestor=ingestor)
-
+    ingestor    = _cfg["ingestor_cls"](DATASET_PATH)
+    datasource  = MedicalImageDataSource(dataset_root=DATASET_PATH, ingestor=ingestor)
     patient_ids = ingestor.list_patient_ids()
     _log(f"  patients found : {len(patient_ids)}")
     print(flush=True)
 
     config = TrainingConfig(
-        epochs=TRAIN_EPOCHS,
+        epochs=train_epochs,
         learning_rate=learning_rate,
         device="cuda" if _cuda_available() else "cpu",
-        task=CoronaryCalciumTask(),
-        split_strategy=DeterministicHoldoutSplit(
-            train=0.7,
-            val=0.15,
-            seed=42,
-            max_train=600,
-            max_val=100,
-            max_test=87,
-        ),
+        task=_cfg["task_cls"](),
+        split_strategy=DeterministicHoldoutSplit(**_cfg["split_kwargs"]),
         early_stop=True,
         loss_threshold=0.01,
         plateau_patience=7,
         checkpoint_every=1,
     )
 
-    model = UNet2D(base_channels=base_channels)
+    model = _cfg["model_cls"](base_channels=base_channels)
     try:
         import torch
         total_params = sum(p.numel() for p in model.parameters())
         trainable    = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        _log(f"  model          : UNet2D  base_channels={base_channels}")
+        _log(f"  model          : {model.__class__.__name__}  base_channels={base_channels}")
         _log(f"  parameters     : {total_params:,}  ({trainable:,} trainable)")
     except Exception:
         pass
@@ -208,8 +230,6 @@ def main() -> None:
     _log("  (per-epoch progress printed below by the trainer)")
     print(flush=True)
 
-    # TrainingPipeline writes checkpoints to run_dir; output_dir routes them
-    # to CHECKPOINT_DIR so checkpoint_latest.pt is easy to find on resume.
     pipeline = TrainingPipeline(
         datasource,
         model,
@@ -219,16 +239,15 @@ def main() -> None:
     )
     t_train = time.time()
     outputs = pipeline.run()
-    elapsed_train = time.time() - t_train
+    elapsed = time.time() - t_train
 
     results = outputs["results"]
-    _log("=" * 56)
-    _log(f"  Training complete  ({elapsed_train / 60:.1f} min)")
+    _log("=" * 60)
+    _log(f"  Training complete  ({elapsed / 60:.1f} min)")
     _log(f"  run_dir : {results.run_dir}")
     _log(f"  model   : {results.artifacts.get('model', '—')}")
     print(flush=True)
 
-    # Copy final model to ARTIFACTS_DIR for easy download
     import shutil
     model_src = results.artifacts.get("model")
     if model_src and Path(model_src).exists():
@@ -250,7 +269,6 @@ def main() -> None:
 
 
 def _push_artifacts(artifacts_dir: Path, dataset_id: str) -> None:
-    """Push artifacts_dir as a new version of a Kaggle dataset."""
     if not dataset_id:
         return
     _log(f"Pushing artifacts to Kaggle dataset: {dataset_id} ...")
