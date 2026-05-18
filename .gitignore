@@ -113,3 +113,8 @@ Desktop.ini
 scripts/_exploratory/
 _exploratory/
 .dev/
+
+###############################################################################
+# Claude Code project instructions (local only)
+###############################################################################
+CLAUDE.md
