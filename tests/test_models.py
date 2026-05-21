@@ -22,6 +22,7 @@ def test_small_segmentation_cnn_output_shape(evidence_output_dir):
     if out.shape != x.shape:
         report.error(f"Expected output shape {x.shape}, got {out.shape}", "MOD-001")
 
+    report.info(f"SmallSegmentationCNN output shape={out.shape} matches input shape={x.shape}", "MOD-001")
     report.auto_save("MOD001_small_cnn_output_shape", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -40,6 +41,7 @@ def test_unet2d_output_shape_matches_input(evidence_output_dir):
     if out.shape != x.shape:
         report.error(f"Expected output shape {x.shape}, got {out.shape}", "MOD-001")
 
+    report.info(f"UNet2D output shape={out.shape} matches input shape={x.shape}", "MOD-001")
     report.auto_save("MOD001_unet2d_output_shape", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -60,6 +62,7 @@ def test_unet2d_configurable_channels(evidence_output_dir):
                 "MOD-001",
             )
 
+    report.info("UNet2D produces correct output shape for base_channels in (8, 16, 32)", "MOD-001")
     report.auto_save("MOD001_unet2d_configurable_channels", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -78,6 +81,7 @@ def test_unet2d_produces_finite_outputs(evidence_output_dir):
     if not torch.isfinite(out).all():
         report.error("UNet2D produced non-finite output on random input", "MOD-001")
 
+    report.info(f"UNet2D output all-finite={torch.isfinite(out).all().item()} on random input", "MOD-001")
     report.auto_save("MOD001_unet2d_finite_outputs", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -101,6 +105,8 @@ def test_unet2d_gradient_flows_through_network(evidence_output_dir):
             f"Parameters received no gradient: {no_grad_params}", "MOD-001"
         )
 
+    total_params = sum(1 for p in model.parameters() if p.requires_grad)
+    report.info(f"Gradients flowed to all {total_params} trainable UNet2D parameters", "MOD-001")
     report.auto_save("MOD001_unet2d_gradient_flow", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -124,6 +130,7 @@ def test_calcium_score_regressor_output_shape(evidence_output_dir):
     if out.shape != (1, 4):
         report.error(f"Expected (1, 4), got {out.shape}", "MOD-004")
 
+    report.info(f"CalciumScoreRegressor output shape={out.shape} (expected (1,4))", "MOD-004")
     report.auto_save("MOD004_regressor_output_shape", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -143,6 +150,7 @@ def test_calcium_score_regressor_accepts_any_spatial_size(evidence_output_dir):
         if out.shape != (1, 4):
             report.error(f"Size {size}×{size}: expected (1,4), got {out.shape}", "MOD-004")
 
+    report.info("CalciumScoreRegressor accepts spatial sizes (32, 64, 128, 512) — all produce shape (1,4)", "MOD-004")
     report.auto_save("MOD004_regressor_spatial_flexibility", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -162,6 +170,7 @@ def test_calcium_score_regressor_finite_output_on_random_input(evidence_output_d
     if not torch.isfinite(out).all():
         report.error("Non-finite output on random input", "MOD-004")
 
+    report.info(f"CalciumScoreRegressor all-finite output={torch.isfinite(out).all().item()} on batch of 2", "MOD-004")
     report.auto_save("MOD004_regressor_finite_output", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -183,6 +192,8 @@ def test_calcium_score_regressor_gradient_flows(evidence_output_dir):
     if no_grad:
         report.error(f"Parameters received no gradient: {no_grad}", "MOD-004")
 
+    total_params = sum(1 for p in model.parameters() if p.requires_grad)
+    report.info(f"Gradients flowed to all {total_params} trainable CalciumScoreRegressor parameters", "MOD-004")
     report.auto_save("MOD004_regressor_gradient_flow", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -229,6 +240,7 @@ def test_segmentation_min_dice_threshold_is_configured(evidence_output_dir):
             "MOD-005",
         )
 
+    report.info(f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} is a float in (0.0, 1.0)", "MOD-005")
     report.auto_save("MOD005_segmentation_min_dice", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -249,5 +261,6 @@ def test_regression_max_mae_threshold_is_configured(evidence_output_dir):
             "MOD-006",
         )
 
+    report.info(f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} is a positive float", "MOD-006")
     report.auto_save("MOD006_regression_max_mae", evidence_output_dir)
     assert not report.has_errors, report.summary()

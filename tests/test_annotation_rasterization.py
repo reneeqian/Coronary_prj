@@ -32,6 +32,11 @@ def test_contour_is_rasterized_into_binary_mask(evidence_output_dir):
         if mask[0, 0] != 0:
             report.error("Pixel outside contour is incorrectly marked foreground", "DAT-013")
 
+        report.info(
+            f"Polygon rasterized to {mask.sum()} foreground pixels; centre pixel=1, corner pixel=0",
+            "DAT-013",
+        )
+
     report.auto_save("DAT013_contour_rasterization", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -53,6 +58,7 @@ def test_rasterized_mask_aligns_with_source_dimensions(evidence_output_dir):
                 "DAT-013",
             )
 
+    report.info("Rasterized masks stay within bounds for shapes (16,16), (32,64), (64,32)", "DAT-013")
     report.auto_save("DAT013_mask_dimension_alignment", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -85,6 +91,7 @@ def test_ingestor_raises_dataset_structure_error_not_runtime_error(tmp_path, evi
             "No DatasetStructureError raised for a corrupted dataset", "DAT-014"
         )
 
+    report.info("DatasetStructureError raised (not a raw exception) for corrupted DICOM input", "DAT-014")
     report.auto_save("DAT014_domain_safe_ingestion_errors", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -107,5 +114,6 @@ def test_missing_patient_directory_raises_dataset_structure_error(tmp_path, evid
             f"Expected DatasetStructureError, got {type(e).__name__}: {e}", "DAT-014"
         )
 
+    report.info("DatasetStructureError raised for nonexistent patient directory", "DAT-014")
     report.auto_save("DAT014_missing_patient_directory", evidence_output_dir)
     assert not report.has_errors, report.summary()
