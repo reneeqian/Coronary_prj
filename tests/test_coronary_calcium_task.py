@@ -20,7 +20,9 @@ class FakeReport:
 
 
 @pytest.mark.requirement("DAT-004")
-def test_coca_gated_ingestor_skips_dicom_without_image_positionpatient(tmp_path):
+def test_coca_gated_ingestor_skips_dicom_without_image_positionpatient(tmp_path, evidence_output_dir):
+    from regulatory_tools.evidence.evidence_report import EvidenceReport
+    report = EvidenceReport(subject="DAT-004: DICOMs missing ImagePositionPatient are skipped with a warning")
     patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
 
@@ -53,23 +55,35 @@ def test_coca_gated_ingestor_skips_dicom_without_image_positionpatient(tmp_path)
     def fake_dcmread(path, *args, **kwargs):
         return metadata_map[str(path)]
 
-    report = FakeReport()
+    fake_report = FakeReport()
 
     with patch("pydicom.dcmread", side_effect=fake_dcmread):
-        ingestor = COCAGatedIngestor(dataset_root=tmp_path, report=report)
+        ingestor = COCAGatedIngestor(dataset_root=tmp_path, report=fake_report)
         sample = ingestor.load_patient_sample("0")
 
+    if sample.image_volume.shape != (2, 2, 2):
+        report.error(f"Expected volume shape (2,2,2), got {sample.image_volume.shape}", "DAT-004")
+    if len(fake_report.warnings) != 1 or "Skipped" not in fake_report.warnings[0][0]:
+        report.error("Expected exactly 1 'Skipped' warning from ingestor", "DAT-004")
+    report.info(
+        f"Volume shape={sample.image_volume.shape} with 1 skipped DICOM and 1 'Skipped' warning emitted",
+        "DAT-004",
+    )
+    report.auto_save("DAT004_skip_dicom_without_position", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert sample.image_volume.shape == (2, 2, 2)
     assert np.all(sample.image_volume[0] == 5.0)
     assert np.all(sample.image_volume[1] == 10.0)
-    assert len(report.warnings) == 1
-    assert "Skipped" in report.warnings[0][0]
+    assert len(fake_report.warnings) == 1
+    assert "Skipped" in fake_report.warnings[0][0]
 
 
 @pytest.mark.requirement("TSK-001")
 @pytest.mark.requirement("TSK-002")
 @pytest.mark.requirement("DAT-013")
-def test_coronary_calcium_task_yields_masks_for_annotated_slices():
+def test_coronary_calcium_task_yields_masks_for_annotated_slices(evidence_output_dir):
+    from regulatory_tools.evidence.evidence_report import EvidenceReport
+    report = EvidenceReport(subject="CoronaryCalciumTask yields one sample per slice with rasterized mask")
     task = CoronaryCalciumTask()
     volume = np.zeros((2, 4, 4), dtype=np.float32)
     volume[0] = np.arange(16, dtype=np.float32).reshape((4, 4))
@@ -99,6 +113,25 @@ def test_coronary_calcium_task_yields_masks_for_annotated_slices():
 
     outputs = list(task.generate_training_samples(sample))
 
+    if len(outputs) != 2:
+        report.error(f"Expected 2 samples, got {len(outputs)}", "TSK-001")
+    if outputs[0]["input"].shape != (1, 1, 4, 4):
+        report.error(f"Input shape wrong: {outputs[0]['input'].shape}", "TSK-002")
+    if outputs[0]["target"].shape != (1, 1, 4, 4):
+        report.error(f"Target shape wrong: {outputs[0]['target'].shape}", "TSK-002")
+    if outputs[0]["target"].sum().item() == 0.0:
+        report.error("Annotated slice target is all-zero — rasterization failed", "DAT-013")
+    if outputs[1]["target"].sum().item() != 0.0:
+        report.error("Unannotated slice target is non-zero", "TSK-002")
+    report.info(
+        f"2 samples produced; slice 0 target sum={outputs[0]['target'].sum().item():.1f} (foreground present), "
+        f"slice 1 target sum={outputs[1]['target'].sum().item():.1f} (background)",
+        "TSK-001",
+    )
+    report.info("Contour rasterized to non-zero mask for annotated slice", "DAT-013")
+    report.info("HU-windowed input shape=(1,1,4,4); unannotated slice gets zero target", "TSK-002")
+    report.auto_save("TSK001_TSK002_DAT013_task_yields_masks", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert len(outputs) == 2
     assert outputs[0]["input"].shape == (1, 1, 4, 4)
     assert outputs[0]["target"].shape == (1, 1, 4, 4)
@@ -107,7 +140,9 @@ def test_coronary_calcium_task_yields_masks_for_annotated_slices():
 
 
 @pytest.mark.requirement("TSK-002")
-def test_coronary_calcium_task_ignores_short_contours():
+def test_coronary_calcium_task_ignores_short_contours(evidence_output_dir):
+    from regulatory_tools.evidence.evidence_report import EvidenceReport
+    report = EvidenceReport(subject="CoronaryCalciumTask ignores contours with fewer than 3 points")
     task = CoronaryCalciumTask()
     volume = np.ones((1, 3, 3), dtype=np.float32)
     annotations = AnnotationBundle(
@@ -132,18 +167,34 @@ def test_coronary_calcium_task_ignores_short_contours():
 
     outputs = list(task.generate_training_samples(sample))
 
+    if len(outputs) != 1:
+        report.error(f"Expected 1 sample, got {len(outputs)}", "TSK-002")
+    if outputs and outputs[0]["target"].sum().item() != 0.0:
+        report.error("Short contour produced non-zero mask — should have been ignored", "TSK-002")
+    report.info("2-point contour ignored; target is all-zero for the annotated slice", "TSK-002")
+    report.auto_save("TSK002_ignore_short_contours", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert len(outputs) == 1
     assert outputs[0]["target"].sum().item() == 0.0
 
 
 @pytest.mark.requirement("TRN-003")
-def test_coronary_calcium_task_compute_loss_returns_finite_scalar():
+def test_coronary_calcium_task_compute_loss_returns_finite_scalar(evidence_output_dir):
+    from regulatory_tools.evidence.evidence_report import EvidenceReport
+    report = EvidenceReport(subject="CoronaryCalciumTask compute_loss returns finite scalar")
     task = CoronaryCalciumTask()
     prediction = torch.zeros((1, 1, 2, 2), dtype=torch.float32)
     target = torch.zeros((1, 1, 2, 2), dtype=torch.float32)
 
     loss = task.compute_loss(prediction, target)
 
+    if not torch.isfinite(loss):
+        report.error("compute_loss returned non-finite value", "TRN-003")
+    if loss.dim() != 0:
+        report.error(f"compute_loss returned non-scalar (dim={loss.dim()})", "TRN-003")
+    report.info(f"compute_loss returned finite scalar loss={loss.item():.4f}", "TRN-003")
+    report.auto_save("TRN003_compute_loss_finite_scalar", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert torch.isfinite(loss)
     assert loss.dim() == 0
     assert loss.item() > 0.0
@@ -184,6 +235,12 @@ def test_coronary_calcium_task_input_is_hu_normalised(evidence_output_dir):
             "TSK-002",
         )
 
+    report.info(
+        f"HU window [-160,240] normalised correctly: below-window min={low_slice.min().item():.4f}, "
+        f"above-window max={high_slice.max().item():.4f}",
+        "TSK-002",
+    )
+    report.info("Cardiac HU window (clip then normalise) applied by CoronaryCalciumTask", "TSK-004")
     report.auto_save("TSK002_hu_normalisation", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -206,6 +263,7 @@ def test_coronary_calcium_task_loss_near_zero_on_perfect_prediction(evidence_out
             "TRN-003",
         )
 
+    report.info(f"Combined loss on perfect prediction={loss.item():.4f} (finite, < 0.1)", "TRN-003")
     report.auto_save("TRN003_loss_perfect_prediction", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -228,6 +286,7 @@ def test_coronary_calcium_task_loss_penalises_wrong_predictions(evidence_output_
             "TRN-003",
         )
 
+    report.info(f"loss(wrong)={loss_wrong:.4f} > loss(correct)={loss_correct:.4f} — loss penalises errors", "TRN-003")
     report.auto_save("TRN003_loss_penalises_wrong_predictions", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -266,5 +325,9 @@ def test_gated_task_all_slices_receive_target_tensor(evidence_output_dir):
             elif s["target"].shape[-2:] != (8, 8):
                 report.error(f"Slice {i} target has wrong spatial shape: {s['target'].shape}", "TSK-006")
 
+    report.info(
+        f"All {n_slices} slices received a 'target' tensor with spatial shape (8,8)",
+        "TSK-006",
+    )
     report.auto_save("TSK006_gated_broadcast", evidence_output_dir)
     assert not report.has_errors, report.summary()

@@ -41,6 +41,7 @@ def test_training_report_generated_contains_metrics(tmp_path, evidence_output_di
         if data.get("metrics", {}).get("final_loss") != 0.42:
             report.error("training_report.json 'metrics.final_loss' has wrong value", "REP-001")
 
+    report.info(f"training_report.json written at {report_path}; metrics.final_loss=0.42", "REP-001")
     report.auto_save("REP001_training_report_generation", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -56,6 +57,8 @@ def test_visualization_figures_can_be_generated(tmp_path, evidence_output_dir):
         result_path = plot_training_curve(history, fig_path)
         if not result_path.exists():
             report.error("plot_training_curve did not produce an output file", "REP-002")
+        else:
+            report.info(f"plot_training_curve wrote training curve figure to {result_path}", "REP-002")
     except Exception as e:
         report.error(f"plot_training_curve raised an exception: {e}", "REP-002")
 
@@ -82,6 +85,8 @@ def test_test_suite_exists_and_contains_test_functions(project_root, evidence_ou
             )
             if not has_test_fn:
                 report.error("No test functions (def test_*) found in any test file", "VER-001")
+            else:
+                report.info(f"Test suite contains {len(test_files)} test_*.py files with at least one def test_* function", "VER-001")
 
     report.auto_save("VER001_test_suite_existence", evidence_output_dir)
     assert not report.has_errors, report.summary()
@@ -103,6 +108,8 @@ def test_evidence_report_can_be_saved_and_loaded(tmp_path, evidence_output_dir):
             data = json.loads(saved_files[0].read_text())
             if "result" not in data:
                 report.error("Saved evidence JSON missing 'result' key", "VER-002")
+            else:
+                report.info(f"auto_save produced valid JSON evidence file with 'result' key at {saved_files[0]}", "VER-002")
         except json.JSONDecodeError as e:
             report.error(f"Saved evidence JSON is not valid JSON: {e}", "VER-002")
 
@@ -132,6 +139,12 @@ def test_segmentation_evaluator_produces_performance_metrics(evidence_output_dir
                 f"Metric '{key}' = {metrics[key]} is outside [0, 1]", "VER-003"
             )
 
+    report.info(
+        f"SegmentationEvaluator produced metrics: "
+        f"dice={metrics.get('dice'):.4f}, iou={metrics.get('iou'):.4f}, "
+        f"precision={metrics.get('precision'):.4f}, recall={metrics.get('recall'):.4f}",
+        "VER-003",
+    )
     report.auto_save("VER003_model_performance_verification", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -157,6 +170,9 @@ def test_traceability_matrix_can_be_generated(project_root, tmp_path, evidence_o
                         "Matrix row missing 'requirement_id' field", "DOC-003"
                     )
                     break
+            else:
+                report.info(f"build_trace_matrix returned {len(matrix)} rows, all with 'requirement_id'", "SYS-003")
+                report.info("Traceability matrix rows conform to expected schema", "DOC-003")
         except Exception as e:
             report.error(f"build_trace_matrix raised an exception: {e}", "SYS-003")
 

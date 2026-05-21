@@ -89,6 +89,12 @@ def test_valid_annotation_geometry(tmp_path, evidence_output_dir):
                     report.error(f"contour_px dtype wrong: {roi.contour_px.dtype}", "DAT-009")
                 if np.isnan(roi.contour_px).any():
                     report.error("contour_px contains NaN values", "DAT-009")
+        total_rois = sum(len(v) for v in annotations.vector_rois.values())
+        report.info(
+            f"Parsed {total_rois} VectorROI(s) across {len(annotations.vector_rois)} slice(s); "
+            "all have shape (N,2) float32 with ≥3 points and no NaNs",
+            "DAT-009",
+        )
 
     report.auto_save("DAT009_valid_annotation_geometry", evidence_output_dir)
     assert not report.has_errors, report.summary()
@@ -140,6 +146,7 @@ def test_invalid_polygon_skipped(tmp_path, evidence_output_dir):
             "DAT-009",
         )
 
+    report.info("ROI with fewer than 3 points is discarded; vector_rois=None as expected", "DAT-009")
     report.auto_save("DAT009_invalid_polygon_skipped", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -164,6 +171,7 @@ def test_missing_annotation_file_returns_empty(tmp_path, evidence_output_dir):
             "DAT-010",
         )
 
+    report.info("Ingestor returns empty annotations (vector_rois=None) when XML file is absent", "DAT-010")
     report.auto_save("DAT010_missing_annotation_file_empty", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -206,5 +214,6 @@ def test_volume_sorted_by_z_position(tmp_path, evidence_output_dir):
     if z_vals != [1, 3, 5]:
         report.error(f"Volume not sorted by Z: got {z_vals}, expected [1, 3, 5]", "SYS-001")
 
+    report.info(f"Volume slices sorted by Z position: {z_vals} (expected [1, 3, 5])", "SYS-001")
     report.auto_save("SYS001_volume_sorted_by_z", evidence_output_dir)
     assert not report.has_errors, report.summary()

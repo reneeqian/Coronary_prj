@@ -54,13 +54,20 @@ def _make_patient_dir(root, patient_id: str, n_dcm: int = 1) -> None:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.requirement("DAT-015")
-def test_scores_file_not_found_raises(tmp_path):
+def test_scores_file_not_found_raises(tmp_path, evidence_output_dir):
     """Ingestor constructor raises DatasetStructureError when scores.xlsx is absent."""
+    report = EvidenceReport(subject="DAT-015: missing scores.xlsx raises DatasetStructureError")
     _make_patient_dir(tmp_path, "1")
-    # No scores.xlsx written
-
-    with pytest.raises(DatasetStructureError, match="[Ss]cores"):
+    raised = False
+    try:
         COCANongatedIngestor(tmp_path)
+    except DatasetStructureError:
+        raised = True
+    if not raised:
+        report.error("Expected DatasetStructureError when scores.xlsx absent; none raised", "DAT-015")
+    report.info("DatasetStructureError raised on construction when scores.xlsx is absent", "DAT-015")
+    report.auto_save("DAT015_scores_file_not_found", evidence_output_dir)
+    assert not report.has_errors, report.summary()
 
 
 @pytest.mark.requirement("DAT-015")
@@ -136,6 +143,11 @@ def test_scores_attached_to_patient_metadata(tmp_path, evidence_output_dir):
     if abs(meta.get("total_score", -1) - 300.0) > 1e-6:
         report.error(f"total_score wrong: got {meta.get('total_score')}", "DAT-016")
 
+    report.info(
+        f"Per-vessel scores loaded from scores.xlsx: lca={meta['lca']}, lad={meta['lad']}, "
+        f"lcx={meta['lcx']}, rca={meta['rca']}, total={meta['total_score']}",
+        "DAT-016",
+    )
     report.auto_save("DAT016_scores_attached", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -230,6 +242,7 @@ def test_slices_z_sorted_on_load(tmp_path, evidence_output_dir):
     if vol[0, 0, 0] != 5 or vol[1, 0, 0] != 7 or vol[2, 0, 0] != 10:
         report.error(f"Unexpected Z order: {vol[:,0,0]}", "DAT-004")
 
+    report.info(f"Nongated slices sorted by Z: [{vol[0,0,0]:.0f}, {vol[1,0,0]:.0f}, {vol[2,0,0]:.0f}] = [5,7,10]", "DAT-004")
     report.auto_save("DAT004_nongated_z_sort", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -371,8 +384,9 @@ def test_get_sample_returns_volume_and_score_array(tmp_path):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.requirement("DAT-008")
-def test_deterministic_patient_loading(tmp_path):
+def test_deterministic_patient_loading(tmp_path, evidence_output_dir):
     """Loading the same patient twice returns identical volumes."""
+    report = EvidenceReport(subject="DAT-008: loading the same nongated patient twice returns identical volumes")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "1")
 
@@ -381,5 +395,12 @@ def test_deterministic_patient_loading(tmp_path):
         s1 = ingestor.load_patient_sample("1")
         s2 = ingestor.load_patient_sample("1")
 
+    if not np.array_equal(s1.image_volume, s2.image_volume):
+        report.error("Two consecutive loads returned different image volumes", "DAT-008")
+    if s1.metadata["total_score"] != s2.metadata["total_score"]:
+        report.error("Two consecutive loads returned different total_score", "DAT-008")
+    report.info("Two consecutive load_patient_sample() calls returned identical volume and metadata", "DAT-008")
+    report.auto_save("DAT008_nongated_deterministic_loading", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert np.array_equal(s1.image_volume, s2.image_volume)
     assert s1.metadata["total_score"] == s2.metadata["total_score"]
