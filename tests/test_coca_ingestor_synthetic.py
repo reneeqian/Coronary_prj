@@ -35,13 +35,19 @@ class SimpleDicom:
 # =============================================================================
 
 @pytest.mark.requirement("DAT-001")
-def test_dataset_structure_validation(tmp_path):
-
-    # Root exists but missing patient folder
+def test_dataset_structure_validation(tmp_path, evidence_output_dir):
+    report = EvidenceReport(subject="DAT-001: missing patient/ directory raises DatasetStructureError")
     ingestor = COCAGatedIngestor(dataset_root=tmp_path)
-
-    with pytest.raises(DatasetStructureError):
+    raised = False
+    try:
         ingestor.list_patient_ids()
+    except DatasetStructureError:
+        raised = True
+    if not raised:
+        report.error("Expected DatasetStructureError when patient/ dir is absent; none raised", "DAT-001")
+    report.info("DatasetStructureError raised when dataset root has no patient/ directory", "DAT-001")
+    report.auto_save("DAT001_dataset_structure_validation", evidence_output_dir)
+    assert not report.has_errors, report.summary()
 
 # =============================================================================
 # Ingestion Behavior Tests
@@ -187,14 +193,20 @@ def test_annotation_out_of_bounds_raises(tmp_path, request, evidence_output_dir)
     report.auto_save(request.node.nodeid, evidence_output_dir)
 
 @pytest.mark.requirement("DAT-003")
-def test_invalid_patient_id_raises(tmp_path):
-
+def test_invalid_patient_id_raises(tmp_path, evidence_output_dir):
+    report = EvidenceReport(subject="DAT-003: patient directory with no DICOM series raises DatasetStructureError")
     (tmp_path / "patient" / "999").mkdir(parents=True)
-
     ingestor = COCAGatedIngestor(dataset_root=tmp_path)
-
-    with pytest.raises(DatasetStructureError):
+    raised = False
+    try:
         ingestor.ingest_patient("999")
+    except DatasetStructureError:
+        raised = True
+    if not raised:
+        report.error("Expected DatasetStructureError for patient dir with no series subdirs; none raised", "DAT-003")
+    report.info("DatasetStructureError raised for patient directory with no series subdirectories", "DAT-003")
+    report.auto_save("DAT003_invalid_patient_id", evidence_output_dir)
+    assert not report.has_errors, report.summary()
 
 @pytest.mark.requirement("DAT-006")
 def test_lazy_patient_loading(tmp_path):
@@ -268,8 +280,8 @@ def test_missing_dicom_files(tmp_path):
         ingestor.ingest_patient("0")
 
 @pytest.mark.requirement("DAT-006")
-def test_get_patient_api(tmp_path):
-
+def test_get_patient_api(tmp_path, evidence_output_dir):
+    report = EvidenceReport(subject="DAT-006: load_patient_sample returns PatientSample with correct patient_id")
     patient_dir = tmp_path/"patient"/"0"/"seriesA"
     patient_dir.mkdir(parents=True)
 
@@ -285,10 +297,14 @@ def test_get_patient_api(tmp_path):
 
     with patch("pydicom.dcmread", return_value=FakeDicom()):
         ingestor = COCAGatedIngestor(tmp_path)
-
         patient = ingestor.load_patient_sample("0")
 
-        assert patient.patient_id == "0"
+    if patient.patient_id != "0":
+        report.error(f"Expected patient_id='0', got '{patient.patient_id}'", "DAT-006")
+    report.info(f"load_patient_sample returned PatientSample with patient_id='{patient.patient_id}'", "DAT-006")
+    report.auto_save("DAT006_get_patient_api", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert patient.patient_id == "0"
 
 @pytest.mark.requirement("DAT-006")
 def test_get_volume_api(tmp_path):
@@ -382,8 +398,8 @@ def test_annotation_with_missing_image_index(tmp_path):
 # =============================================================================
 
 @pytest.mark.requirement("DAT-012")
-def test_ct_volume_sorted_by_z_position(tmp_path):
-
+def test_ct_volume_sorted_by_z_position(tmp_path, evidence_output_dir):
+    report = EvidenceReport(subject="DAT-012: CT volume slices are sorted by Z position")
     patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
 
@@ -391,7 +407,7 @@ def test_ct_volume_sorted_by_z_position(tmp_path):
     (patient_dir / "sliceB.dcm").write_text("fake")
     (patient_dir / "sliceA.dcm").write_text("fake")
 
-    class FakeDicom:
+    class _FakeDicom:
         def __init__(self, z):
             self.ImagePositionPatient = [0.0, 0.0, float(z)]
             self.PixelSpacing = [1.0, 1.0]
@@ -402,20 +418,23 @@ def test_ct_volume_sorted_by_z_position(tmp_path):
 
     def fake_dcmread(path, *args, **kwargs):
         if "sliceA" in str(path):
-            return FakeDicom(0)
+            return _FakeDicom(0)
         elif "sliceB" in str(path):
-            return FakeDicom(10)
-        return FakeDicom(0)
+            return _FakeDicom(10)
+        return _FakeDicom(0)
 
     with patch("pydicom.dcmread", side_effect=fake_dcmread):
-
         ingestor = COCAGatedIngestor(tmp_path)
         patient = ingestor.load_patient_sample("0")
-
         volume = patient.image_volume
 
-        assert np.all(volume[0] == 0)
-        assert np.all(volume[1] == 10)
+    if not np.all(volume[0] == 0) or not np.all(volume[1] == 10):
+        report.error(f"Volume not sorted by Z: slice0={volume[0,0,0]}, slice1={volume[1,0,0]}", "DAT-012")
+    report.info(f"Slices sorted by Z: slice0 pixel={volume[0,0,0]:.0f} (z=0), slice1 pixel={volume[1,0,0]:.0f} (z=10)", "DAT-012")
+    report.auto_save("DAT012_ct_volume_sorted_by_z", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert np.all(volume[0] == 0)
+    assert np.all(volume[1] == 10)
 
 
 @pytest.mark.requirement("DAT-004")

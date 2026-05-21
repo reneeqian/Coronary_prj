@@ -87,6 +87,7 @@ def test_training_initialization_is_deterministic(evidence_output_dir):
             )
             break
 
+    report.info("All parameters identical between two models initialized with the same seed", "TRN-001")
     report.auto_save("TRN001_initialization_determinism", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -109,6 +110,7 @@ def test_training_artifacts_generated_after_training(tmp_path, evidence_output_d
     if not results.history:
         report.error("training history is empty", "TRN-002")
 
+    report.info(f"metrics.json written; final_loss={results.metrics.get('final_loss'):.4f}; history present", "TRN-002")
     report.auto_save("TRN002_training_artifact_generation", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -137,6 +139,7 @@ def test_model_can_be_retrained_with_updated_config(tmp_path, evidence_output_di
     except Exception as e:
         report.error(f"Retraining with updated config raised an exception: {e}", "TRN-004")
 
+    report.info("Second training run with updated learning_rate completed without error", "TRN-004")
     report.auto_save("TRN004_model_retraining", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -166,6 +169,7 @@ def test_model_state_dict_can_be_saved_and_loaded(tmp_path, evidence_output_dir)
         if not torch.allclose(out_orig, out_loaded, atol=1e-6):
             report.error("Loaded model produces different output than saved model", "MOD-002")
 
+    report.info("Saved and loaded model produce identical outputs on same input", "MOD-002")
     report.auto_save("MOD002_model_persistence", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -200,6 +204,7 @@ def test_model_evaluation_on_held_out_partition(tmp_path, evidence_output_dir):
         if key not in testing_results.metrics:
             report.error(f"Metric '{key}' missing from model testing results", "MOD-003")
 
+    report.info(f"ModelTestingPipeline produced metrics: {sorted(testing_results.metrics.keys())}", "MOD-003")
     report.auto_save("MOD003_model_evaluation", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -220,6 +225,7 @@ def test_inference_produces_output_on_new_data(evidence_output_dir):
     if not torch.isfinite(out).all():
         report.error("Model output contains non-finite values", "INF-001")
 
+    report.info(f"Inference output shape={out.shape}, all finite={torch.isfinite(out).all().item()}", "INF-001")
     report.auto_save("INF001_inference_capability", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -239,5 +245,6 @@ def test_inference_is_deterministic_for_same_input(evidence_output_dir):
     if not torch.equal(out_a, out_b):
         report.error("Two inference runs on the same input produced different outputs", "INF-002")
 
+    report.info("Two inference runs on identical input produced bit-identical outputs", "INF-002")
     report.auto_save("INF002_inference_determinism", evidence_output_dir)
     assert not report.has_errors, report.summary()

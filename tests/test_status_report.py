@@ -97,6 +97,7 @@ def test_status_report_handles_no_runs(tmp_path, evidence_output_dir, capsys):
             "Expected 'no runs found' message when no artifacts exist", "REP-004"
         )
 
+    report.info("status_report handles missing artifact directories without raising and prints 'no runs found'", "REP-004")
     report.auto_save("REP004_status_report_no_runs", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -119,6 +120,8 @@ def test_status_report_prints_training_section(tmp_path, evidence_output_dir, ca
         if token not in out:
             report.error(f"Expected '{token}' ({desc}) not found in output", "REP-004")
 
+    report.info("status_report printed TRAINING section with final_loss and learning_rate", "REP-003")
+    report.info("status_report printed TRAINING section tokens correctly", "REP-004")
     report.auto_save("REP003_REP004_training_section", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -141,6 +144,8 @@ def test_status_report_prints_tuning_section(tmp_path, evidence_output_dir, caps
         if token not in out:
             report.error(f"Expected '{token}' ({desc}) not found in output", "REP-004")
 
+    report.info("status_report printed TUNING section with num_trials and best_val_loss", "REP-003")
+    report.info("status_report printed TUNING section tokens correctly", "REP-004")
     report.auto_save("REP003_REP004_tuning_section", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -166,5 +171,7 @@ def test_status_report_prints_model_testing_section(tmp_path, evidence_output_di
         if token not in out:
             report.error(f"Expected '{token}' ({desc}) not found in output", "REP-004")
 
+    report.info("status_report printed MODEL TESTING section with dice, iou, precision, recall, num_test_patients", "REP-003")
+    report.info("status_report printed MODEL TESTING section tokens correctly", "REP-004")
     report.auto_save("REP003_REP004_model_testing_section", evidence_output_dir)
     assert not report.has_errors, report.summary()

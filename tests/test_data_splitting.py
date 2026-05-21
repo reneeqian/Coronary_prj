@@ -72,6 +72,12 @@ def test_deterministic_holdout_split_generates_three_partitions(evidence_output_
     if len(test_ids) == 0:
         report.error("Test partition is empty", "DAT-011")
 
+    report.info(
+        f"Split: train={len(train_ids)}, val={len(val_ids)}, test={len(test_ids)}, "
+        f"no overlaps, all {len(ids)} IDs covered",
+        "SYS-002",
+    )
+    report.info(f"Train and test partitions non-empty for {len(ids)}-patient dataset", "DAT-011")
     report.auto_save("SYS002_DAT011_split_generates_partitions", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -89,6 +95,8 @@ def test_split_is_reproducible_with_same_seed(evidence_output_dir):
 
     if train_a != train_b or val_a != val_b or test_a != test_b:
         report.error("Same seed produces different splits — split is not deterministic", "SYS-002")
+    else:
+        report.info(f"Identical splits produced by two DeterministicHoldoutSplit(seed=42) instances over {len(ids)} IDs", "SYS-002")
 
     report.auto_save("SYS002_split_reproducibility", evidence_output_dir)
     assert not report.has_errors, report.summary()
@@ -110,6 +118,7 @@ def test_datasource_partition_assignment(tmp_path, evidence_output_dir):
         if len(ds.get_test_ids()) == 0:
             report.error("Test partition is empty", "DAT-011")
 
+    report.info("Datasource creates and exposes partitions after create_partitions()", "DAT-011")
     report.auto_save("DAT011_datasource_partition_assignment", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -135,5 +144,6 @@ def test_datasource_exposes_training_samples_via_task(tmp_path, evidence_output_
     if sample_count == 0:
         report.error("No training samples produced from the datasource", "TRN-005")
 
+    report.info(f"Generated {sample_count} training samples from datasource via task API", "TRN-005")
     report.auto_save("TRN005_dataset_training_interface", evidence_output_dir)
     assert not report.has_errors, report.summary()
