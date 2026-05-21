@@ -93,14 +93,21 @@ def test_target_is_log1p_of_vessel_scores(evidence_output_dir):
 
 
 @pytest.mark.requirement("TSK-005")
-def test_target_broadcast_identical_across_slices():
-    """All slices from the same patient share the identical target vector."""
+@pytest.mark.requirement("TSK-006")
+def test_target_broadcast_identical_across_slices(evidence_output_dir):
+    """All slices from the same patient share the identical target vector (TSK-006 broadcast design)."""
+    report = EvidenceReport(subject="NongatedCalciumScoreTask — patient label broadcast to every slice")
+
     task = NongatedCalciumScoreTask()
     patient = _make_patient(n_slices=4, lca=10.0, lad=20.0)
     samples = list(task.generate_training_samples(patient))
     first = samples[0]["target"]
-    for s in samples[1:]:
-        assert torch.equal(s["target"], first)
+    for i, s in enumerate(samples[1:], start=1):
+        if not torch.equal(s["target"], first):
+            report.error(f"Slice {i} target differs from slice 0", "TSK-006")
+
+    report.auto_save("TSK006_nongated_broadcast", evidence_output_dir)
+    assert not report.has_errors, report.summary()
 
 
 @pytest.mark.requirement("TSK-005")

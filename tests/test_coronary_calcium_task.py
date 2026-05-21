@@ -230,3 +230,41 @@ def test_coronary_calcium_task_loss_penalises_wrong_predictions(evidence_output_
 
     report.auto_save("TRN003_loss_penalises_wrong_predictions", evidence_output_dir)
     assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("TSK-006")
+def test_gated_task_all_slices_receive_target_tensor(evidence_output_dir):
+    report = EvidenceReport(
+        subject="CoronaryCalciumTask broadcast design — every slice receives a target mask"
+    )
+
+    task = CoronaryCalciumTask()
+    n_slices = 4
+    volume = np.zeros((n_slices, 8, 8), dtype=np.float32)
+    contour = np.array([[1.0, 1.0], [6.0, 1.0], [6.0, 6.0], [1.0, 6.0]], dtype=np.float32)
+    roi = VectorROI(slice_index=1, contour_px=contour, label="calcium")
+    sample = PatientSample(
+        patient_id="P_tsk006",
+        image_volume=volume,
+        spacing=(1.0, 1.0, 1.0),
+        annotations=AnnotationBundle(
+            vector_rois={1: [roi]}, segmentation_masks=None, label_map={"calcium": 1}
+        ),
+        metadata={},
+    )
+
+    outputs = list(task.generate_training_samples(sample))
+
+    if len(outputs) != n_slices:
+        report.error(
+            f"Expected {n_slices} samples (one per slice), got {len(outputs)}", "TSK-006"
+        )
+    else:
+        for i, s in enumerate(outputs):
+            if "target" not in s:
+                report.error(f"Slice {i} has no 'target' key", "TSK-006")
+            elif s["target"].shape[-2:] != (8, 8):
+                report.error(f"Slice {i} target has wrong spatial shape: {s['target'].shape}", "TSK-006")
+
+    report.auto_save("TSK006_gated_broadcast", evidence_output_dir)
+    assert not report.has_errors, report.summary()
