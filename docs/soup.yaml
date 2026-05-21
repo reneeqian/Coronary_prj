@@ -33,3 +33,8 @@ soup:
     version: "0.25.2"
     purpose: "Polygon rasterization for segmentation mask generation"
     license: BSD-3-Clause
+
+  - name: idna
+    version: "3.15"
+    purpose: "Internationalized domain names; pinned >=3.15 to close CVE-2026-45409"
+    license: BSD-3-Clause
