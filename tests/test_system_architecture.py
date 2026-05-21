@@ -6,6 +6,7 @@ from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
 from medical_image_ai_toolkit.training.task_definition import TrainingTaskDefinition
 from regulatory_tools.evidence.evidence_report import EvidenceReport
 
+import Coronary_prj
 from Coronary_prj.ingestors.base_ingestor import BaseIngestor
 from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
 from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
@@ -109,4 +110,22 @@ def test_coronary_task_and_ingestor_exist_and_are_importable(evidence_output_dir
         )
 
     report.auto_save("SYS004_SYS005_coronary_model_development", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("SYS-007")
+def test_intended_use_statement_is_advisory(evidence_output_dir):
+    report = EvidenceReport(subject="Intended use — advisory, radiologist-facing")
+
+    intended_use = getattr(Coronary_prj, "INTENDED_USE", None)
+    if intended_use is None:
+        report.error("Coronary_prj.INTENDED_USE is not defined", "SYS-007")
+    else:
+        text = intended_use.lower()
+        if "advisory" not in text:
+            report.error("INTENDED_USE does not contain 'advisory'", "SYS-007")
+        if "radiologist" not in text:
+            report.error("INTENDED_USE does not contain 'radiologist'", "SYS-007")
+
+    report.auto_save("SYS007_intended_use", evidence_output_dir)
     assert not report.has_errors, report.summary()
