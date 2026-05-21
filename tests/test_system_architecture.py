@@ -105,23 +105,25 @@ def test_task_output_is_deterministic_for_same_input(evidence_output_dir):
 
 
 @pytest.mark.requirement("SYS-004")
-@pytest.mark.requirement("SYS-005")
-def test_coronary_task_and_ingestor_exist_and_are_importable(evidence_output_dir):
-    report = EvidenceReport(subject="Coronary model development — core components importable")
+def test_coronary_calcium_task_is_instantiable(evidence_output_dir):
+    report = EvidenceReport(subject="SYS-004: CoronaryCalciumTask can be instantiated without error")
 
-    try:
-        _ = CoronaryCalciumTask()
-    except Exception as e:
-        report.error(f"CoronaryCalciumTask cannot be instantiated: {e}", "SYS-004")
+    task = CoronaryCalciumTask()
+
+    report.info(f"CoronaryCalciumTask() instantiated: {type(task).__name__}", "SYS-004")
+    report.auto_save("SYS004_coronary_calcium_task_is_instantiable", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("SYS-005")
+def test_coca_gated_ingestor_subclasses_base_ingestor(evidence_output_dir):
+    report = EvidenceReport(subject="SYS-005: COCAGatedIngestor subclasses BaseIngestor")
 
     if not issubclass(COCAGatedIngestor, BaseIngestor):
-        report.error(
-            "COCAGatedIngestor does not subclass BaseIngestor", "SYS-005"
-        )
+        report.error("COCAGatedIngestor does not subclass BaseIngestor", "SYS-005")
 
-    report.info("CoronaryCalciumTask instantiates without error", "SYS-004")
-    report.info("COCAGatedIngestor subclasses BaseIngestor", "SYS-005")
-    report.auto_save("SYS004_SYS005_coronary_model_development", evidence_output_dir)
+    report.info("COCAGatedIngestor is a subclass of BaseIngestor", "SYS-005")
+    report.auto_save("SYS005_coca_gated_ingestor_subclasses_base_ingestor", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
 

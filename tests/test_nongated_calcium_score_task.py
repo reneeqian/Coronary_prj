@@ -117,7 +117,6 @@ def test_target_is_log1p_of_vessel_scores(evidence_output_dir):
     assert not report.has_errors, report.summary()
 
 
-@pytest.mark.requirement("TSK-005")
 @pytest.mark.requirement("TSK-006")
 def test_target_broadcast_identical_across_slices(evidence_output_dir):
     """All slices from the same patient share the identical target vector (TSK-006 broadcast design)."""
@@ -180,7 +179,6 @@ def test_missing_metadata_defaults_to_zero_score(evidence_output_dir):
 # HU normalisation (TSK-005, TSK-004)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.requirement("TSK-005")
 @pytest.mark.requirement("TSK-004")
 def test_input_hu_normalised_below_window(evidence_output_dir):
     """Values below the cardiac window (-160 HU) are clamped to -1.0 after normalisation."""
@@ -199,7 +197,6 @@ def test_input_hu_normalised_below_window(evidence_output_dir):
     assert not report.has_errors, report.summary()
 
 
-@pytest.mark.requirement("TSK-005")
 @pytest.mark.requirement("TSK-004")
 def test_input_hu_normalised_above_window(evidence_output_dir):
     """Values above the cardiac window (+240 HU) are clamped to +1.0 after normalisation."""
@@ -238,7 +235,6 @@ def test_input_wl40_maps_to_zero(evidence_output_dir):
 # Loss function (TSK-005, TRN-003)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.requirement("TSK-005")
 @pytest.mark.requirement("TRN-003")
 def test_compute_loss_is_finite_scalar(evidence_output_dir):
     """compute_loss returns a finite scalar for arbitrary pred/target."""
