@@ -31,15 +31,24 @@ def _make_sample(pid="p1", shape=(5, 32, 32), spacing=(1.0, 1.0, 1.0), metadata=
 # RSK-001: segmentation threshold constant is meaningful
 # ---------------------------------------------------------------------------
 
+_APPROVED_SEGMENTATION_MIN_DICE = 0.50
+_APPROVED_REGRESSION_MAX_MAE_AU = 100.0
+
+
 @pytest.mark.requirement("RSK-001")
 def test_segmentation_threshold_constant_is_sensible(evidence_output_dir):
-    report = EvidenceReport(subject="RSK-001: SEGMENTATION_MIN_DICE is a meaningful threshold in (0, 1)")
+    report = EvidenceReport(subject="RSK-001: SEGMENTATION_MIN_DICE equals the approved clinical floor value 0.50")
     if not (0.0 < SEGMENTATION_MIN_DICE < 1.0):
         report.error(f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} is not in (0.0, 1.0)", "RSK-001")
-    report.info(f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} is in (0.0, 1.0)", "RSK-001")
+    if SEGMENTATION_MIN_DICE != _APPROVED_SEGMENTATION_MIN_DICE:
+        report.error(
+            f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} does not match approved value {_APPROVED_SEGMENTATION_MIN_DICE}",
+            "RSK-001",
+        )
+    report.info(f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} equals approved floor {_APPROVED_SEGMENTATION_MIN_DICE}", "RSK-001")
     report.auto_save("RSK001_segmentation_threshold", evidence_output_dir)
     assert not report.has_errors, report.summary()
-    assert 0.0 < SEGMENTATION_MIN_DICE < 1.0
+    assert SEGMENTATION_MIN_DICE == _APPROVED_SEGMENTATION_MIN_DICE
 
 
 # ---------------------------------------------------------------------------
@@ -70,13 +79,18 @@ def test_negative_score_clamped_before_log1p(evidence_output_dir):
 
 @pytest.mark.requirement("RSK-002")
 def test_regression_threshold_constant_is_sensible(evidence_output_dir):
-    report = EvidenceReport(subject="RSK-002: REGRESSION_MAX_MAE_AU is a positive threshold")
+    report = EvidenceReport(subject="RSK-002: REGRESSION_MAX_MAE_AU equals the approved clinical ceiling 100.0 AU")
     if not (REGRESSION_MAX_MAE_AU > 0.0):
         report.error(f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} is not positive", "RSK-002")
-    report.info(f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} > 0.0", "RSK-002")
+    if REGRESSION_MAX_MAE_AU != _APPROVED_REGRESSION_MAX_MAE_AU:
+        report.error(
+            f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} does not match approved value {_APPROVED_REGRESSION_MAX_MAE_AU}",
+            "RSK-002",
+        )
+    report.info(f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} equals approved ceiling {_APPROVED_REGRESSION_MAX_MAE_AU}", "RSK-002")
     report.auto_save("RSK002_regression_threshold", evidence_output_dir)
     assert not report.has_errors, report.summary()
-    assert REGRESSION_MAX_MAE_AU > 0.0
+    assert REGRESSION_MAX_MAE_AU == _APPROVED_REGRESSION_MAX_MAE_AU
 
 
 # ---------------------------------------------------------------------------

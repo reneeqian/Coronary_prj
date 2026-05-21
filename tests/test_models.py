@@ -224,43 +224,47 @@ def test_calcium_score_regressor_configurable_base_channels():
 # Performance acceptance thresholds (MOD-005, MOD-006)
 # =============================================================================
 
+_APPROVED_SEGMENTATION_MIN_DICE = 0.50
+_APPROVED_REGRESSION_MAX_MAE_AU = 100.0
+
+
 @pytest.mark.requirement("MOD-005")
 def test_segmentation_min_dice_threshold_is_configured(evidence_output_dir):
-    """SEGMENTATION_MIN_DICE is a float in (0.0, 1.0) defining the release criterion."""
-    report = EvidenceReport(subject="Segmentation acceptance criterion — SEGMENTATION_MIN_DICE defined")
+    """SEGMENTATION_MIN_DICE equals the approved clinical floor 0.50."""
+    report = EvidenceReport(subject="MOD-005: SEGMENTATION_MIN_DICE equals approved floor 0.50")
 
     if not isinstance(SEGMENTATION_MIN_DICE, float):
-        report.error(
-            f"SEGMENTATION_MIN_DICE must be a float, got {type(SEGMENTATION_MIN_DICE)}",
-            "MOD-005",
-        )
+        report.error(f"SEGMENTATION_MIN_DICE must be a float, got {type(SEGMENTATION_MIN_DICE)}", "MOD-005")
     elif not (0.0 < SEGMENTATION_MIN_DICE < 1.0):
+        report.error(f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} is outside (0.0, 1.0)", "MOD-005")
+    elif SEGMENTATION_MIN_DICE != _APPROVED_SEGMENTATION_MIN_DICE:
         report.error(
-            f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} is outside (0.0, 1.0)",
+            f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} does not match approved value {_APPROVED_SEGMENTATION_MIN_DICE}",
             "MOD-005",
         )
 
-    report.info(f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} is a float in (0.0, 1.0)", "MOD-005")
+    report.info(f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} equals approved floor {_APPROVED_SEGMENTATION_MIN_DICE}", "MOD-005")
     report.auto_save("MOD005_segmentation_min_dice", evidence_output_dir)
     assert not report.has_errors, report.summary()
+    assert SEGMENTATION_MIN_DICE == _APPROVED_SEGMENTATION_MIN_DICE
 
 
 @pytest.mark.requirement("MOD-006")
 def test_regression_max_mae_threshold_is_configured(evidence_output_dir):
-    """REGRESSION_MAX_MAE_AU is a positive float defining the regression release criterion."""
-    report = EvidenceReport(subject="Regression acceptance criterion — REGRESSION_MAX_MAE_AU defined")
+    """REGRESSION_MAX_MAE_AU equals the approved clinical ceiling 100.0 Agatston units."""
+    report = EvidenceReport(subject="MOD-006: REGRESSION_MAX_MAE_AU equals approved ceiling 100.0 AU")
 
     if not isinstance(REGRESSION_MAX_MAE_AU, float):
-        report.error(
-            f"REGRESSION_MAX_MAE_AU must be a float, got {type(REGRESSION_MAX_MAE_AU)}",
-            "MOD-006",
-        )
+        report.error(f"REGRESSION_MAX_MAE_AU must be a float, got {type(REGRESSION_MAX_MAE_AU)}", "MOD-006")
     elif REGRESSION_MAX_MAE_AU <= 0.0:
+        report.error(f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} must be positive", "MOD-006")
+    elif REGRESSION_MAX_MAE_AU != _APPROVED_REGRESSION_MAX_MAE_AU:
         report.error(
-            f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} must be positive",
+            f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} does not match approved value {_APPROVED_REGRESSION_MAX_MAE_AU}",
             "MOD-006",
         )
 
-    report.info(f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} is a positive float", "MOD-006")
+    report.info(f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} equals approved ceiling {_APPROVED_REGRESSION_MAX_MAE_AU}", "MOD-006")
     report.auto_save("MOD006_regression_max_mae", evidence_output_dir)
     assert not report.has_errors, report.summary()
+    assert REGRESSION_MAX_MAE_AU == _APPROVED_REGRESSION_MAX_MAE_AU

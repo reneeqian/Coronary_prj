@@ -78,13 +78,7 @@ def test_coca_gated_ingestor_skips_dicom_without_image_positionpatient(tmp_path,
     assert "Skipped" in fake_report.warnings[0][0]
 
 
-@pytest.mark.requirement("TSK-001")
-@pytest.mark.requirement("TSK-002")
-@pytest.mark.requirement("DAT-013")
-def test_coronary_calcium_task_yields_masks_for_annotated_slices(evidence_output_dir):
-    from regulatory_tools.evidence.evidence_report import EvidenceReport
-    report = EvidenceReport(subject="CoronaryCalciumTask yields one sample per slice with rasterized mask")
-    task = CoronaryCalciumTask()
+def _make_annotated_sample():
     volume = np.zeros((2, 4, 4), dtype=np.float32)
     volume[0] = np.arange(16, dtype=np.float32).reshape((4, 4))
     annotations = AnnotationBundle(
@@ -102,40 +96,66 @@ def test_coronary_calcium_task_yields_masks_for_annotated_slices(evidence_output
             ]
         }
     )
-
-    sample = PatientSample(
+    return PatientSample(
         patient_id="0",
         image_volume=volume,
         spacing=(1.0, 1.0, 1.0),
         annotations=annotations,
-        metadata={}
+        metadata={},
     )
 
-    outputs = list(task.generate_training_samples(sample))
+
+@pytest.mark.requirement("TSK-001")
+def test_coronary_calcium_task_yields_one_sample_per_slice(evidence_output_dir):
+    from regulatory_tools.evidence.evidence_report import EvidenceReport
+    report = EvidenceReport(subject="TSK-001: CoronaryCalciumTask yields one sample per CT slice")
+    outputs = list(CoronaryCalciumTask().generate_training_samples(_make_annotated_sample()))
 
     if len(outputs) != 2:
-        report.error(f"Expected 2 samples, got {len(outputs)}", "TSK-001")
+        report.error(f"Expected 2 samples for 2-slice volume, got {len(outputs)}", "TSK-001")
+
+    report.info(f"generate_training_samples yielded {len(outputs)} samples for a 2-slice volume", "TSK-001")
+    report.auto_save("TSK001_task_yields_one_sample_per_slice", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert len(outputs) == 2
+
+
+@pytest.mark.requirement("TSK-002")
+def test_coronary_calcium_task_yields_masks_for_annotated_slices(evidence_output_dir):
+    from regulatory_tools.evidence.evidence_report import EvidenceReport
+    report = EvidenceReport(subject="TSK-002: CoronaryCalciumTask input/target shapes are (1,1,H,W); unannotated slices get zero target")
+    outputs = list(CoronaryCalciumTask().generate_training_samples(_make_annotated_sample()))
+
     if outputs[0]["input"].shape != (1, 1, 4, 4):
         report.error(f"Input shape wrong: {outputs[0]['input'].shape}", "TSK-002")
     if outputs[0]["target"].shape != (1, 1, 4, 4):
         report.error(f"Target shape wrong: {outputs[0]['target'].shape}", "TSK-002")
-    if outputs[0]["target"].sum().item() == 0.0:
-        report.error("Annotated slice target is all-zero — rasterization failed", "DAT-013")
     if outputs[1]["target"].sum().item() != 0.0:
         report.error("Unannotated slice target is non-zero", "TSK-002")
+
     report.info(
-        f"2 samples produced; slice 0 target sum={outputs[0]['target'].sum().item():.1f} (foreground present), "
-        f"slice 1 target sum={outputs[1]['target'].sum().item():.1f} (background)",
-        "TSK-001",
+        f"input shape={outputs[0]['input'].shape}, target shape={outputs[0]['target'].shape}; unannotated slice target sum=0",
+        "TSK-002",
     )
-    report.info("Contour rasterized to non-zero mask for annotated slice", "DAT-013")
-    report.info("HU-windowed input shape=(1,1,4,4); unannotated slice gets zero target", "TSK-002")
-    report.auto_save("TSK001_TSK002_DAT013_task_yields_masks", evidence_output_dir)
+    report.auto_save("TSK002_task_yields_masks_for_annotated_slices", evidence_output_dir)
     assert not report.has_errors, report.summary()
-    assert len(outputs) == 2
     assert outputs[0]["input"].shape == (1, 1, 4, 4)
     assert outputs[0]["target"].shape == (1, 1, 4, 4)
     assert outputs[1]["target"].sum().item() == 0.0
+
+
+@pytest.mark.requirement("DAT-013")
+def test_coronary_calcium_task_rasterizes_contour_to_nonzero_mask(evidence_output_dir):
+    from regulatory_tools.evidence.evidence_report import EvidenceReport
+    report = EvidenceReport(subject="DAT-013: CoronaryCalciumTask rasterizes contour annotations to non-zero binary mask")
+    outputs = list(CoronaryCalciumTask().generate_training_samples(_make_annotated_sample()))
+
+    if outputs[0]["target"].sum().item() == 0.0:
+        report.error("Annotated slice target is all-zero — rasterization failed", "DAT-013")
+
+    report.info(f"Contour rasterized to mask with sum={outputs[0]['target'].sum().item():.1f} (non-zero)", "DAT-013")
+    report.auto_save("DAT013_task_rasterizes_contour_to_nonzero_mask", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert outputs[0]["target"].sum().item() > 0.0
 
 
@@ -201,47 +221,48 @@ def test_coronary_calcium_task_compute_loss_returns_finite_scalar(evidence_outpu
 
 
 @pytest.mark.requirement("TSK-002")
-@pytest.mark.requirement("TSK-004")
 def test_coronary_calcium_task_input_is_hu_normalised(evidence_output_dir):
-    report = EvidenceReport(subject="CoronaryCalciumTask HU window normalisation")
+    report = EvidenceReport(subject="TSK-002: CoronaryCalciumTask normalises input HU values to [-1, +1] range")
 
     task = CoronaryCalciumTask()
-    volume = np.array(
-        [
-            np.full((4, 4), -2000.0, dtype=np.float32),
-            np.full((4, 4), 3000.0, dtype=np.float32),
-        ]
-    )
-    sample = PatientSample(
-        patient_id="0",
-        image_volume=volume,
-        spacing=(1.0, 1.0, 1.0),
-        annotations=None,
-        metadata={},
-    )
-
+    volume = np.array([
+        np.full((4, 4), -2000.0, dtype=np.float32),
+        np.full((4, 4), 3000.0, dtype=np.float32),
+    ])
+    sample = PatientSample(patient_id="0", image_volume=volume, spacing=(1.0, 1.0, 1.0), annotations=None, metadata={})
     outputs = list(task.generate_training_samples(sample))
-    low_slice  = outputs[0]["input"]   # -2000 HU → clipped to -160 → normalised to -1.0
-    high_slice = outputs[1]["input"]   # +3000 HU → clipped to +240 → normalised to +1.0
+    low_val = outputs[0]["input"].min().item()
+    high_val = outputs[1]["input"].max().item()
 
-    if abs(low_slice.min().item() - (-1.0)) > 1e-4:
-        report.error(
-            f"Below-window HU not clamped correctly: got {low_slice.min().item():.4f}, expected -1.0",
-            "TSK-002",
-        )
-    if abs(high_slice.max().item() - 1.0) > 1e-4:
-        report.error(
-            f"Above-window HU not clamped correctly: got {high_slice.max().item():.4f}, expected +1.0",
-            "TSK-002",
-        )
+    if abs(low_val - (-1.0)) > 1e-4:
+        report.error(f"Below-window HU not clamped to -1.0: got {low_val:.4f}", "TSK-002")
+    if abs(high_val - 1.0) > 1e-4:
+        report.error(f"Above-window HU not clamped to +1.0: got {high_val:.4f}", "TSK-002")
 
-    report.info(
-        f"HU window [-160,240] normalised correctly: below-window min={low_slice.min().item():.4f}, "
-        f"above-window max={high_slice.max().item():.4f}",
-        "TSK-002",
-    )
-    report.info("Cardiac HU window (clip then normalise) applied by CoronaryCalciumTask", "TSK-004")
-    report.auto_save("TSK002_hu_normalisation", evidence_output_dir)
+    report.info(f"HU window normalised: below-window min={low_val:.4f}, above-window max={high_val:.4f}", "TSK-002")
+    report.auto_save("TSK002_task_input_hu_normalised", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("TSK-004")
+def test_coronary_calcium_task_applies_cardiac_hu_window(evidence_output_dir):
+    report = EvidenceReport(subject="TSK-004: CoronaryCalciumTask applies the cardiac HU window [-160, 240]")
+
+    task = CoronaryCalciumTask()
+    volume = np.array([
+        np.full((4, 4), -2000.0, dtype=np.float32),
+        np.full((4, 4), 3000.0, dtype=np.float32),
+    ])
+    sample = PatientSample(patient_id="0", image_volume=volume, spacing=(1.0, 1.0, 1.0), annotations=None, metadata={})
+    outputs = list(task.generate_training_samples(sample))
+    low_val = outputs[0]["input"].min().item()
+    high_val = outputs[1]["input"].max().item()
+
+    if abs(low_val - (-1.0)) > 1e-4 or abs(high_val - 1.0) > 1e-4:
+        report.error(f"Cardiac HU window not applied: low={low_val:.4f}, high={high_val:.4f}", "TSK-004")
+
+    report.info(f"Cardiac HU window applied: -2000 HU → {low_val:.4f}, +3000 HU → {high_val:.4f}", "TSK-004")
+    report.auto_save("TSK004_task_applies_cardiac_hu_window", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
 

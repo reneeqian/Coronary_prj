@@ -209,9 +209,10 @@ def test_invalid_patient_id_raises(tmp_path, evidence_output_dir):
     assert not report.has_errors, report.summary()
 
 @pytest.mark.requirement("DAT-006")
-def test_lazy_patient_loading(tmp_path):
+def test_lazy_patient_loading(tmp_path, evidence_output_dir):
 
-    # Create two patients
+    report = EvidenceReport(subject="DAT-006: COCAGatedIngestor loads each patient volume exactly once")
+
     for pid in ["0", "1"]:
         series_dir = tmp_path / "patient" / pid / "seriesA"
         series_dir.mkdir(parents=True)
@@ -228,15 +229,17 @@ def test_lazy_patient_loading(tmp_path):
     ) as mock_loader:
 
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
-
-        # Only ingest patient 0
         ingestor.ingest_patient("0")
+        report.info(f"_load_image_volume called {mock_loader.call_count} time(s) for 1 patient ingestion", "DAT-006")
 
-        # Should only load once
-        assert mock_loader.call_count == 1
+    report.auto_save("dat006_lazy_patient_loading", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert mock_loader.call_count == 1
 
 @pytest.mark.requirement("DAT-007")
-def test_slice_index_out_of_bounds(tmp_path):
+def test_slice_index_out_of_bounds(tmp_path, evidence_output_dir):
+
+    report = EvidenceReport(subject="DAT-007: annotation referencing out-of-bounds slice is silently ignored")
 
     patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
@@ -244,13 +247,17 @@ def test_slice_index_out_of_bounds(tmp_path):
 
     with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
-
         sample = ingestor.load_patient_sample("0")
-        # annotation refers to slice outside volume → should be ignored
-        assert sample.annotations.vector_rois is None
+
+    report.info(f"vector_rois={sample.annotations.vector_rois!r} (expected None — out-of-bounds annotation ignored)", "DAT-007")
+    report.auto_save("dat007_slice_index_out_of_bounds", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert sample.annotations.vector_rois is None
 
 @pytest.mark.requirement("DAT-008")
-def test_deterministic_slice_retrieval(tmp_path):
+def test_deterministic_slice_retrieval(tmp_path, evidence_output_dir):
+
+    report = EvidenceReport(subject="DAT-008: loading the same patient twice returns identical slice data")
 
     patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
@@ -258,26 +265,33 @@ def test_deterministic_slice_retrieval(tmp_path):
 
     with patch("pydicom.dcmread", return_value=SimpleDicom(0)):
         ingestor = COCAGatedIngestor(dataset_root=tmp_path)
-
         patient = ingestor.load_patient_sample("0")
         slice1 = patient.image_volume[0]
         patient = ingestor.load_patient_sample("0")
         slice2 = patient.image_volume[0]
 
-        assert np.array_equal(slice1, slice2)
+    match = np.array_equal(slice1, slice2)
+    report.info(f"Two consecutive loads returned array-equal slice[0]: {match}", "DAT-008")
+    report.auto_save("dat008_deterministic_slice_retrieval", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert match
 
 @pytest.mark.requirement("DAT-005")
-def test_missing_dicom_files(tmp_path):
+def test_missing_dicom_files(tmp_path, evidence_output_dir):
+
+    report = EvidenceReport(subject="DAT-005: patient series dir with no DICOM files raises DatasetStructureError")
 
     patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
-
-    # No DICOM files created
 
     ingestor = COCAGatedIngestor(dataset_root=tmp_path)
 
     with pytest.raises(DatasetStructureError):
         ingestor.ingest_patient("0")
+
+    report.info("DatasetStructureError raised when patient series directory has no .dcm files", "DAT-005")
+    report.auto_save("dat005_missing_dicom_files", evidence_output_dir)
+    assert not report.has_errors, report.summary()
 
 @pytest.mark.requirement("DAT-006")
 def test_get_patient_api(tmp_path, evidence_output_dir):
@@ -307,7 +321,9 @@ def test_get_patient_api(tmp_path, evidence_output_dir):
     assert patient.patient_id == "0"
 
 @pytest.mark.requirement("DAT-006")
-def test_get_volume_api(tmp_path):
+def test_get_volume_api(tmp_path, evidence_output_dir):
+
+    report = EvidenceReport(subject="DAT-006: load_patient_sample returns a volume with expected shape")
 
     patient_dir = tmp_path/"patient"/"0"/"seriesA"
     patient_dir.mkdir(parents=True)
@@ -324,17 +340,20 @@ def test_get_volume_api(tmp_path):
 
     with patch("pydicom.dcmread", return_value=FakeDicom()):
         ingestor = COCAGatedIngestor(tmp_path)
-
         patient = ingestor.load_patient_sample("0")
         vol = patient.image_volume
 
-        assert vol.shape == (1,2,2)
+    report.info(f"image_volume.shape={vol.shape} (expected (1,2,2))", "DAT-006")
+    report.auto_save("dat006_get_volume_api", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert vol.shape == (1, 2, 2)
 
 @pytest.mark.requirement("DAT-004")
-@pytest.mark.requirement("DAT-011")
-def test_ingest_dataset_multiple_patients(tmp_path):
+def test_ingest_dataset_multiple_patients(tmp_path, evidence_output_dir):
 
-    for pid in ["0","1"]:
+    report = EvidenceReport(subject="DAT-004: ingest_dataset loads all patients from the dataset")
+
+    for pid in ["0", "1"]:
         patient_dir = tmp_path/"patient"/pid/"seriesA"
         patient_dir.mkdir(parents=True)
         (patient_dir/"slice1.dcm").write_text("fake")
@@ -349,13 +368,45 @@ def test_ingest_dataset_multiple_patients(tmp_path):
 
     with patch("pydicom.dcmread", return_value=FakeDicom()):
         ingestor = COCAGatedIngestor(tmp_path)
-
         ds = ingestor.ingest_dataset()
 
-        assert len(ds) == 2
+    report.info(f"ingest_dataset() returned dataset with len={len(ds)} (expected 2)", "DAT-004")
+    report.auto_save("dat004_ingest_dataset_multiple_patients", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert len(ds) == 2
+
+
+@pytest.mark.requirement("DAT-011")
+def test_ingest_dataset_enumerates_all_patient_ids(tmp_path, evidence_output_dir):
+
+    report = EvidenceReport(subject="DAT-011: ingest_dataset enumerates all patient IDs without loading volumes")
+
+    for pid in ["0", "1"]:
+        patient_dir = tmp_path/"patient"/pid/"seriesA"
+        patient_dir.mkdir(parents=True)
+        (patient_dir/"slice1.dcm").write_text("fake")
+
+    class FakeDicom:
+        ImagePositionPatient=[0,0,0]
+        PixelSpacing=[1,1]
+        SliceThickness=1
+        pixel_array=np.zeros((2,2))
+        RescaleSlope=1
+        RescaleIntercept=0
+
+    with patch("pydicom.dcmread", return_value=FakeDicom()):
+        ingestor = COCAGatedIngestor(tmp_path)
+        patient_ids = ingestor.list_patient_ids()
+
+    report.info(f"list_patient_ids() returned {patient_ids} (expected ['0', '1'])", "DAT-011")
+    report.auto_save("dat011_ingest_dataset_enumerates_patient_ids", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert set(patient_ids) == {"0", "1"}
 
 @pytest.mark.requirement("DAT-009")
-def test_annotation_with_missing_image_index(tmp_path):
+def test_annotation_with_missing_image_index(tmp_path, evidence_output_dir):
+
+    report = EvidenceReport(subject="DAT-009: annotation entry missing ImageIndex is treated as no annotation")
 
     patient_dir = tmp_path/"patient"/"0"/"seriesA"
     patient_dir.mkdir(parents=True)
@@ -388,10 +439,12 @@ def test_annotation_with_missing_image_index(tmp_path):
 
     with patch("pydicom.dcmread", return_value=FakeDicom()):
         ingestor = COCAGatedIngestor(tmp_path)
-
         sample = ingestor.ingest_patient("0")
 
-        assert sample.annotations.vector_rois is None
+    report.info(f"vector_rois={sample.annotations.vector_rois!r} (expected None — entry without ImageIndex ignored)", "DAT-009")
+    report.auto_save("dat009_annotation_missing_image_index", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert sample.annotations.vector_rois is None
 
 # =============================================================================
 # CT slices must be sorted by Z position before stacking
@@ -437,42 +490,34 @@ def test_ct_volume_sorted_by_z_position(tmp_path, evidence_output_dir):
     assert np.all(volume[1] == 10)
 
 
-@pytest.mark.requirement("DAT-004")
-@pytest.mark.requirement("DAT-006")
-def test_get_sample_generates_image_and_mask(tmp_path):
-
-    patient_dir = tmp_path / "patient" / "0" / "seriesA"
-    patient_dir.mkdir(parents=True)
-
-    (patient_dir / "slice1.dcm").write_text("fake")
-
-    xml_dir = tmp_path / "calcium_xml"
-    xml_dir.mkdir()
-
-    xml_file = xml_dir / "0.xml"
-
+def _write_single_roi_xml(xml_dir: "Path", patient_id: str) -> None:
+    """Write a minimal calcium XML with one ROI on ImageIndex 1."""
+    import plistlib as _pl
+    xml_dir.mkdir(exist_ok=True)
     plist_data = {
-        "Images": [
-            {
-                "ImageIndex": 1,
-                "ROIs": [
-                    {
-                        "Name": "calcium",
-                        "NumberOfPoints": 4,
-                        "Point_px": [
-                            "(0,0)",
-                            "(1,0)",
-                            "(1,1)",
-                            "(0,1)"
-                        ]
-                    }
-                ]
-            }
-        ]
+        "Images": [{
+            "ImageIndex": 1,
+            "ROIs": [{
+                "Name": "calcium",
+                "NumberOfPoints": 4,
+                "Point_px": ["(0,0)", "(1,0)", "(1,1)", "(0,1)"],
+            }],
+        }]
     }
+    with open(xml_dir / f"{patient_id}.xml", "wb") as f:
+        _pl.dump(plist_data, f)
 
-    with open(xml_file, "wb") as f:
-        plistlib.dump(plist_data, f)
+
+@pytest.mark.requirement("DAT-004")
+def test_get_sample_generates_image_and_mask(tmp_path, evidence_output_dir):
+
+    report = EvidenceReport(subject="DAT-004: get_sample returns (image, mask) arrays with non-zero mask for annotated patient")
+
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
+    patient_dir.mkdir(parents=True)
+    (patient_dir / "slice1.dcm").write_text("fake")
+
+    _write_single_roi_xml(tmp_path / "calcium_xml", "0")
 
     class FakeDicom:
         ImagePositionPatient=[0,0,0]
@@ -483,18 +528,49 @@ def test_get_sample_generates_image_and_mask(tmp_path):
         RescaleIntercept=0
 
     with patch("pydicom.dcmread", return_value=FakeDicom()):
-
         ingestor = COCAGatedIngestor(tmp_path)
-
         X, Y = ingestor.get_sample("0")
 
-        assert X.shape == (1,4,4)
-        assert Y.shape == (1,4,4)
+    report.info(f"get_sample: X.shape={X.shape}, Y.shape={Y.shape}, np.sum(Y)={np.sum(Y):.0f}", "DAT-004")
+    report.auto_save("dat004_get_sample_generates_image_and_mask", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert X.shape == (1, 4, 4)
+    assert Y.shape == (1, 4, 4)
+    assert np.sum(Y) > 0
 
-        assert np.sum(Y) > 0
+
+@pytest.mark.requirement("DAT-006")
+def test_get_sample_returns_single_annotated_slice(tmp_path, evidence_output_dir):
+
+    report = EvidenceReport(subject="DAT-006: get_sample returns exactly one image/mask pair for a single-slice annotated patient")
+
+    patient_dir = tmp_path / "patient" / "0" / "seriesA"
+    patient_dir.mkdir(parents=True)
+    (patient_dir / "slice1.dcm").write_text("fake")
+
+    _write_single_roi_xml(tmp_path / "calcium_xml", "0")
+
+    class FakeDicom:
+        ImagePositionPatient=[0,0,0]
+        PixelSpacing=[1,1]
+        SliceThickness=1
+        pixel_array=np.ones((4,4))
+        RescaleSlope=1
+        RescaleIntercept=0
+
+    with patch("pydicom.dcmread", return_value=FakeDicom()):
+        ingestor = COCAGatedIngestor(tmp_path)
+        X, Y = ingestor.get_sample("0")
+
+    report.info(f"get_sample: returned X with {X.shape[0]} slice(s) (expected 1)", "DAT-006")
+    report.auto_save("dat006_get_sample_returns_single_slice", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert X.shape[0] == 1
 
 @pytest.mark.requirement("DAT-004")
-def test_get_sample_no_annotations_returns_empty(tmp_path):
+def test_get_sample_no_annotations_returns_empty(tmp_path, evidence_output_dir):
+
+    report = EvidenceReport(subject="DAT-004: get_sample returns empty arrays when patient has no annotations")
 
     patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
@@ -510,16 +586,19 @@ def test_get_sample_no_annotations_returns_empty(tmp_path):
         RescaleIntercept=0
 
     with patch("pydicom.dcmread", return_value=FakeDicom()):
-
         ingestor = COCAGatedIngestor(tmp_path)
-
         X, Y = ingestor.get_sample("0")
 
-        assert X.shape[0] == 0
-        assert Y.shape[0] == 0
+    report.info(f"No annotations: X.shape[0]={X.shape[0]}, Y.shape[0]={Y.shape[0]} (both expected 0)", "DAT-004")
+    report.auto_save("dat004_get_sample_no_annotations_returns_empty", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert X.shape[0] == 0
+    assert Y.shape[0] == 0
 
 @pytest.mark.requirement("DAT-004")
-def test_get_sample_multiple_rois_same_slice(tmp_path):
+def test_get_sample_multiple_rois_same_slice(tmp_path, evidence_output_dir):
+
+    report = EvidenceReport(subject="DAT-004: multiple ROIs on the same slice are merged into one mask")
 
     patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
@@ -539,23 +618,13 @@ def test_get_sample_multiple_rois_same_slice(tmp_path):
                     {
                         "Name":"calcium",
                         "NumberOfPoints":4,
-                        "Point_px":[
-                            "(0,0)",
-                            "(1,0)",
-                            "(1,1)",
-                            "(0,1)"
-                        ]
+                        "Point_px":["(0,0)","(1,0)","(1,1)","(0,1)"],
                     },
                     {
                         "Name":"calcium",
                         "NumberOfPoints":4,
-                        "Point_px":[
-                            "(2,2)",
-                            "(3,2)",
-                            "(3,3)",
-                            "(2,3)"
-                        ]
-                    }
+                        "Point_px":["(2,2)","(3,2)","(3,3)","(2,3)"],
+                    },
                 ]
             }
         ]
@@ -573,16 +642,19 @@ def test_get_sample_multiple_rois_same_slice(tmp_path):
         RescaleIntercept=0
 
     with patch("pydicom.dcmread", return_value=FakeDicom()):
-
         ingestor = COCAGatedIngestor(tmp_path)
-
         X, Y = ingestor.get_sample("0")
 
-        assert X.shape[0] == 1
-        assert np.sum(Y) > 2
+    report.info(f"Two ROIs merged: X.shape[0]={X.shape[0]}, np.sum(Y)={np.sum(Y):.0f} (expected >2)", "DAT-004")
+    report.auto_save("dat004_get_sample_multiple_rois_same_slice", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert X.shape[0] == 1
+    assert np.sum(Y) > 2
 
 @pytest.mark.requirement("DAT-007")
-def test_get_sample_skips_invalid_slice_annotations(tmp_path):
+def test_get_sample_skips_invalid_slice_annotations(tmp_path, evidence_output_dir):
+
+    report = EvidenceReport(subject="DAT-007: annotation with out-of-bounds ImageIndex is skipped; get_sample returns empty arrays")
 
     patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
@@ -614,11 +686,12 @@ def test_get_sample_skips_invalid_slice_annotations(tmp_path):
         RescaleSlope=1
         RescaleIntercept=0
 
-    with patch("pydicom.dcmread",return_value=FakeDicom()):
-
+    with patch("pydicom.dcmread", return_value=FakeDicom()):
         ingestor = COCAGatedIngestor(tmp_path)
+        X, Y = ingestor.get_sample("0")
 
-        X,Y = ingestor.get_sample("0")
-
-        assert X.shape[0] == 0
-        assert Y.shape[0] == 0
+    report.info(f"Out-of-bounds annotation skipped: X.shape[0]={X.shape[0]}, Y.shape[0]={Y.shape[0]} (both expected 0)", "DAT-007")
+    report.auto_save("dat007_get_sample_skips_invalid_slice_annotations", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert X.shape[0] == 0
+    assert Y.shape[0] == 0
