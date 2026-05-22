@@ -353,42 +353,80 @@ requirements:
     tags: [performance, regression, acceptance_criterion]
 
   # ==============================
+  # User Need Requirements
+  # ==============================
+
+  - id: UN-001
+    type: user_need
+    title: Identify Calcified Coronary Lesions
+    description: >
+      A trained radiologist using this tool shall be able to identify and
+      quantify calcified coronary lesions from CT images using the segmentation
+      output produced by this software.
+    tags: [user_need, segmentation, clinical]
+
+  - id: UN-002
+    type: user_need
+    title: Estimate Coronary Calcium Score
+    description: >
+      A trained radiologist shall be able to review a per-vessel calcium score
+      estimate (Agatston scale) produced by this software for nongated CT images.
+    tags: [user_need, calcium_score, clinical]
+
+  - id: UN-003
+    type: user_need
+    title: Safe and Reliable Advisory Output
+    description: >
+      The software shall operate as an advisory tool only. Clinical decisions
+      shall remain with the radiologist. The software shall fail loudly on
+      data errors rather than silently producing incorrect output.
+    tags: [user_need, safety, advisory]
+
+  # ==============================
   # Risk Control Requirements
   # ==============================
 
   - id: RSK-001
+    type: risk_control
     title: Missed Calcium Detection (False Negative)
     description: >
       The segmentation model shall be evaluated against a minimum Dice
       threshold (MOD-005) before deployment. A miss rate above the threshold
       shall be treated as a blocking defect.
+    derived_from: [UN-001, SYS-007]
     tags: [risk_control, false_negative, segmentation]
 
 
   - id: RSK-002
+    type: risk_control
     title: Over-Estimation of Calcium Score (False Positive)
     description: >
       Regression outputs shall be back-transformed via expm1 before
       reporting. Values below 0 after back-transformation shall be clamped
       to 0 to prevent negative calcium scores.
+    derived_from: [UN-002, SYS-007]
     tags: [risk_control, false_positive, regression]
 
 
   - id: RSK-003
+    type: risk_control
     title: Silent Ingestion Failure
     description: >
       All ingestor public methods shall raise DatasetStructureError (not
       raw exceptions) on corrupt or missing DICOM data, ensuring failures
       surface in the evidence report rather than being silently swallowed.
+    derived_from: [UN-003, DAT-005]
     tags: [risk_control, ingestion, error_handling]
 
 
   - id: RSK-004
+    type: risk_control
     title: Numerical Instability in Log-Transformed Targets
     description: >
       log1p targets shall only be computed for non-negative inputs.
       Negative score values in the source spreadsheet shall be clamped to
       0.0 before log1p is applied, preventing NaN propagation into training.
+    derived_from: [UN-002, TSK-005]
     tags: [risk_control, numerical_stability, regression]
 
   # ==============================
