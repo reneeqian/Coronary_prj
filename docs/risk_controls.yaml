@@ -1,0 +1,56 @@
+# See docs/requirements_key.md for domain prefix definitions and regulatory mappings.
+# This file contains: RSK-* (risk controls) — routes to risk_control_measures.md.
+metadata:
+  project: Coronary_prj
+  file_role: risk_controls
+  allowed_prefixes: [RSK]
+  allowed_types: [risk_control]
+  regulatory_role: >
+    ISO 14971 §6.7. What the system does to reduce a specific hazard to
+    an acceptable risk level. Feeds risk_control_measures.md.
+
+requirements:
+
+  - id: RSK-001
+    type: risk_control
+    title: Missed Calcium Detection (False Negative)
+    description: >
+      The segmentation model shall be evaluated against a minimum Dice
+      threshold (MOD-005) before deployment. A miss rate above the threshold
+      shall be treated as a blocking defect.
+    derived_from: [UN-001]
+    hazard_ref: HAZ-001
+    tags: [risk_control, false_negative, segmentation]
+
+  - id: RSK-002
+    type: risk_control
+    title: Over-Estimation of Calcium Score (False Positive)
+    description: >
+      Regression outputs shall be back-transformed via expm1 before
+      reporting. Values below 0 after back-transformation shall be clamped
+      to 0 to prevent negative calcium scores.
+    derived_from: [UN-002]
+    hazard_ref: HAZ-002
+    tags: [risk_control, false_positive, regression]
+
+  - id: RSK-003
+    type: risk_control
+    title: Silent Ingestion Failure
+    description: >
+      All ingestor public methods shall raise DatasetStructureError (not
+      raw exceptions) on corrupt or missing DICOM data, ensuring failures
+      surface in the evidence report rather than being silently swallowed.
+    derived_from: [UN-003, DAT-005]
+    hazard_ref: HAZ-003
+    tags: [risk_control, ingestion, error_handling]
+
+  - id: RSK-004
+    type: risk_control
+    title: Numerical Instability in Log-Transformed Targets
+    description: >
+      log1p targets shall only be computed for non-negative inputs.
+      Negative score values in the source spreadsheet shall be clamped to
+      0.0 before log1p is applied, preventing NaN propagation into training.
+    derived_from: [UN-002, TSK-005]
+    hazard_ref: HAZ-004
+    tags: [risk_control, numerical_stability, regression]

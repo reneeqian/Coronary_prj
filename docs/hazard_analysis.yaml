@@ -1,0 +1,39 @@
+# Hazard analysis for Coronary_prj — ISO 14971 §4-5.
+# Each entry identifies a hazard and links to its risk control in risk_controls.yaml.
+# Generator: HazardAnalysisGenerator reads this file and renders hazard_analysis.md.
+# Narrative fields (cause/effect/severity/probability) require domain expertise and
+# are maintained here manually. mitigation_ref must point to a valid RSK-* ID.
+
+hazards:
+
+  - id: HAZ-001
+    hazard: Missed coronary calcium (false negative)
+    cause: Model underperforms on low-density or small-volume calcification
+    effect: Radiologist underestimates cardiovascular risk; delayed clinical follow-up
+    severity: serious
+    probability: remote
+    mitigation_ref: RSK-001
+
+  - id: HAZ-002
+    hazard: Over-estimated calcium score (false positive)
+    cause: Regression model over-predicts Agatston score on ambiguous anatomy
+    effect: Unnecessary further workup or treatment escalation
+    severity: minor
+    probability: remote
+    mitigation_ref: RSK-002
+
+  - id: HAZ-003
+    hazard: Silent ingestion failure — corrupt or missing DICOM processed as valid
+    cause: Ingestor fails to raise an error on malformed input and produces partial output
+    effect: Wrong model input leads to incorrect output without operator awareness
+    severity: serious
+    probability: remote
+    mitigation_ref: RSK-003
+
+  - id: HAZ-004
+    hazard: NaN propagation from log-transformed regression targets
+    cause: Zero or negative Agatston score not handled before log1p transformation
+    effect: NaN loss corrupts training or produces undefined regression output
+    severity: minor
+    probability: remote
+    mitigation_ref: RSK-004

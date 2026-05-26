@@ -1,0 +1,53 @@
+# See docs/requirements_key.md for domain prefix definitions and regulatory mappings.
+# This file contains: UN-* (user needs) — routes to intended_use.md and UN rows in RTM.
+metadata:
+  project: Coronary_prj
+  file_role: user_needs
+  allowed_prefixes: [UN]
+  allowed_types: [user_need]
+  regulatory_role: >
+    IEC 62366 §4 / ISO 14971 intended use. What the radiologist must be able to do.
+    Feeds intended_use.md and the UN rows of the RTM. 510(k) Section 9.
+
+requirements:
+
+  - id: UN-001
+    type: user_need
+    title: Identify Calcified Coronary Lesions
+    description: >
+      A trained radiologist using this tool shall be able to identify and
+      quantify calcified coronary lesions from CT images using the segmentation
+      output produced by this software.
+    clinical_claim: >
+      The software assists detection and spatial localization of coronary artery
+      calcium on non-contrast CT images (gated protocol).
+    intended_user: Trained radiologist
+    use_environment: Clinical reading station, non-contrast CT imaging workflow
+    tags: [user_need, segmentation, clinical]
+
+  - id: UN-002
+    type: user_need
+    title: Estimate Coronary Calcium Score
+    description: >
+      A trained radiologist shall be able to review a per-vessel calcium score
+      estimate (Agatston scale) produced by this software for nongated CT images.
+    clinical_claim: >
+      The software provides a per-vessel Agatston score estimate (LCA, LAD, LCX, RCA)
+      from non-contrast nongated CT images.
+    intended_user: Trained radiologist
+    use_environment: Clinical reading station, non-contrast nongated CT imaging workflow
+    tags: [user_need, calcium_score, clinical]
+
+  - id: UN-003
+    type: user_need
+    title: Safe and Reliable Advisory Output
+    description: >
+      The software shall operate as an advisory tool only. Clinical decisions
+      shall remain with the radiologist. The software shall fail loudly on
+      data errors rather than silently producing incorrect output.
+    clinical_claim: >
+      The software is advisory only; it does not replace clinical judgment.
+      Any data integrity failure surfaces as an explicit error, never a silent default.
+    intended_user: Trained radiologist
+    use_environment: Any clinical CT imaging workflow
+    tags: [user_need, safety, advisory]
