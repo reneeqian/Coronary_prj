@@ -23,6 +23,8 @@ requirements:
       calcium on non-contrast CT images (gated protocol).
     intended_user: Trained radiologist
     use_environment: Clinical reading station, non-contrast CT imaging workflow
+    verification_method: T
+    safety_relevant: true
     tags: [user_need, segmentation, clinical]
 
   - id: UN-002
@@ -36,6 +38,8 @@ requirements:
       from non-contrast nongated CT images.
     intended_user: Trained radiologist
     use_environment: Clinical reading station, non-contrast nongated CT imaging workflow
+    verification_method: T
+    safety_relevant: true
     tags: [user_need, calcium_score, clinical]
 
   - id: UN-003
@@ -50,4 +54,6 @@ requirements:
       Any data integrity failure surfaces as an explicit error, never a silent default.
     intended_user: Trained radiologist
     use_environment: Any clinical CT imaging workflow
+    verification_method: T
+    safety_relevant: true
     tags: [user_need, safety, advisory]

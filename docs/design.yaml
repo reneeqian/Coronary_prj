@@ -24,6 +24,8 @@ requirements:
       the toolkit to be reused across projects without coupling to COCA data
       formats. This is an explicit architectural boundary decision.
     derived_from: [SYS-004]
+    verification_method: I
+    safety_relevant: false
     tags: [architecture, separation_of_concerns, ingestion_design]
 
   - id: DAT-006
@@ -37,6 +39,8 @@ requirements:
       exhaust memory on typical workstations. Lazy access is the enabling
       implementation pattern for the dataset's scale.
     derived_from: [SYS-006]
+    verification_method: T
+    safety_relevant: false
     tags: [lazy_loading, performance]
 
   - id: DAT-012
@@ -52,6 +56,8 @@ requirements:
       Without this sort, volume construction is non-deterministic across
       different filesystem orderings.
     derived_from: [DAT-004, SYS-001]
+    verification_method: T
+    safety_relevant: true
     tags: [slice_sorting, dicom_integrity]
 
   - id: TSK-004
@@ -65,6 +71,8 @@ requirements:
       This thresholding is part of the task definition (not the ingestor) because
       it is a clinical scoring convention, not a data format concern.
     derived_from: [TSK-002]
+    verification_method: T
+    safety_relevant: true
     tags: [thresholding, preprocessing]
 
   - id: TSK-006
@@ -82,6 +90,8 @@ requirements:
       label enables training while acknowledging the label is approximate at the
       slice level. This limitation is documented here so it is visible to reviewers.
     derived_from: [TSK-002, TSK-005]
+    verification_method: "T, I"
+    safety_relevant: false
     tags: [task_design, slice_broadcast]
 
   - id: MOD-004
@@ -96,6 +106,8 @@ requirements:
       computational tractability on standard clinical hardware. The multi-output
       scalar head (4 vessels) matches the Agatston reporting convention.
     derived_from: [UN-002, TSK-005]
+    verification_method: "T, D"
+    safety_relevant: true
     tags: [regression_model, nongated, calcium_scoring]
 
   - id: TRN-005
@@ -109,4 +121,6 @@ requirements:
       the task yields) lives in the project, not the toolkit. This is the
       design-level specification of that contract.
     derived_from: [TRN-003]
+    verification_method: "T, I"
+    safety_relevant: false
     tags: [training_interface]
