@@ -1,0 +1,56 @@
+name: DHF Impact Check
+
+on:
+  pull_request:
+    branches: [dev]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  dhf-impact:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install regulatory_tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+          pip install "git+https://github.com/reneeqian/regulatory_tools.git@feat/dhf-generator"
+
+      - name: Run DHF impact analyzer
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | tr '\n' ' ')
+          python -m regulatory_tools.dhf.impact_analyzer --changed $CHANGED > /tmp/dhf_impact.txt
+          echo "REPORT<<EOF" >> $GITHUB_ENV
+          cat /tmp/dhf_impact.txt >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Find existing DHF impact comment
+        uses: peter-evans/find-comment@v3
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: "<!-- dhf-impact -->"
+
+      - name: Create or update DHF impact comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: ${{ env.REPORT }}
+          edit-mode: replace

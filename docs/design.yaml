@@ -1,0 +1,126 @@
+# See docs/requirements_key.md for domain prefix definitions and regulatory mappings.
+# This file contains: design_requirement entries for SYS-006, DAT-006, DAT-012,
+# TSK-004, TSK-006, MOD-004, TRN-005 — routes to interfaces.md and SDS rows in RTM.
+metadata:
+  project: Coronary_prj
+  file_role: design_requirements
+  allowed_prefixes: [SYS, DAT, TSK, MOD, TRN]
+  allowed_types: [design_requirement]
+  regulatory_role: >
+    IEC 62304 §5.4 SDS. How the system is built — architecture constraints,
+    algorithm choices, named interface contracts. Feeds interfaces.md and
+    SDS rows of the RTM. 510(k) Section 13.
+
+requirements:
+
+  - id: SYS-006
+    type: design_requirement
+    title: Dataset Task Encapsulation
+    description: >
+      Coronary-specific ingestion and task logic shall remain in
+      project code rather than the shared toolkit core.
+    rationale: >
+      Keeps project-specific concerns out of the shared toolkit, allowing
+      the toolkit to be reused across projects without coupling to COCA data
+      formats. This is an explicit architectural boundary decision.
+    derived_from: [SYS-004]
+    verification_method: I
+    safety_relevant: false
+    tags: [architecture, separation_of_concerns, ingestion_design]
+
+  - id: DAT-006
+    type: design_requirement
+    title: Lazy Patient Access
+    description: >
+      The ingestion interface shall support loading individual patients
+      without preloading the full dataset.
+    rationale: >
+      The COCA dataset is large. Preloading all patients at startup would
+      exhaust memory on typical workstations. Lazy access is the enabling
+      implementation pattern for the dataset's scale.
+    derived_from: [SYS-006]
+    verification_method: T
+    safety_relevant: false
+    tags: [lazy_loading, performance]
+
+  - id: DAT-012
+    type: design_requirement
+    title: CT slices must be sorted by ImagePositionPatient[2] before volume construction
+    description: >
+      CT slices shall be ordered deterministically before volume
+      construction.
+    rationale: >
+      DICOM files from the COCA dataset are not guaranteed to arrive in
+      anatomical order. Sorting by ImagePositionPatient[2] (z-coordinate)
+      is the standard DICOM approach for building geometrically correct volumes.
+      Without this sort, volume construction is non-deterministic across
+      different filesystem orderings.
+    derived_from: [DAT-004, SYS-001]
+    verification_method: T
+    safety_relevant: true
+    tags: [slice_sorting, dicom_integrity]
+
+  - id: TSK-004
+    type: design_requirement
+    title: Calcium Thresholding Support
+    description: >
+      The project shall support task-specific intensity thresholding
+      where required by the coronary workflow.
+    rationale: >
+      Agatston scoring requires HU ≥ 130 threshold to isolate calcified tissue.
+      This thresholding is part of the task definition (not the ingestor) because
+      it is a clinical scoring convention, not a data format concern.
+    derived_from: [TSK-002]
+    verification_method: T
+    safety_relevant: true
+    tags: [thresholding, preprocessing]
+
+  - id: TSK-006
+    type: design_requirement
+    title: Slice-Broadcast Target Design
+    description: >
+      Both task definitions broadcast the patient-level label (mask or
+      score vector) to each 2D slice. This is an explicit design decision:
+      the model learns to estimate the patient-level label from any
+      representative slice, not from a privileged slice. Tests shall confirm
+      all slices within a patient receive an identical target tensor.
+    rationale: >
+      The alternative (slice-level annotation) requires per-slice ground truth
+      that is not available in the COCA dataset. Broadcasting the patient-level
+      label enables training while acknowledging the label is approximate at the
+      slice level. This limitation is documented here so it is visible to reviewers.
+    derived_from: [TSK-002, TSK-005]
+    verification_method: "T, I"
+    safety_relevant: false
+    tags: [task_design, slice_broadcast]
+
+  - id: MOD-004
+    type: design_requirement
+    title: Calcium Score Regression Model
+    description: >
+      The project shall provide a CNN regression model that accepts a
+      single-channel CT slice and outputs per-vessel Agatston score
+      predictions as a multi-output scalar vector.
+    rationale: >
+      A CNN operating on 2D slices was chosen over 3D architectures for
+      computational tractability on standard clinical hardware. The multi-output
+      scalar head (4 vessels) matches the Agatston reporting convention.
+    derived_from: [UN-002, TSK-005]
+    verification_method: "T, D"
+    safety_relevant: true
+    tags: [regression_model, nongated, calcium_scoring]
+
+  - id: TRN-005
+    type: design_requirement
+    title: Coronary Dataset Training Interface
+    description: >
+      Coronary dataset code shall expose aligned training inputs and
+      targets suitable for model training.
+    rationale: >
+      The toolkit trainer is shape-agnostic; the interface contract (what tensors
+      the task yields) lives in the project, not the toolkit. This is the
+      design-level specification of that contract.
+    derived_from: [TRN-003]
+    verification_method: "T, I"
+    safety_relevant: false
+    tags: [training_interface]
