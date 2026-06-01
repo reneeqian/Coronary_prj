@@ -5,6 +5,7 @@
 # Risk controls → risk_controls.yaml | Hazard analysis → hazard_analysis.yaml
 metadata:
   project: Coronary_prj
+  samd_class: C  # IEC 62304 §4.3 — failure can result in death or serious injury
   file_role: system_requirements
   allowed_prefixes: [SYS, DAT, TSK, TRN, MOD, INF, REP, VER, DOC]
   allowed_types: [system_requirement]
