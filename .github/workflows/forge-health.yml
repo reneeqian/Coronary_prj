@@ -33,9 +33,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy pytest pydicom scipy scikit-image imageio pyyaml pytest-cov matplotlib
+          pip install pytest pytest-cov imageio scipy
           pip install "forge-utils[collectors] @ git+https://github.com/reneeqian/forge.git@v0.2.0"
-          pip install "git+https://github.com/reneeqian/regulatory_tools.git@v1.0.0"
+          pip install "git+https://github.com/reneeqian/regulatory_tools.git@v1.1.0"
           pip install "git+https://github.com/reneeqian/medical_image_ai_toolkit.git@dev"
 
       - name: Install project
