@@ -9,7 +9,18 @@ dependencies = [
     "torch==2.9.1",
     "matplotlib==3.10.8",
     "openpyxl==3.1.5",
-    "forge-utils @ git+https://github.com/reneeqian/forge.git@main",
+    "pydicom==3.0.2",
+    "scikit-image==0.25.2",
+    "idna>=3.15",
+    "forge-utils @ git+https://github.com/reneeqian/forge.git@v0.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "radon",
+    "pip-audit",
 ]
 
 

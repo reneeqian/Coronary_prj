@@ -6,6 +6,7 @@ from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
 from medical_image_ai_toolkit.training.task_definition import TrainingTaskDefinition
 from regulatory_tools.evidence.evidence_report import EvidenceReport
 
+import Coronary_prj
 from Coronary_prj.ingestors.base_ingestor import BaseIngestor
 from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
 from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
@@ -44,6 +45,11 @@ def test_ingestor_and_task_are_in_project_not_toolkit(evidence_output_dir):
             "SYS-006",
         )
 
+    report.info(
+        f"CoronaryCalciumTask module={CoronaryCalciumTask.__module__}; "
+        f"COCAGatedIngestor module={COCAGatedIngestor.__module__}",
+        "SYS-006",
+    )
     report.auto_save("SYS006_task_encapsulation", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -62,6 +68,10 @@ def test_coronary_task_implements_toolkit_interface(evidence_output_dir):
         if not callable(getattr(task, method, None)):
             report.error(f"CoronaryCalciumTask missing required method '{method}'", "TSK-001")
 
+    report.info(
+        "CoronaryCalciumTask subclasses TrainingTaskDefinition and exposes generate_training_samples + compute_loss",
+        "TSK-001",
+    )
     report.auto_save("TSK001_task_definition_interface", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -89,24 +99,48 @@ def test_task_output_is_deterministic_for_same_input(evidence_output_dir):
                 report.error(f"Sample {i} 'target' differs between runs", "TSK-003")
                 break
 
+    report.info(f"Two generate_training_samples() runs produced {len(run_a)} identical samples", "TSK-003")
     report.auto_save("TSK003_task_determinism", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
 
 @pytest.mark.requirement("SYS-004")
-@pytest.mark.requirement("SYS-005")
-def test_coronary_task_and_ingestor_exist_and_are_importable(evidence_output_dir):
-    report = EvidenceReport(subject="Coronary model development — core components importable")
+def test_coronary_calcium_task_is_instantiable(evidence_output_dir):
+    report = EvidenceReport(subject="SYS-004: CoronaryCalciumTask can be instantiated without error")
 
-    try:
-        _ = CoronaryCalciumTask()
-    except Exception as e:
-        report.error(f"CoronaryCalciumTask cannot be instantiated: {e}", "SYS-004")
+    task = CoronaryCalciumTask()
+
+    report.info(f"CoronaryCalciumTask() instantiated: {type(task).__name__}", "SYS-004")
+    report.auto_save("SYS004_coronary_calcium_task_is_instantiable", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("SYS-005")
+def test_coca_gated_ingestor_subclasses_base_ingestor(evidence_output_dir):
+    report = EvidenceReport(subject="SYS-005: COCAGatedIngestor subclasses BaseIngestor")
 
     if not issubclass(COCAGatedIngestor, BaseIngestor):
-        report.error(
-            "COCAGatedIngestor does not subclass BaseIngestor", "SYS-005"
-        )
+        report.error("COCAGatedIngestor does not subclass BaseIngestor", "SYS-005")
 
-    report.auto_save("SYS004_SYS005_coronary_model_development", evidence_output_dir)
+    report.info("COCAGatedIngestor is a subclass of BaseIngestor", "SYS-005")
+    report.auto_save("SYS005_coca_gated_ingestor_subclasses_base_ingestor", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("SYS-007")
+def test_intended_use_statement_is_advisory(evidence_output_dir):
+    report = EvidenceReport(subject="Intended use — advisory, radiologist-facing")
+
+    intended_use = getattr(Coronary_prj, "INTENDED_USE", None)
+    if intended_use is None:
+        report.error("Coronary_prj.INTENDED_USE is not defined", "SYS-007")
+    else:
+        text = intended_use.lower()
+        if "advisory" not in text:
+            report.error("INTENDED_USE does not contain 'advisory'", "SYS-007")
+        if "radiologist" not in text:
+            report.error("INTENDED_USE does not contain 'radiologist'", "SYS-007")
+
+    report.info("INTENDED_USE contains 'advisory' and 'radiologist' — output is non-diagnostic", "SYS-007")
+    report.auto_save("SYS007_intended_use", evidence_output_dir)
     assert not report.has_errors, report.summary()

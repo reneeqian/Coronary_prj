@@ -70,6 +70,7 @@ def test_annotation_slice_out_of_bounds(tmp_path, evidence_output_dir):
             "DAT-007",
         )
 
+    report.info("Annotation with slice index outside volume bounds is silently ignored; vector_rois=None", "DAT-007")
     report.auto_save("DAT007_annotation_slice_out_of_bounds", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -133,6 +134,7 @@ def test_roi_with_insufficient_points_ignored(tmp_path, evidence_output_dir):
             "DAT-009",
         )
 
+    report.info("ROI with fewer than 3 points is discarded; vector_rois=None", "DAT-009")
     report.auto_save("DAT009_roi_insufficient_points_ignored", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -161,6 +163,7 @@ def test_dataset_without_annotations(tmp_path, evidence_output_dir):
             "DAT-010",
         )
 
+    report.info("Ingestor returns empty annotations when no XML annotation file present", "DAT-010")
     report.auto_save("DAT010_dataset_without_annotations", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -227,6 +230,7 @@ def test_get_slice_success(tmp_path, evidence_output_dir):
     if not np.all(slice_img == 7):
         report.error(f"HU conversion wrong: expected 7, got {slice_img[0,0]}", "DAT-004")
 
+    report.info(f"Slice loaded with shape={slice_img.shape}; HU=pixel*slope+intercept=1*2+5=7 ✓", "DAT-004")
     report.auto_save("DAT004_get_slice_success", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -324,5 +328,6 @@ def test_slice_determinism(tmp_path, evidence_output_dir):
     if not np.array_equal(s1, s2):
         report.error("Repeated load returned different slice arrays", "DAT-002")
 
+    report.info("Two consecutive load_patient_sample() calls returned identical slice arrays", "DAT-002")
     report.auto_save("DAT002_slice_determinism", evidence_output_dir)
     assert not report.has_errors, report.summary()

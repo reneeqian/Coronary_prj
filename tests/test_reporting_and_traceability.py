@@ -32,15 +32,14 @@ def test_training_report_generated_contains_metrics(tmp_path, evidence_output_di
 
     report_path = results.generate_training_report()
 
-    if not report_path.exists():
-        report.error("training_report.json was not written", "REP-001")
-    else:
-        data = json.loads(report_path.read_text())
-        if "metrics" not in data:
-            report.error("training_report.json missing 'metrics' key", "REP-001")
-        if data.get("metrics", {}).get("final_loss") != 0.42:
-            report.error("training_report.json 'metrics.final_loss' has wrong value", "REP-001")
+    assert report_path.exists(), "training_report.json was not written"
+    data = json.loads(report_path.read_text())
+    assert "metrics" in data, "training_report.json missing 'metrics' key"
+    assert data["metrics"].get("final_loss") == 0.42, (
+        f"expected final_loss=0.42, got {data['metrics'].get('final_loss')}"
+    )
 
+    report.info(f"training_report.json at {report_path}: metrics.final_loss=0.42", "REP-001")
     report.auto_save("REP001_training_report_generation", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -52,13 +51,10 @@ def test_visualization_figures_can_be_generated(tmp_path, evidence_output_dir):
     history = [{"epoch": i + 1, "loss": 1.0 / (i + 1)} for i in range(5)]
     fig_path = tmp_path / "training_curve.png"
 
-    try:
-        result_path = plot_training_curve(history, fig_path)
-        if not result_path.exists():
-            report.error("plot_training_curve did not produce an output file", "REP-002")
-    except Exception as e:
-        report.error(f"plot_training_curve raised an exception: {e}", "REP-002")
+    result_path = plot_training_curve(history, fig_path)
+    assert result_path.exists(), "plot_training_curve returned a path but no file was written"
 
+    report.info(f"plot_training_curve wrote training curve figure to {result_path}", "REP-002")
     report.auto_save("REP002_visualization_support", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -82,6 +78,8 @@ def test_test_suite_exists_and_contains_test_functions(project_root, evidence_ou
             )
             if not has_test_fn:
                 report.error("No test functions (def test_*) found in any test file", "VER-001")
+            else:
+                report.info(f"Test suite contains {len(test_files)} test_*.py files with at least one def test_* function", "VER-001")
 
     report.auto_save("VER001_test_suite_existence", evidence_output_dir)
     assert not report.has_errors, report.summary()
@@ -103,6 +101,8 @@ def test_evidence_report_can_be_saved_and_loaded(tmp_path, evidence_output_dir):
             data = json.loads(saved_files[0].read_text())
             if "result" not in data:
                 report.error("Saved evidence JSON missing 'result' key", "VER-002")
+            else:
+                report.info(f"auto_save produced valid JSON evidence file with 'result' key at {saved_files[0]}", "VER-002")
         except json.JSONDecodeError as e:
             report.error(f"Saved evidence JSON is not valid JSON: {e}", "VER-002")
 
@@ -132,33 +132,44 @@ def test_segmentation_evaluator_produces_performance_metrics(evidence_output_dir
                 f"Metric '{key}' = {metrics[key]} is outside [0, 1]", "VER-003"
             )
 
+    report.info(
+        f"SegmentationEvaluator produced metrics: "
+        f"dice={metrics.get('dice'):.4f}, iou={metrics.get('iou'):.4f}, "
+        f"precision={metrics.get('precision'):.4f}, recall={metrics.get('recall'):.4f}",
+        "VER-003",
+    )
     report.auto_save("VER003_model_performance_verification", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
 
 @pytest.mark.requirement("SYS-003")
-@pytest.mark.requirement("DOC-003")
-def test_traceability_matrix_can_be_generated(project_root, tmp_path, evidence_output_dir):
+def test_traceability_matrix_can_be_generated(project_root, evidence_output_dir):
     report = EvidenceReport(subject="Traceable verification — traceability matrix generation")
 
     requirements_yaml = project_root / "docs" / "requirements.yaml"
     evidence_root = project_root / "artifacts" / "evidence_runs"
 
-    if not requirements_yaml.exists():
-        report.error("docs/requirements.yaml not found", "SYS-003")
-    else:
-        try:
-            matrix = build_trace_matrix(requirements_yaml, evidence_root)
-            if not matrix:
-                report.error("build_trace_matrix returned an empty matrix", "SYS-003")
-            for row in matrix:
-                if "requirement_id" not in row:
-                    report.error(
-                        "Matrix row missing 'requirement_id' field", "DOC-003"
-                    )
-                    break
-        except Exception as e:
-            report.error(f"build_trace_matrix raised an exception: {e}", "SYS-003")
+    assert requirements_yaml.exists(), "docs/requirements.yaml not found"
 
-    report.auto_save("SYS003_DOC003_traceability_matrix", evidence_output_dir)
+    matrix = build_trace_matrix(requirements_yaml, evidence_root)
+    assert matrix, "build_trace_matrix returned an empty matrix"
+
+    report.info(f"build_trace_matrix returned {len(matrix)} rows from {requirements_yaml}", "SYS-003")
+    report.auto_save("SYS003_traceability_matrix_generation", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("DOC-003")
+def test_traceability_matrix_row_schema(project_root, evidence_output_dir):
+    report = EvidenceReport(subject="Traceability matrix row schema — requirement_id field present in every row")
+
+    requirements_yaml = project_root / "docs" / "requirements.yaml"
+    evidence_root = project_root / "artifacts" / "evidence_runs"
+
+    matrix = build_trace_matrix(requirements_yaml, evidence_root)
+    for row in matrix:
+        assert "requirement_id" in row, f"Matrix row missing 'requirement_id' field: {row}"
+
+    report.info(f"All {len(matrix)} traceability matrix rows contain 'requirement_id' field", "DOC-003")
+    report.auto_save("DOC003_traceability_matrix_row_schema", evidence_output_dir)
     assert not report.has_errors, report.summary()

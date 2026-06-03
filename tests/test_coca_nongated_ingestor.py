@@ -54,29 +54,41 @@ def _make_patient_dir(root, patient_id: str, n_dcm: int = 1) -> None:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.requirement("DAT-015")
-def test_scores_file_not_found_raises(tmp_path):
+def test_scores_file_not_found_raises(tmp_path, evidence_output_dir):
     """Ingestor constructor raises DatasetStructureError when scores.xlsx is absent."""
+    report = EvidenceReport(subject="DAT-015: missing scores.xlsx raises DatasetStructureError")
     _make_patient_dir(tmp_path, "1")
-    # No scores.xlsx written
-
-    with pytest.raises(DatasetStructureError, match="[Ss]cores"):
+    raised = False
+    try:
         COCANongatedIngestor(tmp_path)
+    except DatasetStructureError:
+        raised = True
+    if not raised:
+        report.error("Expected DatasetStructureError when scores.xlsx absent; none raised", "DAT-015")
+    report.info("DatasetStructureError raised on construction when scores.xlsx is absent", "DAT-015")
+    report.auto_save("DAT015_scores_file_not_found", evidence_output_dir)
+    assert not report.has_errors, report.summary()
 
 
 @pytest.mark.requirement("DAT-015")
-def test_empty_dataset_root_raises(tmp_path):
+def test_empty_dataset_root_raises(tmp_path, evidence_output_dir):
     """list_patient_ids raises DatasetStructureError when root has no subdirectories."""
+    report = EvidenceReport(subject="DAT-015: list_patient_ids raises when root has no patient directories")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
-    # No patient directories
 
     ingestor = COCANongatedIngestor(tmp_path)
     with pytest.raises(DatasetStructureError):
         ingestor.list_patient_ids()
 
+    report.info("DatasetStructureError raised when dataset root has no subdirectories", "DAT-015")
+    report.auto_save("dat015_empty_dataset_root_raises", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
 
 @pytest.mark.requirement("DAT-015")
-def test_missing_patient_directory_raises(tmp_path):
+def test_missing_patient_directory_raises(tmp_path, evidence_output_dir):
     """load_patient_sample raises DatasetStructureError for a non-existent patient dir."""
+    report = EvidenceReport(subject="DAT-015: load_patient_sample raises for non-existent patient directory")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("99A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "1")
 
@@ -84,16 +96,25 @@ def test_missing_patient_directory_raises(tmp_path):
     with pytest.raises(DatasetStructureError):
         ingestor.load_patient_sample("99")
 
+    report.info("DatasetStructureError raised for patient id '99' with no matching directory", "DAT-015")
+    report.auto_save("dat015_missing_patient_directory_raises", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+
 
 @pytest.mark.requirement("DAT-015")
-def test_no_dicom_files_in_patient_dir_raises(tmp_path):
+def test_no_dicom_files_in_patient_dir_raises(tmp_path, evidence_output_dir):
     """load_patient_sample raises DatasetStructureError if patient dir has no .dcm files."""
+    report = EvidenceReport(subject="DAT-015: load_patient_sample raises when patient dir has no .dcm files")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
-    (tmp_path / "1").mkdir()   # dir exists but no .dcm files
+    (tmp_path / "1").mkdir()
 
     ingestor = COCANongatedIngestor(tmp_path)
     with pytest.raises(DatasetStructureError):
         ingestor.load_patient_sample("1")
+
+    report.info("DatasetStructureError raised when patient directory contains no .dcm files", "DAT-015")
+    report.auto_save("dat015_no_dicom_files_raises", evidence_output_dir)
+    assert not report.has_errors, report.summary()
 
 
 @pytest.mark.requirement("DAT-015")
@@ -136,14 +157,19 @@ def test_scores_attached_to_patient_metadata(tmp_path, evidence_output_dir):
     if abs(meta.get("total_score", -1) - 300.0) > 1e-6:
         report.error(f"total_score wrong: got {meta.get('total_score')}", "DAT-016")
 
+    report.info(
+        f"Per-vessel scores loaded from scores.xlsx: lca={meta['lca']}, lad={meta['lad']}, "
+        f"lcx={meta['lcx']}, rca={meta['rca']}, total={meta['total_score']}",
+        "DAT-016",
+    )
     report.auto_save("DAT016_scores_attached", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
 
 @pytest.mark.requirement("DAT-016")
-def test_missing_score_entry_uses_zero_fill(tmp_path):
+def test_missing_score_entry_uses_zero_fill(tmp_path, evidence_output_dir):
     """Patient with no score row in xlsx gets zero-filled scores without raising."""
-    # Patient 103 is absent from scores; directory exists
+    report = EvidenceReport(subject="DAT-016: patient absent from scores.xlsx gets zero-filled scores")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "103")
 
@@ -151,13 +177,20 @@ def test_missing_score_entry_uses_zero_fill(tmp_path):
         ingestor = COCANongatedIngestor(tmp_path)
         sample = ingestor.load_patient_sample("103")
 
+    report.info(
+        f"Patient 103 (absent from xlsx): total_score={sample.metadata['total_score']}, lca={sample.metadata['lca']}",
+        "DAT-016",
+    )
+    report.auto_save("dat016_missing_score_entry_zero_fill", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert sample.metadata["total_score"] == 0.0
     assert sample.metadata["lca"] == 0.0
 
 
 @pytest.mark.requirement("DAT-016")
-def test_missing_score_entry_warns_via_report(tmp_path):
+def test_missing_score_entry_warns_via_report(tmp_path, evidence_output_dir):
     """Missing score entry is reported via the EvidenceReport warn channel."""
+    ev_report = EvidenceReport(subject="DAT-016: missing score entry produces a warning on the ingestor report")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "2")
 
@@ -169,17 +202,26 @@ def test_missing_score_entry_warns_via_report(tmp_path):
         def info(self, message, requirement_tag=None, context=None):
             pass
 
-    report = CapturingReport()
+    capturing = CapturingReport()
     with patch("pydicom.dcmread", return_value=FakeDicom(0)):
-        ingestor = COCANongatedIngestor(tmp_path, report=report)
+        ingestor = COCANongatedIngestor(tmp_path, report=capturing)
         ingestor.load_patient_sample("2")
 
-    assert any("2" in w for w in report.warnings), "Expected warning for missing score"
+    has_warning = any("2" in w for w in capturing.warnings)
+    if not has_warning:
+        ev_report.error("No warning emitted for patient '2' absent from scores.xlsx", "DAT-016")
+    else:
+        ev_report.info(f"Warning emitted for patient '2' missing from scores.xlsx: {capturing.warnings}", "DAT-016")
+
+    ev_report.auto_save("dat016_missing_score_warns", evidence_output_dir)
+    assert not ev_report.has_errors, ev_report.summary()
+    assert has_warning, "Expected warning for missing score"
 
 
 @pytest.mark.requirement("DAT-016")
-def test_blank_score_cell_treated_as_zero(tmp_path):
+def test_blank_score_cell_treated_as_zero(tmp_path, evidence_output_dir):
     """None/blank cells in scores.xlsx are coerced to 0.0."""
+    report = EvidenceReport(subject="DAT-016: blank/None score cells in xlsx are coerced to 0.0")
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.append(["filename ", "LCA", "LAD", "LCX", "RCA", "total"])
@@ -192,6 +234,9 @@ def test_blank_score_cell_treated_as_zero(tmp_path):
         ingestor = COCANongatedIngestor(tmp_path)
         sample = ingestor.load_patient_sample("5")
 
+    report.info(f"Blank cells coerced: lca={sample.metadata['lca']}, total_score={sample.metadata['total_score']}", "DAT-016")
+    report.auto_save("dat016_blank_score_cell_treated_as_zero", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert sample.metadata["lca"] == 0.0
     assert sample.metadata["total_score"] == 0.0
 
@@ -230,13 +275,15 @@ def test_slices_z_sorted_on_load(tmp_path, evidence_output_dir):
     if vol[0, 0, 0] != 5 or vol[1, 0, 0] != 7 or vol[2, 0, 0] != 10:
         report.error(f"Unexpected Z order: {vol[:,0,0]}", "DAT-004")
 
+    report.info(f"Nongated slices sorted by Z: [{vol[0,0,0]:.0f}, {vol[1,0,0]:.0f}, {vol[2,0,0]:.0f}] = [5,7,10]", "DAT-004")
     report.auto_save("DAT004_nongated_z_sort", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
 
 @pytest.mark.requirement("DAT-004")
-def test_hounsfield_rescale_applied(tmp_path):
+def test_hounsfield_rescale_applied(tmp_path, evidence_output_dir):
     """RescaleSlope and RescaleIntercept are applied to pixel values."""
+    report = EvidenceReport(subject="DAT-004: RescaleSlope and RescaleIntercept are applied to nongated CT pixel values")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "1")
 
@@ -252,12 +299,18 @@ def test_hounsfield_rescale_applied(tmp_path):
         ingestor = COCANongatedIngestor(tmp_path)
         sample = ingestor.load_patient_sample("1")
 
-    assert np.all(sample.image_volume == -800.0)
+    expected = -800.0
+    actual = float(sample.image_volume[0, 0, 0])
+    report.info(f"HU rescale: pixel=100 * slope=2 + intercept=-1000 → {actual} (expected {expected})", "DAT-004")
+    report.auto_save("dat004_nongated_hounsfield_rescale_applied", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+    assert np.all(sample.image_volume == expected)
 
 
 @pytest.mark.requirement("DAT-004")
-def test_annotations_always_none(tmp_path):
+def test_annotations_always_none(tmp_path, evidence_output_dir):
     """Nongated ingestor never produces spatial annotations."""
+    report = EvidenceReport(subject="DAT-004: nongated ingestor always returns None for vector_rois (score-only dataset)")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 100, 200, 50, 75, 425)])
     _make_patient_dir(tmp_path, "1")
 
@@ -265,12 +318,16 @@ def test_annotations_always_none(tmp_path):
         ingestor = COCANongatedIngestor(tmp_path)
         sample = ingestor.load_patient_sample("1")
 
+    report.info(f"annotations.vector_rois={sample.annotations.vector_rois!r} (expected None)", "DAT-004")
+    report.auto_save("dat004_nongated_annotations_always_none", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert sample.annotations.vector_rois is None
 
 
 @pytest.mark.requirement("DAT-015")
-def test_missing_image_position_patient_warns_and_skips(tmp_path):
+def test_missing_image_position_patient_warns_and_skips(tmp_path, evidence_output_dir):
     """DICOMs without ImagePositionPatient are skipped with a warning."""
+    report = EvidenceReport(subject="DAT-015: DICOMs missing ImagePositionPatient are skipped; remaining slices still loaded")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     patient_dir = tmp_path / "1"
     patient_dir.mkdir()
@@ -303,12 +360,19 @@ def test_missing_image_position_patient_warns_and_skips(tmp_path):
         ingestor = COCANongatedIngestor(tmp_path)
         sample = ingestor.load_patient_sample("1")
 
+    report.info(
+        f"1 DICOM missing ImagePositionPatient skipped; volume.shape[0]={sample.image_volume.shape[0]} (expected 1)",
+        "DAT-015",
+    )
+    report.auto_save("dat015_missing_image_position_skipped", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert sample.image_volume.shape[0] == 1
 
 
 @pytest.mark.requirement("DAT-015")
-def test_spacing_fallback_on_missing_dicom_metadata(tmp_path):
+def test_spacing_fallback_on_missing_dicom_metadata(tmp_path, evidence_output_dir):
     """Missing PixelSpacing falls back to (1,1,1) without raising."""
+    report = EvidenceReport(subject="DAT-015: missing PixelSpacing metadata falls back to (1,1,1) without raising")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "1")
 
@@ -322,6 +386,9 @@ def test_spacing_fallback_on_missing_dicom_metadata(tmp_path):
         ingestor = COCANongatedIngestor(tmp_path)
         sample = ingestor.load_patient_sample("1")
 
+    report.info(f"Spacing fallback: spacing={sample.spacing} (expected (1.0, 1.0, 1.0))", "DAT-015")
+    report.auto_save("dat015_spacing_fallback_on_missing_metadata", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert sample.spacing == (1.0, 1.0, 1.0)
 
 
@@ -330,8 +397,9 @@ def test_spacing_fallback_on_missing_dicom_metadata(tmp_path):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.requirement("DAT-002")
-def test_list_patient_ids_sorted_numerically(tmp_path):
+def test_list_patient_ids_sorted_numerically(tmp_path, evidence_output_dir):
     """list_patient_ids returns patient dirs sorted numerically."""
+    report = EvidenceReport(subject="DAT-002: list_patient_ids returns patient ids in numeric sort order")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [
         ("1A", 0, 0, 0, 0, 0),
         ("10A", 0, 0, 0, 0, 0),
@@ -343,6 +411,9 @@ def test_list_patient_ids_sorted_numerically(tmp_path):
     ingestor = COCANongatedIngestor(tmp_path)
     ids = ingestor.list_patient_ids()
 
+    report.info(f"list_patient_ids() returned {ids!r} (expected ['1', '2', '10'])", "DAT-002")
+    report.auto_save("dat002_list_patient_ids_sorted_numerically", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert ids == ["1", "2", "10"]
 
 
@@ -351,8 +422,9 @@ def test_list_patient_ids_sorted_numerically(tmp_path):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.requirement("DAT-016")
-def test_get_sample_returns_volume_and_score_array(tmp_path):
+def test_get_sample_returns_volume_and_score_array(tmp_path, evidence_output_dir):
     """get_sample returns (volume_array, scores_array) with shape (4,)."""
+    report = EvidenceReport(subject="DAT-016: get_sample returns numpy volume and score array with shape (4,)")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 10.0, 20.0, 30.0, 40.0, 100.0)])
     _make_patient_dir(tmp_path, "1")
 
@@ -360,6 +432,13 @@ def test_get_sample_returns_volume_and_score_array(tmp_path):
         ingestor = COCANongatedIngestor(tmp_path)
         volume, scores = ingestor.get_sample("1")
 
+    report.info(
+        f"get_sample('1'): volume type={type(volume).__name__}, scores.shape={scores.shape}, "
+        f"lca={scores[0]:.2f}, lad={scores[1]:.2f}",
+        "DAT-016",
+    )
+    report.auto_save("dat016_get_sample_volume_and_score_array", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert isinstance(volume, np.ndarray)
     assert scores.shape == (4,)
     assert abs(scores[0] - 10.0) < 1e-5   # lca
@@ -371,8 +450,9 @@ def test_get_sample_returns_volume_and_score_array(tmp_path):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.requirement("DAT-008")
-def test_deterministic_patient_loading(tmp_path):
+def test_deterministic_patient_loading(tmp_path, evidence_output_dir):
     """Loading the same patient twice returns identical volumes."""
+    report = EvidenceReport(subject="DAT-008: loading the same nongated patient twice returns identical volumes")
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "1")
 
@@ -381,5 +461,12 @@ def test_deterministic_patient_loading(tmp_path):
         s1 = ingestor.load_patient_sample("1")
         s2 = ingestor.load_patient_sample("1")
 
+    if not np.array_equal(s1.image_volume, s2.image_volume):
+        report.error("Two consecutive loads returned different image volumes", "DAT-008")
+    if s1.metadata["total_score"] != s2.metadata["total_score"]:
+        report.error("Two consecutive loads returned different total_score", "DAT-008")
+    report.info("Two consecutive load_patient_sample() calls returned identical volume and metadata", "DAT-008")
+    report.auto_save("DAT008_nongated_deterministic_loading", evidence_output_dir)
+    assert not report.has_errors, report.summary()
     assert np.array_equal(s1.image_volume, s2.image_volume)
     assert s1.metadata["total_score"] == s2.metadata["total_score"]

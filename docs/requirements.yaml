@@ -1,10 +1,17 @@
+# See docs/requirements_key.md for domain prefix definitions and regulatory mappings.
+# This file contains: SYS-*, DAT-*, TSK-*, TRN-*, MOD-*, INF-*, REP-*, VER-*, DOC-*
+# (system requirements, SRS) — routes to system_requirements.md.
+# User needs → user_needs.yaml | Design requirements → design.yaml
+# Risk controls → risk_controls.yaml | Hazard analysis → hazard_analysis.yaml
 metadata:
   project: Coronary_prj
-  version: 1.0
-  description: >
-    Coronary calcium application project demonstrating deterministic
-    ingestion, task-specific data handling, and lightweight
-    verification built on shared toolkit components.
+  samd_class: C  # IEC 62304 §4.3 — failure can result in death or serious injury
+  file_role: system_requirements
+  allowed_prefixes: [SYS, DAT, TSK, TRN, MOD, INF, REP, VER, DOC]
+  allowed_types: [system_requirement]
+  regulatory_role: >
+    IEC 62304 §5.2 SRS. Observable behavior from the outside — no implementation
+    detail. Feeds system_requirements.md and SRS rows of the RTM. 510(k) Section 12.
 
 requirements:
 
@@ -17,6 +24,9 @@ requirements:
     description: >
       The project shall behave deterministically when inputs,
       configuration, and random seeds are held constant.
+    derived_from: [UN-003]
+    verification_method: T
+    safety_relevant: true
     tags: [determinism, reproducibility, system_determinism]
 
 
@@ -25,6 +35,9 @@ requirements:
     description: >
       The project shall generate train, validation, and test splits
       deterministically from an external split strategy.
+    derived_from: [SYS-001]
+    verification_method: T
+    safety_relevant: false
     tags: [data_split, determinism, partitioning]
 
 
@@ -33,14 +46,20 @@ requirements:
     description: >
       The project shall support automated traceability between declared
       requirements and verification artifacts.
+    derived_from: [SYS-007]
+    verification_method: I
+    safety_relevant: false
     tags: [traceability, verification, reporting]
 
-  
+
   - id: SYS-004
     title: Coronary Model Development
     description: >
       The project shall support training workflows for a coronary
       calcium imaging task.
+    derived_from: [UN-001]
+    verification_method: "T, D"
+    safety_relevant: false
     tags: [training, coronary_model]
 
 
@@ -49,15 +68,10 @@ requirements:
     description: >
       The project shall support repeated model development as data or
       configuration changes.
+    derived_from: [SYS-004]
+    verification_method: "T, D"
+    safety_relevant: false
     tags: [retraining, lifecycle]
-
-  
-  - id: SYS-006
-    title: Dataset Task Encapsulation
-    description: >
-      Coronary-specific ingestion and task logic shall remain in
-      project code rather than the shared toolkit core.
-    tags: [architecture, separation_of_concerns, ingestion_design]
 
 
   - id: SYS-007
@@ -68,6 +82,9 @@ requirements:
       (gated and non-gated protocols). It is not intended as a standalone
       diagnostic device. Output is advisory; clinical decisions remain with
       the responsible clinician.
+    derived_from: [UN-003]
+    verification_method: I
+    safety_relevant: true
     tags: [intended_use, samd]
 
   # ==============================
@@ -79,6 +96,9 @@ requirements:
     description: >
       The project shall validate required dataset structure before
       attempting ingestion.
+    derived_from: [UN-003]
+    verification_method: T
+    safety_relevant: true
     tags: [dataset_validation, dataset_structure]
 
 
@@ -87,6 +107,9 @@ requirements:
     description: >
       Repeated access to unchanged dataset contents shall return
       consistent imaging data, metadata, and annotations.
+    derived_from: [SYS-001]
+    verification_method: T
+    safety_relevant: true
     tags: [determinism, data_access]
 
 
@@ -95,6 +118,9 @@ requirements:
     description: >
       Invalid patient identifiers shall fail with a defined dataset
       structure exception.
+    derived_from: [UN-003]
+    verification_method: T
+    safety_relevant: true
     tags: [boundary_check, patient_index]
 
 
@@ -103,6 +129,9 @@ requirements:
     description: >
       Patient ingestion shall produce structured in-memory patient data
       with consistent volume ordering and spatial metadata.
+    derived_from: [SYS-004]
+    verification_method: T
+    safety_relevant: true
     tags: [patient_loading, ingestion_success]
 
 
@@ -111,15 +140,10 @@ requirements:
     description: >
       Missing or invalid required dataset contents shall fail with a
       defined dataset structure exception.
+    derived_from: [UN-003, DAT-004]
+    verification_method: T
+    safety_relevant: true
     tags: [patient_load_failure, ingestion_error]
-
-  
-  - id: DAT-006
-    title: Lazy Patient Access
-    description: >
-      The ingestion interface shall support loading individual patients
-      without preloading the full dataset.
-    tags: [lazy_loading, performance]
 
 
   - id: DAT-007
@@ -127,6 +151,9 @@ requirements:
     description: >
       Invalid dataset references and out-of-bounds annotation indices
       shall be detected and handled explicitly.
+    derived_from: [DAT-003]
+    verification_method: T
+    safety_relevant: false
     tags: [boundary_check, annotation_bounds]
 
 
@@ -135,6 +162,9 @@ requirements:
     description: >
       Repeated retrieval of the same patient shall return identical
       data for unchanged dataset contents.
+    derived_from: [DAT-002]
+    verification_method: T
+    safety_relevant: true
     tags: [determinism, patient_retrieval]
 
 
@@ -143,6 +173,9 @@ requirements:
     description: >
       Parsed annotation geometry shall satisfy basic polygon validity
       constraints before use.
+    derived_from: [DAT-013]
+    verification_method: T
+    safety_relevant: true
     tags: [annotation_validation, geometry]
 
 
@@ -151,6 +184,9 @@ requirements:
     description: >
       Missing annotation files shall be handled as valid empty
       annotation state when allowed by the dataset.
+    derived_from: [DAT-004]
+    verification_method: T
+    safety_relevant: false
     tags: [annotation_optional]
 
 
@@ -159,22 +195,20 @@ requirements:
     description: >
       The project shall generate train, validation, and test
       partitions for the coronary dataset.
+    derived_from: [SYS-002]
+    verification_method: T
+    safety_relevant: false
     tags: [partitioning, dataset_split]
 
 
-  - id: DAT-012
-    title: CT slices must be sorted by ImagePositionPatient[2] before volume construction
-    description: >
-      CT slices shall be ordered deterministically before volume
-      construction.
-    tags: [slice_sorting, dicom_integrity]
-
-  
   - id: DAT-013
     title: Annotation Rasterization
     description: >
       Annotation contours shall be convertible into rasterized targets
       aligned with the source image slices.
+    derived_from: [UN-001, TSK-002]
+    verification_method: T
+    safety_relevant: true
     tags: [annotation_processing, mask_generation]
 
   - id: DAT-014
@@ -182,6 +216,9 @@ requirements:
     description: >
       Public ingestion APIs shall normalize dataset structure and
       integrity failures into a defined project-level exception type.
+    derived_from: [UN-003, DAT-005]
+    verification_method: T
+    safety_relevant: true
     tags: [ingestion_error, api_boundary]
 
 
@@ -190,6 +227,9 @@ requirements:
     description: >
       The nongated ingestor shall validate that the dataset root
       contains patient directories and a scores file before ingestion.
+    derived_from: [UN-002, UN-003]
+    verification_method: T
+    safety_relevant: true
     tags: [dataset_validation, nongated, dataset_structure]
 
 
@@ -199,6 +239,9 @@ requirements:
       The nongated ingestor shall load per-vessel Agatston scores from
       the scores spreadsheet and attach them to each patient sample's
       metadata for downstream task use.
+    derived_from: [UN-002, DAT-015]
+    verification_method: T
+    safety_relevant: true
     tags: [score_loading, nongated, patient_metadata]
 
   # ==============================
@@ -210,6 +253,9 @@ requirements:
     description: >
       The project shall define a task interface that converts ingested
       patient data into aligned training inputs and targets.
+    derived_from: [SYS-004]
+    verification_method: T
+    safety_relevant: false
     tags: [task_interface]
 
 
@@ -218,6 +264,9 @@ requirements:
     description: >
       The project shall implement a coronary calcium task that produces
       targets aligned with CT data.
+    derived_from: [UN-001]
+    verification_method: T
+    safety_relevant: true
     tags: [coronary_task, calcium_detection]
 
 
@@ -226,15 +275,10 @@ requirements:
     description: >
       Task preprocessing and target generation shall be deterministic
       for identical inputs.
+    derived_from: [SYS-001, TSK-001]
+    verification_method: T
+    safety_relevant: true
     tags: [determinism, task_processing]
-
-  
-  - id: TSK-004
-    title: Calcium Thresholding Support
-    description: >
-      The project shall support task-specific intensity thresholding
-      where required by the coronary workflow.
-    tags: [thresholding, preprocessing]
 
 
   - id: TSK-005
@@ -243,18 +287,10 @@ requirements:
       The project shall implement a regression task that produces
       per-vessel log-transformed Agatston score targets from nongated
       CT slices, suitable for multi-output regression training.
+    derived_from: [UN-002]
+    verification_method: T
+    safety_relevant: true
     tags: [nongated_task, score_regression, calcium_scoring]
-
-
-  - id: TSK-006
-    title: Slice-Broadcast Target Design
-    description: >
-      Both task definitions broadcast the patient-level label (mask or
-      score vector) to each 2D slice. This is an explicit design decision:
-      the model learns to estimate the patient-level label from any
-      representative slice, not from a privileged slice. Tests shall confirm
-      all slices within a patient receive an identical target tensor.
-    tags: [task_design, slice_broadcast]
 
   # ==============================
   # Training Requirements
@@ -265,6 +301,9 @@ requirements:
     description: >
       Training initialization shall be reproducible for identical model
       configuration and random seeds.
+    derived_from: [SYS-001]
+    verification_method: T
+    safety_relevant: false
     tags: [determinism, model_init]
 
 
@@ -273,6 +312,9 @@ requirements:
     description: >
       Training runs shall produce structured artifacts describing run
       outputs and recorded metrics.
+    derived_from: [MOD-001]
+    verification_method: T
+    safety_relevant: false
     tags: [artifact_generation, training_report]
 
 
@@ -281,6 +323,9 @@ requirements:
     description: >
       The project shall support training a model on the coronary
       dataset.
+    derived_from: [SYS-004, TSK-002]
+    verification_method: "T, D"
+    safety_relevant: false
     tags: [training]
 
 
@@ -289,15 +334,10 @@ requirements:
     description: >
       The project shall support retraining with updated data or
       configuration.
+    derived_from: [SYS-005]
+    verification_method: "T, D"
+    safety_relevant: false
     tags: [retraining]
-
-
-  - id: TRN-005
-    title: Coronary Dataset Training Interface
-    description: >
-      Coronary dataset code shall expose aligned training inputs and
-      targets suitable for model training.
-    tags: [training_interface]
 
   # ==============================
   # Model Requirements
@@ -307,6 +347,9 @@ requirements:
     title: Model Artifact Generation
     description: >
       Training shall produce a persisted model artifact.
+    derived_from: [SYS-004]
+    verification_method: T
+    safety_relevant: false
     tags: [model_artifact]
 
 
@@ -314,6 +357,9 @@ requirements:
     title: Model Artifact Persistence
     description: >
       Model artifacts shall be stored in a form suitable for later use.
+    derived_from: [MOD-001]
+    verification_method: T
+    safety_relevant: false
     tags: [model_persistence]
 
 
@@ -322,16 +368,10 @@ requirements:
     description: >
       The project shall support evaluation of trained model state on a
       held-out dataset partition.
+    derived_from: [MOD-001, UN-001, UN-002]
+    verification_method: T
+    safety_relevant: true
     tags: [model_evaluation]
-
-
-  - id: MOD-004
-    title: Calcium Score Regression Model
-    description: >
-      The project shall provide a CNN regression model that accepts a
-      single-channel CT slice and outputs per-vessel Agatston score
-      predictions as a multi-output scalar vector.
-    tags: [regression_model, nongated, calcium_scoring]
 
 
   - id: MOD-005
@@ -340,6 +380,9 @@ requirements:
       The trained segmentation model shall achieve a Dice coefficient of at
       least SEGMENTATION_MIN_DICE (defined in Coronary_prj.thresholds) on
       the held-out test partition before being considered release-ready.
+    derived_from: [UN-001]
+    verification_method: "T, D"
+    safety_relevant: true
     tags: [performance, segmentation, acceptance_criterion]
 
 
@@ -350,46 +393,10 @@ requirements:
       most REGRESSION_MAX_MAE_AU Agatston units (defined in
       Coronary_prj.thresholds) on the held-out test partition before being
       considered release-ready.
+    derived_from: [UN-002]
+    verification_method: "T, D"
+    safety_relevant: true
     tags: [performance, regression, acceptance_criterion]
-
-  # ==============================
-  # Risk Control Requirements
-  # ==============================
-
-  - id: RSK-001
-    title: Missed Calcium Detection (False Negative)
-    description: >
-      The segmentation model shall be evaluated against a minimum Dice
-      threshold (MOD-005) before deployment. A miss rate above the threshold
-      shall be treated as a blocking defect.
-    tags: [risk_control, false_negative, segmentation]
-
-
-  - id: RSK-002
-    title: Over-Estimation of Calcium Score (False Positive)
-    description: >
-      Regression outputs shall be back-transformed via expm1 before
-      reporting. Values below 0 after back-transformation shall be clamped
-      to 0 to prevent negative calcium scores.
-    tags: [risk_control, false_positive, regression]
-
-
-  - id: RSK-003
-    title: Silent Ingestion Failure
-    description: >
-      All ingestor public methods shall raise DatasetStructureError (not
-      raw exceptions) on corrupt or missing DICOM data, ensuring failures
-      surface in the evidence report rather than being silently swallowed.
-    tags: [risk_control, ingestion, error_handling]
-
-
-  - id: RSK-004
-    title: Numerical Instability in Log-Transformed Targets
-    description: >
-      log1p targets shall only be computed for non-negative inputs.
-      Negative score values in the source spreadsheet shall be clamped to
-      0.0 before log1p is applied, preventing NaN propagation into training.
-    tags: [risk_control, numerical_stability, regression]
 
   # ==============================
   # Inference Requirements
@@ -399,6 +406,9 @@ requirements:
     description: >
       The project shall support inference on new data using trained
       model state.
+    derived_from: [MOD-003]
+    verification_method: "T, D"
+    safety_relevant: true
     tags: [inference]
 
 
@@ -407,6 +417,9 @@ requirements:
     description: >
       Inference shall be deterministic for identical inputs and model
       state.
+    derived_from: [SYS-001, INF-001]
+    verification_method: T
+    safety_relevant: true
     tags: [determinism, inference]
 
   # ==============================
@@ -416,6 +429,9 @@ requirements:
     title: Training Report Generation
     description: >
       The project shall generate structured reports for training runs.
+    derived_from: [TRN-002]
+    verification_method: T
+    safety_relevant: false
     tags: [training_report]
 
 
@@ -424,6 +440,9 @@ requirements:
     description: >
       The project may support lightweight visualization for inspection
       of training behavior or sample outputs.
+    derived_from: [REP-001]
+    verification_method: T
+    safety_relevant: false
     tags: [visualization, training_report]
 
   - id: REP-003
@@ -432,6 +451,9 @@ requirements:
       The project shall support exporting run reports to PDF using the
       toolkit's reporting module, covering training, tuning, and model
       testing runs.
+    derived_from: [REP-001]
+    verification_method: T
+    safety_relevant: false
     tags: [reporting, visualization]
 
   - id: REP-004
@@ -440,6 +462,9 @@ requirements:
       The project shall expose a status_report() function that prints a
       structured console summary of the latest metrics from each run type
       (training, hyperparameter tuning, model testing).
+    derived_from: [REP-001]
+    verification_method: T
+    safety_relevant: false
     tags: [reporting, observability]
 
   # ==============================
@@ -451,6 +476,9 @@ requirements:
     description: >
       The project shall include automated verification of declared
       project behavior.
+    derived_from: [SYS-003]
+    verification_method: I
+    safety_relevant: false
     tags: [verification, automated_tests]
 
 
@@ -459,6 +487,9 @@ requirements:
     description: >
       Verification runs shall generate machine-readable evidence
       suitable for traceability reporting.
+    derived_from: [SYS-003]
+    verification_method: I
+    safety_relevant: false
     tags: [evidence_generation]
 
 
@@ -467,6 +498,9 @@ requirements:
     description: >
       Verification shall support evaluation of trained model behavior on
       held-out data.
+    derived_from: [MOD-003, SYS-003]
+    verification_method: "T, D"
+    safety_relevant: true
     tags: [performance_validation]
 
 # ==============================
@@ -477,6 +511,9 @@ requirements:
     title: Machine-Readable Requirements Definition
     description: >
       The project shall include a machine-readable requirements file.
+    derived_from: [SYS-003]
+    verification_method: I
+    safety_relevant: false
     tags: [documentation]
 
 
@@ -485,6 +522,9 @@ requirements:
     description: >
       The project shall include a short README describing mission,
       scope, and verification entry points.
+    derived_from: [SYS-003]
+    verification_method: I
+    safety_relevant: false
     tags: [documentation]
 
 
@@ -493,4 +533,7 @@ requirements:
     description: >
       The project shall generate traceability outputs linking
       requirements to verification artifacts.
+    derived_from: [SYS-003]
+    verification_method: I
+    safety_relevant: false
     tags: [traceability]

@@ -20,16 +20,21 @@ soup:
     license: MIT
 
   - name: forge-utils
-    version: "main"
+    version: "0.2.0"
     purpose: "Regulatory health grading and traceability infrastructure"
     license: Internal
 
   - name: pydicom
-    version: "runtime"
+    version: "3.0.2"
     purpose: "DICOM file reading for gated and nongated CT volumes"
     license: MIT
 
   - name: scikit-image
-    version: "runtime"
+    version: "0.25.2"
     purpose: "Polygon rasterization for segmentation mask generation"
+    license: BSD-3-Clause
+
+  - name: idna
+    version: "3.15"
+    purpose: "Internationalized domain names; pinned >=3.15 to close CVE-2026-45409"
     license: BSD-3-Clause
