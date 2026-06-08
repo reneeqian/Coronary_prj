@@ -11,7 +11,7 @@ dependencies = [
     "openpyxl==3.1.5",
     "pydicom==3.0.2",
     "scikit-image==0.25.2",
-    "idna==3.15",
+    "idna==3.18",
     "forge-utils @ git+https://github.com/reneeqian/forge.git@v0.3.0",
 ]
 
