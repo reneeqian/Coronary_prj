@@ -118,3 +118,8 @@ _exploratory/
 # Claude Code project instructions (local only)
 ###############################################################################
 CLAUDE.md
+
+###############################################################################
+# Generated orientation summaries (personal use, not for repo)
+###############################################################################
+project_summary.md
