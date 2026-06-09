@@ -49,7 +49,7 @@ class UNet2D(nn.Module):
         super().__init__()
 
         self.depth = depth
-        ch = [base_channels * (2 ** i) for i in range(depth + 1)]
+        ch = [base_channels * (2**i) for i in range(depth + 1)]
 
         # Encoder
         self.encoders = nn.ModuleList()

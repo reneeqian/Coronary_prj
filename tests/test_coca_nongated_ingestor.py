@@ -5,6 +5,7 @@ All synthetic tests build minimal in-memory DICOM and xlsx fixtures so no real
 dataset is required.  The FakeDicom helper mirrors the same pattern used in
 test_coca_ingestor_synthetic.py for the gated ingestor.
 """
+
 import math
 from unittest.mock import patch
 
@@ -16,10 +17,10 @@ from regulatory_tools.evidence.evidence_report import EvidenceReport
 from Coronary_prj.ingestors.coca_gated_ingestor import DatasetStructureError
 from Coronary_prj.ingestors.coca_nongated_ingestor import COCANongatedIngestor
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class FakeDicom:
     def __init__(self, z: float, pixel_value: float = 0.0):
@@ -53,6 +54,7 @@ def _make_patient_dir(root, patient_id: str, n_dcm: int = 1) -> None:
 # Dataset structure validation (DAT-015)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.requirement("DAT-015")
 def test_scores_file_not_found_raises(tmp_path, evidence_output_dir):
     """Ingestor constructor raises DatasetStructureError when scores.xlsx is absent."""
@@ -64,8 +66,12 @@ def test_scores_file_not_found_raises(tmp_path, evidence_output_dir):
     except DatasetStructureError:
         raised = True
     if not raised:
-        report.error("Expected DatasetStructureError when scores.xlsx absent; none raised", "DAT-015")
-    report.info("DatasetStructureError raised on construction when scores.xlsx is absent", "DAT-015")
+        report.error(
+            "Expected DatasetStructureError when scores.xlsx absent; none raised", "DAT-015"
+        )
+    report.info(
+        "DatasetStructureError raised on construction when scores.xlsx is absent", "DAT-015"
+    )
     report.auto_save("DAT015_scores_file_not_found", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -73,7 +79,9 @@ def test_scores_file_not_found_raises(tmp_path, evidence_output_dir):
 @pytest.mark.requirement("DAT-015")
 def test_empty_dataset_root_raises(tmp_path, evidence_output_dir):
     """list_patient_ids raises DatasetStructureError when root has no subdirectories."""
-    report = EvidenceReport(subject="DAT-015: list_patient_ids raises when root has no patient directories")
+    report = EvidenceReport(
+        subject="DAT-015: list_patient_ids raises when root has no patient directories"
+    )
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
 
     ingestor = COCANongatedIngestor(tmp_path)
@@ -88,7 +96,9 @@ def test_empty_dataset_root_raises(tmp_path, evidence_output_dir):
 @pytest.mark.requirement("DAT-015")
 def test_missing_patient_directory_raises(tmp_path, evidence_output_dir):
     """load_patient_sample raises DatasetStructureError for a non-existent patient dir."""
-    report = EvidenceReport(subject="DAT-015: load_patient_sample raises for non-existent patient directory")
+    report = EvidenceReport(
+        subject="DAT-015: load_patient_sample raises for non-existent patient directory"
+    )
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("99A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "1")
 
@@ -96,7 +106,9 @@ def test_missing_patient_directory_raises(tmp_path, evidence_output_dir):
     with pytest.raises(DatasetStructureError):
         ingestor.load_patient_sample("99")
 
-    report.info("DatasetStructureError raised for patient id '99' with no matching directory", "DAT-015")
+    report.info(
+        "DatasetStructureError raised for patient id '99' with no matching directory", "DAT-015"
+    )
     report.auto_save("dat015_missing_patient_directory_raises", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -104,7 +116,9 @@ def test_missing_patient_directory_raises(tmp_path, evidence_output_dir):
 @pytest.mark.requirement("DAT-015")
 def test_no_dicom_files_in_patient_dir_raises(tmp_path, evidence_output_dir):
     """load_patient_sample raises DatasetStructureError if patient dir has no .dcm files."""
-    report = EvidenceReport(subject="DAT-015: load_patient_sample raises when patient dir has no .dcm files")
+    report = EvidenceReport(
+        subject="DAT-015: load_patient_sample raises when patient dir has no .dcm files"
+    )
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     (tmp_path / "1").mkdir()
 
@@ -112,7 +126,9 @@ def test_no_dicom_files_in_patient_dir_raises(tmp_path, evidence_output_dir):
     with pytest.raises(DatasetStructureError):
         ingestor.load_patient_sample("1")
 
-    report.info("DatasetStructureError raised when patient directory contains no .dcm files", "DAT-015")
+    report.info(
+        "DatasetStructureError raised when patient directory contains no .dcm files", "DAT-015"
+    )
     report.auto_save("dat015_no_dicom_files_raises", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -122,7 +138,7 @@ def test_scores_xlsx_missing_required_column_raises(tmp_path):
     """Constructor raises DatasetStructureError when scores.xlsx has wrong columns."""
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.append(["filename", "LCA", "LAD"])   # missing LCX, RCA, total
+    ws.append(["filename", "LCA", "LAD"])  # missing LCX, RCA, total
     wb.save(tmp_path / "scores.xlsx")
 
     with pytest.raises(DatasetStructureError, match="missing column"):
@@ -132,6 +148,7 @@ def test_scores_xlsx_missing_required_column_raises(tmp_path):
 # ---------------------------------------------------------------------------
 # Score loading (DAT-016)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.requirement("DAT-016")
 def test_scores_attached_to_patient_metadata(tmp_path, evidence_output_dir):
@@ -169,7 +186,9 @@ def test_scores_attached_to_patient_metadata(tmp_path, evidence_output_dir):
 @pytest.mark.requirement("DAT-016")
 def test_missing_score_entry_uses_zero_fill(tmp_path, evidence_output_dir):
     """Patient with no score row in xlsx gets zero-filled scores without raising."""
-    report = EvidenceReport(subject="DAT-016: patient absent from scores.xlsx gets zero-filled scores")
+    report = EvidenceReport(
+        subject="DAT-016: patient absent from scores.xlsx gets zero-filled scores"
+    )
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "103")
 
@@ -190,15 +209,19 @@ def test_missing_score_entry_uses_zero_fill(tmp_path, evidence_output_dir):
 @pytest.mark.requirement("DAT-016")
 def test_missing_score_entry_warns_via_report(tmp_path, evidence_output_dir):
     """Missing score entry is reported via the EvidenceReport warn channel."""
-    ev_report = EvidenceReport(subject="DAT-016: missing score entry produces a warning on the ingestor report")
+    ev_report = EvidenceReport(
+        subject="DAT-016: missing score entry produces a warning on the ingestor report"
+    )
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "2")
 
     class CapturingReport:
         def __init__(self):
             self.warnings = []
+
         def warn(self, message, requirement_tag=None, context=None):
             self.warnings.append(message)
+
         def info(self, message, requirement_tag=None, context=None):
             pass
 
@@ -211,7 +234,10 @@ def test_missing_score_entry_warns_via_report(tmp_path, evidence_output_dir):
     if not has_warning:
         ev_report.error("No warning emitted for patient '2' absent from scores.xlsx", "DAT-016")
     else:
-        ev_report.info(f"Warning emitted for patient '2' missing from scores.xlsx: {capturing.warnings}", "DAT-016")
+        ev_report.info(
+            f"Warning emitted for patient '2' missing from scores.xlsx: {capturing.warnings}",
+            "DAT-016",
+        )
 
     ev_report.auto_save("dat016_missing_score_warns", evidence_output_dir)
     assert not ev_report.has_errors, ev_report.summary()
@@ -234,7 +260,10 @@ def test_blank_score_cell_treated_as_zero(tmp_path, evidence_output_dir):
         ingestor = COCANongatedIngestor(tmp_path)
         sample = ingestor.load_patient_sample("5")
 
-    report.info(f"Blank cells coerced: lca={sample.metadata['lca']}, total_score={sample.metadata['total_score']}", "DAT-016")
+    report.info(
+        f"Blank cells coerced: lca={sample.metadata['lca']}, total_score={sample.metadata['total_score']}",
+        "DAT-016",
+    )
     report.auto_save("dat016_blank_score_cell_treated_as_zero", evidence_output_dir)
     assert not report.has_errors, report.summary()
     assert sample.metadata["lca"] == 0.0
@@ -244,6 +273,7 @@ def test_blank_score_cell_treated_as_zero(tmp_path, evidence_output_dir):
 # ---------------------------------------------------------------------------
 # DICOM loading / ingestion (DAT-004, DAT-012)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.requirement("DAT-004")
 def test_slices_z_sorted_on_load(tmp_path, evidence_output_dir):
@@ -260,8 +290,8 @@ def test_slices_z_sorted_on_load(tmp_path, evidence_output_dir):
 
     fake_dicoms = {
         str(files[0]): FakeDicom(10, 10),
-        str(files[1]): FakeDicom(5,   5),
-        str(files[2]): FakeDicom(7,   7),
+        str(files[1]): FakeDicom(5, 5),
+        str(files[2]): FakeDicom(7, 7),
     }
 
     def fake_dcmread(path, *args, **kwargs):
@@ -273,9 +303,12 @@ def test_slices_z_sorted_on_load(tmp_path, evidence_output_dir):
 
     vol = sample.image_volume
     if vol[0, 0, 0] != 5 or vol[1, 0, 0] != 7 or vol[2, 0, 0] != 10:
-        report.error(f"Unexpected Z order: {vol[:,0,0]}", "DAT-004")
+        report.error(f"Unexpected Z order: {vol[:, 0, 0]}", "DAT-004")
 
-    report.info(f"Nongated slices sorted by Z: [{vol[0,0,0]:.0f}, {vol[1,0,0]:.0f}, {vol[2,0,0]:.0f}] = [5,7,10]", "DAT-004")
+    report.info(
+        f"Nongated slices sorted by Z: [{vol[0, 0, 0]:.0f}, {vol[1, 0, 0]:.0f}, {vol[2, 0, 0]:.0f}] = [5,7,10]",
+        "DAT-004",
+    )
     report.auto_save("DAT004_nongated_z_sort", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -283,7 +316,9 @@ def test_slices_z_sorted_on_load(tmp_path, evidence_output_dir):
 @pytest.mark.requirement("DAT-004")
 def test_hounsfield_rescale_applied(tmp_path, evidence_output_dir):
     """RescaleSlope and RescaleIntercept are applied to pixel values."""
-    report = EvidenceReport(subject="DAT-004: RescaleSlope and RescaleIntercept are applied to nongated CT pixel values")
+    report = EvidenceReport(
+        subject="DAT-004: RescaleSlope and RescaleIntercept are applied to nongated CT pixel values"
+    )
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "1")
 
@@ -301,7 +336,10 @@ def test_hounsfield_rescale_applied(tmp_path, evidence_output_dir):
 
     expected = -800.0
     actual = float(sample.image_volume[0, 0, 0])
-    report.info(f"HU rescale: pixel=100 * slope=2 + intercept=-1000 → {actual} (expected {expected})", "DAT-004")
+    report.info(
+        f"HU rescale: pixel=100 * slope=2 + intercept=-1000 → {actual} (expected {expected})",
+        "DAT-004",
+    )
     report.auto_save("dat004_nongated_hounsfield_rescale_applied", evidence_output_dir)
     assert not report.has_errors, report.summary()
     assert np.all(sample.image_volume == expected)
@@ -310,7 +348,9 @@ def test_hounsfield_rescale_applied(tmp_path, evidence_output_dir):
 @pytest.mark.requirement("DAT-004")
 def test_annotations_always_none(tmp_path, evidence_output_dir):
     """Nongated ingestor never produces spatial annotations."""
-    report = EvidenceReport(subject="DAT-004: nongated ingestor always returns None for vector_rois (score-only dataset)")
+    report = EvidenceReport(
+        subject="DAT-004: nongated ingestor always returns None for vector_rois (score-only dataset)"
+    )
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 100, 200, 50, 75, 425)])
     _make_patient_dir(tmp_path, "1")
 
@@ -318,7 +358,9 @@ def test_annotations_always_none(tmp_path, evidence_output_dir):
         ingestor = COCANongatedIngestor(tmp_path)
         sample = ingestor.load_patient_sample("1")
 
-    report.info(f"annotations.vector_rois={sample.annotations.vector_rois!r} (expected None)", "DAT-004")
+    report.info(
+        f"annotations.vector_rois={sample.annotations.vector_rois!r} (expected None)", "DAT-004"
+    )
     report.auto_save("dat004_nongated_annotations_always_none", evidence_output_dir)
     assert not report.has_errors, report.summary()
     assert sample.annotations.vector_rois is None
@@ -327,7 +369,9 @@ def test_annotations_always_none(tmp_path, evidence_output_dir):
 @pytest.mark.requirement("DAT-015")
 def test_missing_image_position_patient_warns_and_skips(tmp_path, evidence_output_dir):
     """DICOMs without ImagePositionPatient are skipped with a warning."""
-    report = EvidenceReport(subject="DAT-015: DICOMs missing ImagePositionPatient are skipped; remaining slices still loaded")
+    report = EvidenceReport(
+        subject="DAT-015: DICOMs missing ImagePositionPatient are skipped; remaining slices still loaded"
+    )
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     patient_dir = tmp_path / "1"
     patient_dir.mkdir()
@@ -372,7 +416,9 @@ def test_missing_image_position_patient_warns_and_skips(tmp_path, evidence_outpu
 @pytest.mark.requirement("DAT-015")
 def test_spacing_fallback_on_missing_dicom_metadata(tmp_path, evidence_output_dir):
     """Missing PixelSpacing falls back to (1,1,1) without raising."""
-    report = EvidenceReport(subject="DAT-015: missing PixelSpacing metadata falls back to (1,1,1) without raising")
+    report = EvidenceReport(
+        subject="DAT-015: missing PixelSpacing metadata falls back to (1,1,1) without raising"
+    )
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "1")
 
@@ -396,15 +442,21 @@ def test_spacing_fallback_on_missing_dicom_metadata(tmp_path, evidence_output_di
 # list_patient_ids ordering (DAT-002)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.requirement("DAT-002")
 def test_list_patient_ids_sorted_numerically(tmp_path, evidence_output_dir):
     """list_patient_ids returns patient dirs sorted numerically."""
-    report = EvidenceReport(subject="DAT-002: list_patient_ids returns patient ids in numeric sort order")
-    _write_scores_xlsx(tmp_path / "scores.xlsx", [
-        ("1A", 0, 0, 0, 0, 0),
-        ("10A", 0, 0, 0, 0, 0),
-        ("2A", 0, 0, 0, 0, 0),
-    ])
+    report = EvidenceReport(
+        subject="DAT-002: list_patient_ids returns patient ids in numeric sort order"
+    )
+    _write_scores_xlsx(
+        tmp_path / "scores.xlsx",
+        [
+            ("1A", 0, 0, 0, 0, 0),
+            ("10A", 0, 0, 0, 0, 0),
+            ("2A", 0, 0, 0, 0, 0),
+        ],
+    )
     for pid in ["1", "2", "10"]:
         (tmp_path / pid).mkdir()
 
@@ -421,10 +473,13 @@ def test_list_patient_ids_sorted_numerically(tmp_path, evidence_output_dir):
 # get_sample API (DAT-016)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.requirement("DAT-016")
 def test_get_sample_returns_volume_and_score_array(tmp_path, evidence_output_dir):
     """get_sample returns (volume_array, scores_array) with shape (4,)."""
-    report = EvidenceReport(subject="DAT-016: get_sample returns numpy volume and score array with shape (4,)")
+    report = EvidenceReport(
+        subject="DAT-016: get_sample returns numpy volume and score array with shape (4,)"
+    )
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 10.0, 20.0, 30.0, 40.0, 100.0)])
     _make_patient_dir(tmp_path, "1")
 
@@ -441,18 +496,21 @@ def test_get_sample_returns_volume_and_score_array(tmp_path, evidence_output_dir
     assert not report.has_errors, report.summary()
     assert isinstance(volume, np.ndarray)
     assert scores.shape == (4,)
-    assert abs(scores[0] - 10.0) < 1e-5   # lca
-    assert abs(scores[1] - 20.0) < 1e-5   # lad
+    assert abs(scores[0] - 10.0) < 1e-5  # lca
+    assert abs(scores[1] - 20.0) < 1e-5  # lad
 
 
 # ---------------------------------------------------------------------------
 # Determinism (DAT-008)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.requirement("DAT-008")
 def test_deterministic_patient_loading(tmp_path, evidence_output_dir):
     """Loading the same patient twice returns identical volumes."""
-    report = EvidenceReport(subject="DAT-008: loading the same nongated patient twice returns identical volumes")
+    report = EvidenceReport(
+        subject="DAT-008: loading the same nongated patient twice returns identical volumes"
+    )
     _write_scores_xlsx(tmp_path / "scores.xlsx", [("1A", 0, 0, 0, 0, 0)])
     _make_patient_dir(tmp_path, "1")
 
@@ -465,7 +523,10 @@ def test_deterministic_patient_loading(tmp_path, evidence_output_dir):
         report.error("Two consecutive loads returned different image volumes", "DAT-008")
     if s1.metadata["total_score"] != s2.metadata["total_score"]:
         report.error("Two consecutive loads returned different total_score", "DAT-008")
-    report.info("Two consecutive load_patient_sample() calls returned identical volume and metadata", "DAT-008")
+    report.info(
+        "Two consecutive load_patient_sample() calls returned identical volume and metadata",
+        "DAT-008",
+    )
     report.auto_save("DAT008_nongated_deterministic_loading", evidence_output_dir)
     assert not report.has_errors, report.summary()
     assert np.array_equal(s1.image_volume, s2.image_volume)

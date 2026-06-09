@@ -35,7 +35,7 @@ def test_valid_annotation_geometry(tmp_path, evidence_output_dir):
     xml_file = xml_dir / "0.xml"
 
     xml_file.write_text(
-    """<?xml version="1.0" encoding="UTF-8"?>
+        """<?xml version="1.0" encoding="UTF-8"?>
     <plist version="1.0">
     <dict>
         <key>Images</key>
@@ -82,9 +82,13 @@ def test_valid_annotation_geometry(tmp_path, evidence_output_dir):
                 if not isinstance(roi, VectorROI):
                     report.error(f"ROI is not VectorROI: {type(roi)}", "DAT-009")
                 if roi.contour_px.shape[1] != 2:
-                    report.error(f"contour_px has wrong column count: {roi.contour_px.shape}", "DAT-009")
+                    report.error(
+                        f"contour_px has wrong column count: {roi.contour_px.shape}", "DAT-009"
+                    )
                 if roi.contour_px.shape[0] < 3:
-                    report.error(f"contour_px has fewer than 3 points: {roi.contour_px.shape}", "DAT-009")
+                    report.error(
+                        f"contour_px has fewer than 3 points: {roi.contour_px.shape}", "DAT-009"
+                    )
                 if roi.contour_px.dtype != np.float32:
                     report.error(f"contour_px dtype wrong: {roi.contour_px.dtype}", "DAT-009")
                 if np.isnan(roi.contour_px).any():
@@ -118,16 +122,7 @@ def test_invalid_polygon_skipped(tmp_path, evidence_output_dir):
         "Images": [
             {
                 "ImageIndex": 1,
-                "ROIs": [
-                    {
-                        "Name": "LAD",
-                        "NumberOfPoints": 2,
-                        "Point_px": [
-                            "(1,1)",
-                            "(2,1)"
-                        ]
-                    }
-                ]
+                "ROIs": [{"Name": "LAD", "NumberOfPoints": 2, "Point_px": ["(1,1)", "(2,1)"]}],
             }
         ]
     }
@@ -146,7 +141,9 @@ def test_invalid_polygon_skipped(tmp_path, evidence_output_dir):
             "DAT-009",
         )
 
-    report.info("ROI with fewer than 3 points is discarded; vector_rois=None as expected", "DAT-009")
+    report.info(
+        "ROI with fewer than 3 points is discarded; vector_rois=None as expected", "DAT-009"
+    )
     report.auto_save("DAT009_invalid_polygon_skipped", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -171,7 +168,9 @@ def test_missing_annotation_file_returns_empty(tmp_path, evidence_output_dir):
             "DAT-010",
         )
 
-    report.info("Ingestor returns empty annotations (vector_rois=None) when XML file is absent", "DAT-010")
+    report.info(
+        "Ingestor returns empty annotations (vector_rois=None) when XML file is absent", "DAT-010"
+    )
     report.auto_save("DAT010_missing_annotation_file_empty", evidence_output_dir)
     assert not report.has_errors, report.summary()
 

@@ -6,6 +6,7 @@ that inputs are HU-normalised identically to CoronaryCalciumTask, that targets
 are log1p-transformed per-vessel scores broadcast across all slices, and that
 compute_loss behaves correctly for regression.
 """
+
 import math
 
 import numpy as np
@@ -42,6 +43,7 @@ def _make_patient(
 # Sample generation (TSK-005)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.requirement("TSK-005")
 def test_yields_one_sample_per_slice(evidence_output_dir):
     """generate_training_samples yields exactly one sample per slice."""
@@ -51,7 +53,9 @@ def test_yields_one_sample_per_slice(evidence_output_dir):
     samples = list(task.generate_training_samples(patient))
     if len(samples) != 5:
         report.error(f"Expected 5 samples, got {len(samples)}", "TSK-005")
-    report.info(f"generate_training_samples yielded {len(samples)} samples for 5-slice patient", "TSK-005")
+    report.info(
+        f"generate_training_samples yielded {len(samples)} samples for 5-slice patient", "TSK-005"
+    )
     report.auto_save("TSK005_yields_one_per_slice", evidence_output_dir)
     assert not report.has_errors, report.summary()
     assert len(samples) == 5
@@ -120,7 +124,9 @@ def test_target_is_log1p_of_vessel_scores(evidence_output_dir):
 @pytest.mark.requirement("TSK-006")
 def test_target_broadcast_identical_across_slices(evidence_output_dir):
     """All slices from the same patient share the identical target vector (TSK-006 broadcast design)."""
-    report = EvidenceReport(subject="NongatedCalciumScoreTask — patient label broadcast to every slice")
+    report = EvidenceReport(
+        subject="NongatedCalciumScoreTask — patient label broadcast to every slice"
+    )
 
     task = NongatedCalciumScoreTask()
     patient = _make_patient(n_slices=4, lca=10.0, lad=20.0)
@@ -130,8 +136,12 @@ def test_target_broadcast_identical_across_slices(evidence_output_dir):
         if not torch.equal(s["target"], first):
             report.error(f"Slice {i} target differs from slice 0", "TSK-006")
 
-    report.info(f"All {len(samples)} slices carry identical target vector (broadcast design)", "TSK-006")
-    report.info(f"generate_training_samples produced {len(samples)} samples from 4-slice patient", "TSK-005")
+    report.info(
+        f"All {len(samples)} slices carry identical target vector (broadcast design)", "TSK-006"
+    )
+    report.info(
+        f"generate_training_samples produced {len(samples)} samples from 4-slice patient", "TSK-005"
+    )
     report.auto_save("TSK006_nongated_broadcast", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -139,12 +149,16 @@ def test_target_broadcast_identical_across_slices(evidence_output_dir):
 @pytest.mark.requirement("TSK-005")
 def test_zero_score_target_is_zero(evidence_output_dir):
     """log1p(0) == 0 — patients with no calcium produce a zero target."""
-    report = EvidenceReport(subject="NongatedCalciumScoreTask zero-calcium patient yields zero target")
+    report = EvidenceReport(
+        subject="NongatedCalciumScoreTask zero-calcium patient yields zero target"
+    )
     task = NongatedCalciumScoreTask()
     patient = _make_patient(n_slices=1, lca=0.0, lad=0.0, lcx=0.0, rca=0.0)
     samples = list(task.generate_training_samples(patient))
     if not torch.all(samples[0]["target"] == 0.0):
-        report.error(f"Expected all-zero target for zero scores, got {samples[0]['target']}", "TSK-005")
+        report.error(
+            f"Expected all-zero target for zero scores, got {samples[0]['target']}", "TSK-005"
+        )
     report.info("log1p(0)=0 — zero-calcium patient produces all-zero target vector", "TSK-005")
     report.auto_save("TSK005_zero_score_target", evidence_output_dir)
     assert not report.has_errors, report.summary()
@@ -154,21 +168,25 @@ def test_zero_score_target_is_zero(evidence_output_dir):
 @pytest.mark.requirement("TSK-005")
 def test_missing_metadata_defaults_to_zero_score(evidence_output_dir):
     """PatientSample with no score metadata yields a zero target without raising."""
-    report = EvidenceReport(subject="NongatedCalciumScoreTask missing metadata defaults to zero score")
+    report = EvidenceReport(
+        subject="NongatedCalciumScoreTask missing metadata defaults to zero score"
+    )
     task = NongatedCalciumScoreTask()
     patient = PatientSample(
         patient_id="x",
         image_volume=np.zeros((2, 4, 4), dtype=np.float32),
         spacing=(1.0, 1.0, 1.0),
         annotations=AnnotationBundle(vector_rois=None),
-        metadata={},   # no score keys
+        metadata={},  # no score keys
     )
     samples = list(task.generate_training_samples(patient))
     if len(samples) != 2:
         report.error(f"Expected 2 samples, got {len(samples)}", "TSK-005")
     if not torch.all(samples[0]["target"] == 0.0):
         report.error("Missing metadata did not default to zero target", "TSK-005")
-    report.info("PatientSample with no score metadata yields zero target without raising", "TSK-005")
+    report.info(
+        "PatientSample with no score metadata yields zero target without raising", "TSK-005"
+    )
     report.auto_save("TSK005_missing_metadata_zero_score", evidence_output_dir)
     assert not report.has_errors, report.summary()
     assert len(samples) == 2
@@ -178,6 +196,7 @@ def test_missing_metadata_defaults_to_zero_score(evidence_output_dir):
 # ---------------------------------------------------------------------------
 # HU normalisation (TSK-005, TSK-004)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.requirement("TSK-004")
 def test_input_hu_normalised_below_window(evidence_output_dir):
@@ -191,7 +210,9 @@ def test_input_hu_normalised_below_window(evidence_output_dir):
     if abs(val - (-1.0)) > 1e-4:
         report.error(f"Expected -1.0 for below-window HU, got {val:.4f}", "TSK-005")
 
-    report.info(f"Below-window HU (-2000) clamped to -1.0 after normalisation; got {val:.4f}", "TSK-005")
+    report.info(
+        f"Below-window HU (-2000) clamped to -1.0 after normalisation; got {val:.4f}", "TSK-005"
+    )
     report.info("Cardiac HU window applied by NongatedCalciumScoreTask", "TSK-004")
     report.auto_save("TSK005_hu_below_window", evidence_output_dir)
     assert not report.has_errors, report.summary()
@@ -209,7 +230,9 @@ def test_input_hu_normalised_above_window(evidence_output_dir):
     if abs(val - 1.0) > 1e-4:
         report.error(f"Expected +1.0 for above-window HU, got {val:.4f}", "TSK-005")
 
-    report.info(f"Above-window HU (+3000) clamped to +1.0 after normalisation; got {val:.4f}", "TSK-005")
+    report.info(
+        f"Above-window HU (+3000) clamped to +1.0 after normalisation; got {val:.4f}", "TSK-005"
+    )
     report.info("Cardiac HU window applied by NongatedCalciumScoreTask", "TSK-004")
     report.auto_save("TSK005_hu_above_window", evidence_output_dir)
     assert not report.has_errors, report.summary()
@@ -235,6 +258,7 @@ def test_input_wl40_maps_to_zero(evidence_output_dir):
 # Loss function (TSK-005, TRN-003)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.requirement("TRN-003")
 def test_compute_loss_is_finite_scalar(evidence_output_dir):
     """compute_loss returns a finite scalar for arbitrary pred/target."""
@@ -259,7 +283,9 @@ def test_compute_loss_is_finite_scalar(evidence_output_dir):
 @pytest.mark.requirement("TSK-005")
 def test_compute_loss_zero_on_perfect_prediction(evidence_output_dir):
     """MSE loss is (near) zero when prediction exactly matches target."""
-    report = EvidenceReport(subject="NongatedCalciumScoreTask MSE loss near zero on perfect prediction")
+    report = EvidenceReport(
+        subject="NongatedCalciumScoreTask MSE loss near zero on perfect prediction"
+    )
     task = NongatedCalciumScoreTask()
     pred = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
     target = torch.tensor([1.0, 2.0, 3.0, 4.0])
@@ -275,14 +301,16 @@ def test_compute_loss_zero_on_perfect_prediction(evidence_output_dir):
 @pytest.mark.requirement("TSK-005")
 def test_compute_loss_higher_for_wrong_prediction(evidence_output_dir):
     """Loss is larger when prediction is further from target."""
-    report = EvidenceReport(subject="NongatedCalciumScoreTask MSE loss is monotone in error magnitude")
+    report = EvidenceReport(
+        subject="NongatedCalciumScoreTask MSE loss is monotone in error magnitude"
+    )
     task = NongatedCalciumScoreTask()
     target = torch.tensor([2.0, 2.0, 2.0, 2.0])
     close_pred = torch.tensor([[2.1, 2.1, 2.1, 2.1]])
-    far_pred   = torch.tensor([[10.0, 10.0, 10.0, 10.0]])
+    far_pred = torch.tensor([[10.0, 10.0, 10.0, 10.0]])
 
     loss_close = task.compute_loss(close_pred, target)
-    loss_far   = task.compute_loss(far_pred,   target)
+    loss_far = task.compute_loss(far_pred, target)
 
     if not (loss_far.item() > loss_close.item()):
         report.error(
@@ -312,6 +340,35 @@ def test_gradients_flow_through_loss(evidence_output_dir):
     if pred.grad is None:
         report.error("No gradient flowed back through compute_loss", "TRN-003")
 
-    report.info("Gradient flowed from compute_loss back to model output (pred.grad is not None)", "TRN-003")
+    report.info(
+        "Gradient flowed from compute_loss back to model output (pred.grad is not None)", "TRN-003"
+    )
     report.auto_save("TRN003_nongated_gradient_flow", evidence_output_dir)
     assert not report.has_errors, report.summary()
+
+
+@pytest.mark.requirement("RSK-003")
+def test_ood_hu_warning_with_report(evidence_output_dir):
+    """generate_training_samples emits a WARN via the attached report when a
+    slice has mean HU outside the expected range [-200, 400]."""
+    report = EvidenceReport(
+        subject="NongatedCalciumScoreTask emits OOD HU warning when mean HU is extreme"
+    )
+    # Use a very high HU value (well outside [-200, 400]) to trigger the OOD path.
+    ood_patient = _make_patient(n_slices=1, H=4, W=4, hu_value=1000.0)
+    task = NongatedCalciumScoreTask(report=report)
+    list(task.generate_training_samples(ood_patient))
+
+    ood_warns = [i for i in report.issues if i.level == "WARN" and "OOD" in i.message]
+    if not ood_warns:
+        report.error(
+            "Expected at least one OOD HU warning in the report; none found", "RSK-003"
+        )
+    else:
+        report.info(
+            f"OOD HU warning issued as expected: {ood_warns[0].message}", "RSK-003"
+        )
+
+    report.auto_save("RSK003_ood_hu_warning", evidence_output_dir)
+    assert not report.has_errors, report.summary()
+

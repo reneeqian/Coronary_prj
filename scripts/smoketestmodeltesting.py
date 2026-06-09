@@ -1,19 +1,27 @@
 import sys
 from pathlib import Path
-import torch
 
-from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource import MedicalImageDataSource
-from medical_image_ai_toolkit.training.training_config import TrainingConfig
+import torch
+from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource import (
+    MedicalImageDataSource,
+)
 from medical_image_ai_toolkit.pipeline.model_testing_pipeline import ModelTestingPipeline
+from medical_image_ai_toolkit.training.training_config import TrainingConfig
 
 from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
-from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
 from Coronary_prj.models.small_segmentation_cnn import SmallSegmentationCNN
 from Coronary_prj.models.unet2d import UNet2D
+from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
 
-
-PROJECT_ROOT  = Path(__file__).resolve().parents[1]
-DATASET_PATH  = PROJECT_ROOT / "data" / "raw" / "coca" / "cocacoronarycalciumandchestcts-2" / "Gated_release_final"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATASET_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "raw"
+    / "coca"
+    / "cocacoronarycalciumandchestcts-2"
+    / "Gated_release_final"
+)
 TRAINING_RUNS = PROJECT_ROOT / "artifacts" / "training_runs"
 
 

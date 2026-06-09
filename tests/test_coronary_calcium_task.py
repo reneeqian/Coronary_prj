@@ -20,9 +20,14 @@ class FakeReport:
 
 
 @pytest.mark.requirement("DAT-004")
-def test_coca_gated_ingestor_skips_dicom_without_image_positionpatient(tmp_path, evidence_output_dir):
+def test_coca_gated_ingestor_skips_dicom_without_image_positionpatient(
+    tmp_path, evidence_output_dir
+):
     from regulatory_tools.evidence.evidence_report import EvidenceReport
-    report = EvidenceReport(subject="DAT-004: DICOMs missing ImagePositionPatient are skipped with a warning")
+
+    report = EvidenceReport(
+        subject="DAT-004: DICOMs missing ImagePositionPatient are skipped with a warning"
+    )
     patient_dir = tmp_path / "patient" / "0" / "seriesA"
     patient_dir.mkdir(parents=True)
 
@@ -108,13 +113,16 @@ def _make_annotated_sample():
 @pytest.mark.requirement("TSK-001")
 def test_coronary_calcium_task_yields_one_sample_per_slice(evidence_output_dir):
     from regulatory_tools.evidence.evidence_report import EvidenceReport
+
     report = EvidenceReport(subject="TSK-001: CoronaryCalciumTask yields one sample per CT slice")
     outputs = list(CoronaryCalciumTask().generate_training_samples(_make_annotated_sample()))
 
     if len(outputs) != 2:
         report.error(f"Expected 2 samples for 2-slice volume, got {len(outputs)}", "TSK-001")
 
-    report.info(f"generate_training_samples yielded {len(outputs)} samples for a 2-slice volume", "TSK-001")
+    report.info(
+        f"generate_training_samples yielded {len(outputs)} samples for a 2-slice volume", "TSK-001"
+    )
     report.auto_save("TSK001_task_yields_one_sample_per_slice", evidence_output_dir)
     assert not report.has_errors, report.summary()
     assert len(outputs) == 2
@@ -123,7 +131,10 @@ def test_coronary_calcium_task_yields_one_sample_per_slice(evidence_output_dir):
 @pytest.mark.requirement("TSK-002")
 def test_coronary_calcium_task_yields_masks_for_annotated_slices(evidence_output_dir):
     from regulatory_tools.evidence.evidence_report import EvidenceReport
-    report = EvidenceReport(subject="TSK-002: CoronaryCalciumTask input/target shapes are (1,1,H,W); unannotated slices get zero target")
+
+    report = EvidenceReport(
+        subject="TSK-002: CoronaryCalciumTask input/target shapes are (1,1,H,W); unannotated slices get zero target"
+    )
     outputs = list(CoronaryCalciumTask().generate_training_samples(_make_annotated_sample()))
 
     if outputs[0]["input"].shape != (1, 1, 4, 4):
@@ -147,13 +158,19 @@ def test_coronary_calcium_task_yields_masks_for_annotated_slices(evidence_output
 @pytest.mark.requirement("DAT-013")
 def test_coronary_calcium_task_rasterizes_contour_to_nonzero_mask(evidence_output_dir):
     from regulatory_tools.evidence.evidence_report import EvidenceReport
-    report = EvidenceReport(subject="DAT-013: CoronaryCalciumTask rasterizes contour annotations to non-zero binary mask")
+
+    report = EvidenceReport(
+        subject="DAT-013: CoronaryCalciumTask rasterizes contour annotations to non-zero binary mask"
+    )
     outputs = list(CoronaryCalciumTask().generate_training_samples(_make_annotated_sample()))
 
     if outputs[0]["target"].sum().item() == 0.0:
         report.error("Annotated slice target is all-zero — rasterization failed", "DAT-013")
 
-    report.info(f"Contour rasterized to mask with sum={outputs[0]['target'].sum().item():.1f} (non-zero)", "DAT-013")
+    report.info(
+        f"Contour rasterized to mask with sum={outputs[0]['target'].sum().item():.1f} (non-zero)",
+        "DAT-013",
+    )
     report.auto_save("DAT013_task_rasterizes_contour_to_nonzero_mask", evidence_output_dir)
     assert not report.has_errors, report.summary()
     assert outputs[0]["target"].sum().item() > 0.0
@@ -162,6 +179,7 @@ def test_coronary_calcium_task_rasterizes_contour_to_nonzero_mask(evidence_outpu
 @pytest.mark.requirement("TSK-002")
 def test_coronary_calcium_task_ignores_short_contours(evidence_output_dir):
     from regulatory_tools.evidence.evidence_report import EvidenceReport
+
     report = EvidenceReport(subject="CoronaryCalciumTask ignores contours with fewer than 3 points")
     task = CoronaryCalciumTask()
     volume = np.ones((1, 3, 3), dtype=np.float32)
@@ -182,7 +200,7 @@ def test_coronary_calcium_task_ignores_short_contours(evidence_output_dir):
         image_volume=volume,
         spacing=(1.0, 1.0, 1.0),
         annotations=annotations,
-        metadata={}
+        metadata={},
     )
 
     outputs = list(task.generate_training_samples(sample))
@@ -201,6 +219,7 @@ def test_coronary_calcium_task_ignores_short_contours(evidence_output_dir):
 @pytest.mark.requirement("TRN-003")
 def test_coronary_calcium_task_compute_loss_returns_finite_scalar(evidence_output_dir):
     from regulatory_tools.evidence.evidence_report import EvidenceReport
+
     report = EvidenceReport(subject="CoronaryCalciumTask compute_loss returns finite scalar")
     task = CoronaryCalciumTask()
     prediction = torch.zeros((1, 1, 2, 2), dtype=torch.float32)
@@ -222,14 +241,20 @@ def test_coronary_calcium_task_compute_loss_returns_finite_scalar(evidence_outpu
 
 @pytest.mark.requirement("TSK-002")
 def test_coronary_calcium_task_input_is_hu_normalised(evidence_output_dir):
-    report = EvidenceReport(subject="TSK-002: CoronaryCalciumTask normalises input HU values to [-1, +1] range")
+    report = EvidenceReport(
+        subject="TSK-002: CoronaryCalciumTask normalises input HU values to [-1, +1] range"
+    )
 
     task = CoronaryCalciumTask()
-    volume = np.array([
-        np.full((4, 4), -2000.0, dtype=np.float32),
-        np.full((4, 4), 3000.0, dtype=np.float32),
-    ])
-    sample = PatientSample(patient_id="0", image_volume=volume, spacing=(1.0, 1.0, 1.0), annotations=None, metadata={})
+    volume = np.array(
+        [
+            np.full((4, 4), -2000.0, dtype=np.float32),
+            np.full((4, 4), 3000.0, dtype=np.float32),
+        ]
+    )
+    sample = PatientSample(
+        patient_id="0", image_volume=volume, spacing=(1.0, 1.0, 1.0), annotations=None, metadata={}
+    )
     outputs = list(task.generate_training_samples(sample))
     low_val = outputs[0]["input"].min().item()
     high_val = outputs[1]["input"].max().item()
@@ -239,39 +264,54 @@ def test_coronary_calcium_task_input_is_hu_normalised(evidence_output_dir):
     if abs(high_val - 1.0) > 1e-4:
         report.error(f"Above-window HU not clamped to +1.0: got {high_val:.4f}", "TSK-002")
 
-    report.info(f"HU window normalised: below-window min={low_val:.4f}, above-window max={high_val:.4f}", "TSK-002")
+    report.info(
+        f"HU window normalised: below-window min={low_val:.4f}, above-window max={high_val:.4f}",
+        "TSK-002",
+    )
     report.auto_save("TSK002_task_input_hu_normalised", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
 
 @pytest.mark.requirement("TSK-004")
 def test_coronary_calcium_task_applies_cardiac_hu_window(evidence_output_dir):
-    report = EvidenceReport(subject="TSK-004: CoronaryCalciumTask applies the cardiac HU window [-160, 240]")
+    report = EvidenceReport(
+        subject="TSK-004: CoronaryCalciumTask applies the cardiac HU window [-160, 240]"
+    )
 
     task = CoronaryCalciumTask()
-    volume = np.array([
-        np.full((4, 4), -2000.0, dtype=np.float32),
-        np.full((4, 4), 3000.0, dtype=np.float32),
-    ])
-    sample = PatientSample(patient_id="0", image_volume=volume, spacing=(1.0, 1.0, 1.0), annotations=None, metadata={})
+    volume = np.array(
+        [
+            np.full((4, 4), -2000.0, dtype=np.float32),
+            np.full((4, 4), 3000.0, dtype=np.float32),
+        ]
+    )
+    sample = PatientSample(
+        patient_id="0", image_volume=volume, spacing=(1.0, 1.0, 1.0), annotations=None, metadata={}
+    )
     outputs = list(task.generate_training_samples(sample))
     low_val = outputs[0]["input"].min().item()
     high_val = outputs[1]["input"].max().item()
 
     if abs(low_val - (-1.0)) > 1e-4 or abs(high_val - 1.0) > 1e-4:
-        report.error(f"Cardiac HU window not applied: low={low_val:.4f}, high={high_val:.4f}", "TSK-004")
+        report.error(
+            f"Cardiac HU window not applied: low={low_val:.4f}, high={high_val:.4f}", "TSK-004"
+        )
 
-    report.info(f"Cardiac HU window applied: -2000 HU → {low_val:.4f}, +3000 HU → {high_val:.4f}", "TSK-004")
+    report.info(
+        f"Cardiac HU window applied: -2000 HU → {low_val:.4f}, +3000 HU → {high_val:.4f}", "TSK-004"
+    )
     report.auto_save("TSK004_task_applies_cardiac_hu_window", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
 
 @pytest.mark.requirement("TRN-003")
 def test_coronary_calcium_task_loss_near_zero_on_perfect_prediction(evidence_output_dir):
-    report = EvidenceReport(subject="CoronaryCalciumTask combined loss near zero on perfect prediction")
+    report = EvidenceReport(
+        subject="CoronaryCalciumTask combined loss near zero on perfect prediction"
+    )
 
     task = CoronaryCalciumTask()
-    prediction = torch.full((1, 1, 4, 4), 10.0)   # sigmoid ≈ 1 — matches foreground
+    prediction = torch.full((1, 1, 4, 4), 10.0)  # sigmoid ≈ 1 — matches foreground
     target = torch.ones((1, 1, 4, 4))
 
     loss = task.compute_loss(prediction, target)
@@ -294,12 +334,12 @@ def test_coronary_calcium_task_loss_penalises_wrong_predictions(evidence_output_
     report = EvidenceReport(subject="CoronaryCalciumTask loss ordering: wrong > correct")
 
     task = CoronaryCalciumTask()
-    target      = torch.ones((1, 1, 4, 4))
-    correct_pred = torch.full((1, 1, 4, 4), 10.0)   # sigmoid ≈ 1 — matches target
-    wrong_pred   = torch.full((1, 1, 4, 4), -10.0)  # sigmoid ≈ 0 — misses target
+    target = torch.ones((1, 1, 4, 4))
+    correct_pred = torch.full((1, 1, 4, 4), 10.0)  # sigmoid ≈ 1 — matches target
+    wrong_pred = torch.full((1, 1, 4, 4), -10.0)  # sigmoid ≈ 0 — misses target
 
     loss_correct = task.compute_loss(correct_pred, target).item()
-    loss_wrong   = task.compute_loss(wrong_pred, target).item()
+    loss_wrong = task.compute_loss(wrong_pred, target).item()
 
     if loss_wrong <= loss_correct:
         report.error(
@@ -307,7 +347,10 @@ def test_coronary_calcium_task_loss_penalises_wrong_predictions(evidence_output_
             "TRN-003",
         )
 
-    report.info(f"loss(wrong)={loss_wrong:.4f} > loss(correct)={loss_correct:.4f} — loss penalises errors", "TRN-003")
+    report.info(
+        f"loss(wrong)={loss_wrong:.4f} > loss(correct)={loss_correct:.4f} — loss penalises errors",
+        "TRN-003",
+    )
     report.auto_save("TRN003_loss_penalises_wrong_predictions", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -336,15 +379,15 @@ def test_gated_task_all_slices_receive_target_tensor(evidence_output_dir):
     outputs = list(task.generate_training_samples(sample))
 
     if len(outputs) != n_slices:
-        report.error(
-            f"Expected {n_slices} samples (one per slice), got {len(outputs)}", "TSK-006"
-        )
+        report.error(f"Expected {n_slices} samples (one per slice), got {len(outputs)}", "TSK-006")
     else:
         for i, s in enumerate(outputs):
             if "target" not in s:
                 report.error(f"Slice {i} has no 'target' key", "TSK-006")
             elif s["target"].shape[-2:] != (8, 8):
-                report.error(f"Slice {i} target has wrong spatial shape: {s['target'].shape}", "TSK-006")
+                report.error(
+                    f"Slice {i} target has wrong spatial shape: {s['target'].shape}", "TSK-006"
+                )
 
     report.info(
         f"All {n_slices} slices received a 'target' tensor with spatial shape (8,8)",

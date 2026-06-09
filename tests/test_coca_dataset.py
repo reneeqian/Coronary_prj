@@ -12,6 +12,7 @@ from Coronary_prj.ingestors.coca_gated_ingestor import (
 # Synthetic DICOM Helpers
 # =============================================================================
 
+
 class SimpleDicom:
     def __init__(self, z=0):
         self.ImagePositionPatient = [0.0, 0.0, float(z)]
@@ -21,9 +22,11 @@ class SimpleDicom:
         self.RescaleIntercept = 0.0
         self.pixel_array = np.zeros((2, 2), dtype=np.float32)
 
+
 @pytest.mark.requires_dataset
 @pytest.mark.requirement("DAT-001")
-def test_required_subdirectories_present(coca_dataset_root,
+def test_required_subdirectories_present(
+    coca_dataset_root,
     coca_dataset_available,
     request,
     evidence_output_dir,
@@ -59,9 +62,11 @@ def test_required_subdirectories_present(coca_dataset_root,
     report.auto_save("coca_dataset_structure", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
+
 @pytest.mark.requires_dataset
 @pytest.mark.requirement("DAT-002")
-def test_deterministic_dataset_ordering(coca_dataset_root,
+def test_deterministic_dataset_ordering(
+    coca_dataset_root,
     coca_dataset_available,
     request,
     evidence_output_dir,
@@ -94,10 +99,9 @@ def test_deterministic_dataset_ordering(coca_dataset_root,
         sample1 = ingestor.ingest_patient(pid)
         sample2 = ingestor.ingest_patient(pid)
 
-        assert np.array_equal(
-            sample1.image_volume,
-            sample2.image_volume
-        ), "Image volume differs across repeated ingestion"
+        assert np.array_equal(sample1.image_volume, sample2.image_volume), (
+            "Image volume differs across repeated ingestion"
+        )
         assert sample1.spacing == sample2.spacing
 
         report.info(
@@ -107,6 +111,7 @@ def test_deterministic_dataset_ordering(coca_dataset_root,
 
     report.auto_save("coca_ingestor_determinism", evidence_output_dir)
     assert not report.has_errors, report.summary()
+
 
 @pytest.mark.requirement("DAT-007")
 def test_slice_index_out_of_bounds(tmp_path):
@@ -125,6 +130,7 @@ def test_slice_index_out_of_bounds(tmp_path):
         # volume only has 2 slices → index 10 is invalid
         with pytest.raises(IndexError):
             _ = patient.image_volume[10]
+
 
 @pytest.mark.requires_dataset
 @pytest.mark.requirement("DAT-006")

@@ -10,7 +10,8 @@ from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor, Datase
 
 @pytest.mark.requires_dataset
 @pytest.mark.requirement("DAT-004")
-def test_ingest_ct_volumes_from_root(coca_dataset_root,
+def test_ingest_ct_volumes_from_root(
+    coca_dataset_root,
     coca_dataset_available,
     request,
     evidence_output_dir,
@@ -23,15 +24,14 @@ def test_ingest_ct_volumes_from_root(coca_dataset_root,
     report = EvidenceReport(
         subject="COCA Ingestor → PatientSample Contract",
         test_id=request.node.nodeid,
-)
+    )
 
     dataset_root = coca_dataset_root
 
     if dataset_root.exists():
         report.info(
-            message="Using real COCA dataset",
-            requirement_tag="DAT-004",
-            context=str(dataset_root))
+            message="Using real COCA dataset", requirement_tag="DAT-004", context=str(dataset_root)
+        )
         ingestor = COCAGatedIngestor(dataset_root=dataset_root)
         sample = ingestor.load_patient_sample("0")
 
@@ -44,6 +44,7 @@ def test_ingest_ct_volumes_from_root(coca_dataset_root,
     report.auto_save("coca_ingestor_contract", evidence_output_dir)
 
     assert not report.has_errors, report.summary()
+
 
 @pytest.mark.requirement("DAT-005")
 def test_graceful_failure_on_missing_data(tmp_path, request, evidence_output_dir):
@@ -67,6 +68,7 @@ def test_graceful_failure_on_missing_data(tmp_path, request, evidence_output_dir
 
     report.auto_save("coca_ingestor_missing_data", evidence_output_dir)
     assert not report.has_errors, report.summary()
+
 
 @pytest.mark.requirement("DAT-004")
 def test_patient_sample_contract(tmp_path):
