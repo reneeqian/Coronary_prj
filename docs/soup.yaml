@@ -54,3 +54,10 @@ soup:
     license: BSD-3-Clause
     risk: low
     verified_by: pip-audit
+
+  - name: mypy
+    version: "2.1.0"
+    intended_use: "Static type checking of Python source; Category 2 verification tool (IEC 62304 §5.1.4)"
+    license: MIT
+    risk: low
+    verified_by: "tool qualification 2026-06-08 (Renee Qian)"
