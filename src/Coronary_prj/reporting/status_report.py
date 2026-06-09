@@ -6,6 +6,7 @@ model_testing_report.json from their respective artifact directories
 and prints a formatted summary of the most recent metrics for each
 run type.
 """
+
 from __future__ import annotations
 
 import json
@@ -57,13 +58,13 @@ def status_report(project_root: Path | str | None = None) -> None:
         ],
     )
 
-
     print(sep)
 
 
 # ---------------------------------------------------------------------------
 # Section printers
 # ---------------------------------------------------------------------------
+
 
 def _find_latest(root: Path, report_filename: str = "") -> Path | None:
     if not root.exists():
@@ -115,7 +116,8 @@ def _print_training_section(runs_root: Path) -> None:
     test_ids = ds.get("test_ids", [])
     patients_str = (
         f"{len(train_ids)} train  /  {len(val_ids)} val  /  {len(test_ids)} test"
-        if isinstance(train_ids, list) else "—"
+        if isinstance(train_ids, list)
+        else "—"
     )
 
     print(f"TRAINING  ({run_dir.name})")

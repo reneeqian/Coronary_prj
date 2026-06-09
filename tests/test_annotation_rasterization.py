@@ -1,4 +1,3 @@
-
 import numpy as np
 import pytest
 from regulatory_tools.evidence.evidence_report import EvidenceReport
@@ -58,7 +57,9 @@ def test_rasterized_mask_aligns_with_source_dimensions(evidence_output_dir):
                 "DAT-013",
             )
 
-    report.info("Rasterized masks stay within bounds for shapes (16,16), (32,64), (64,32)", "DAT-013")
+    report.info(
+        "Rasterized masks stay within bounds for shapes (16,16), (32,64), (64,32)", "DAT-013"
+    )
     report.auto_save("DAT013_mask_dimension_alignment", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -87,11 +88,11 @@ def test_ingestor_raises_dataset_structure_error_not_runtime_error(tmp_path, evi
         )
 
     if not raised_correct_type:
-        report.error(
-            "No DatasetStructureError raised for a corrupted dataset", "DAT-014"
-        )
+        report.error("No DatasetStructureError raised for a corrupted dataset", "DAT-014")
 
-    report.info("DatasetStructureError raised (not a raw exception) for corrupted DICOM input", "DAT-014")
+    report.info(
+        "DatasetStructureError raised (not a raw exception) for corrupted DICOM input", "DAT-014"
+    )
     report.auto_save("DAT014_domain_safe_ingestion_errors", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -104,15 +105,11 @@ def test_missing_patient_directory_raises_dataset_structure_error(tmp_path, evid
 
     try:
         ingestor.load_patient_sample("nonexistent_patient")
-        report.error(
-            "No exception raised for a nonexistent patient ID", "DAT-014"
-        )
+        report.error("No exception raised for a nonexistent patient ID", "DAT-014")
     except DatasetStructureError:
         pass  # correct behaviour
     except Exception as e:
-        report.error(
-            f"Expected DatasetStructureError, got {type(e).__name__}: {e}", "DAT-014"
-        )
+        report.error(f"Expected DatasetStructureError, got {type(e).__name__}: {e}", "DAT-014")
 
     report.info("DatasetStructureError raised for nonexistent patient directory", "DAT-014")
     report.auto_save("DAT014_missing_patient_directory", evidence_output_dir)

@@ -47,20 +47,12 @@ class COCANongatedIngestor(BaseIngestor):
     def list_patient_ids(self) -> list[str]:
         try:
             if not self.dataset_root.exists():
-                raise DatasetStructureError(
-                    f"Dataset root does not exist: {self.dataset_root}"
-                )
+                raise DatasetStructureError(f"Dataset root does not exist: {self.dataset_root}")
 
-            patient_dirs = [
-                p.name
-                for p in self.dataset_root.iterdir()
-                if p.is_dir()
-            ]
+            patient_dirs = [p.name for p in self.dataset_root.iterdir() if p.is_dir()]
 
             if not patient_dirs:
-                raise DatasetStructureError(
-                    f"No patient directories found in {self.dataset_root}"
-                )
+                raise DatasetStructureError(f"No patient directories found in {self.dataset_root}")
 
             return sorted(patient_dirs, key=lambda x: int(x) if x.isdigit() else x)
 
@@ -71,9 +63,7 @@ class COCANongatedIngestor(BaseIngestor):
         try:
             patient_dir = self.dataset_root / patient_id
             if not patient_dir.exists():
-                raise DatasetStructureError(
-                    f"Patient directory not found: {patient_dir}"
-                )
+                raise DatasetStructureError(f"Patient directory not found: {patient_dir}")
 
             volume, spacing, metadata = self._load_image_volume(patient_dir)
 
@@ -143,9 +133,7 @@ class COCANongatedIngestor(BaseIngestor):
 
         scores_path = self.dataset_root / "scores.xlsx"
         if not scores_path.exists():
-            raise DatasetStructureError(
-                f"Scores file not found: {scores_path}"
-            )
+            raise DatasetStructureError(f"Scores file not found: {scores_path}")
 
         try:
             wb = openpyxl.load_workbook(scores_path, read_only=True, data_only=True)
@@ -155,9 +143,7 @@ class COCANongatedIngestor(BaseIngestor):
             wb.close()
 
             if not rows:
-                raise DatasetStructureError(
-                    f"Scores file is empty: {scores_path}"
-                )
+                raise DatasetStructureError(f"Scores file is empty: {scores_path}")
 
             header = [str(c).strip().lower() if c is not None else "" for c in rows[0]]
             expected = {"filename", "lca", "lad", "lcx", "rca", "total"}
@@ -180,10 +166,10 @@ class COCANongatedIngestor(BaseIngestor):
 
                 scores[key] = {
                     "total": _f(row[col["total"]]),
-                    "lca":   _f(row[col["lca"]]),
-                    "lad":   _f(row[col["lad"]]),
-                    "lcx":   _f(row[col["lcx"]]),
-                    "rca":   _f(row[col["rca"]]),
+                    "lca": _f(row[col["lca"]]),
+                    "lad": _f(row[col["lad"]]),
+                    "lcx": _f(row[col["lcx"]]),
+                    "rca": _f(row[col["rca"]]),
                 }
 
             return scores
@@ -191,9 +177,7 @@ class COCANongatedIngestor(BaseIngestor):
         except DatasetStructureError:
             raise
         except Exception as e:
-            raise DatasetStructureError(
-                f"Failed to parse scores file: {scores_path}"
-            ) from e
+            raise DatasetStructureError(f"Failed to parse scores file: {scores_path}") from e
 
     def _load_image_volume(
         self, patient_dir: Path
@@ -210,14 +194,10 @@ class COCANongatedIngestor(BaseIngestor):
                 image = image * slope + intercept
                 slices.append(image)
             except (InvalidDicomError, AttributeError, KeyError, ValueError) as e:
-                raise DatasetStructureError(
-                    f"Invalid or corrupt DICOM file: {f}"
-                ) from e
+                raise DatasetStructureError(f"Invalid or corrupt DICOM file: {f}") from e
 
         if not slices:
-            raise DatasetStructureError(
-                f"No valid DICOM slices loaded from {patient_dir}"
-            )
+            raise DatasetStructureError(f"No valid DICOM slices loaded from {patient_dir}")
 
         volume = np.stack(slices, axis=0)
 
@@ -226,7 +206,9 @@ class COCANongatedIngestor(BaseIngestor):
             pixel_spacing = tuple(map(float, ds0.PixelSpacing))
             slice_thickness = float(ds0.SliceThickness)
             spacing: tuple[float, float, float] = (
-                slice_thickness, pixel_spacing[0], pixel_spacing[1]
+                slice_thickness,
+                pixel_spacing[0],
+                pixel_spacing[1],
             )
         except Exception:
             msg = f"Missing spacing metadata in {patient_dir} — using (1.0, 1.0, 1.0)"
@@ -249,9 +231,7 @@ class COCANongatedIngestor(BaseIngestor):
     def _get_sorted_dicom_files(self, patient_dir: Path) -> list[Path]:
         dicom_files = sorted(patient_dir.glob("*.dcm"))
         if not dicom_files:
-            raise DatasetStructureError(
-                f"No DICOM files found in {patient_dir}"
-            )
+            raise DatasetStructureError(f"No DICOM files found in {patient_dir}")
 
         z_positions = []
         valid_files = []

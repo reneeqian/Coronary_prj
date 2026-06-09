@@ -7,6 +7,7 @@ import pytest
 # Project Root
 # ---------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
 def project_root() -> Path:
     """
@@ -18,6 +19,7 @@ def project_root() -> Path:
 # ---------------------------------------------------------------------
 # COCA Dataset Root
 # ---------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def coca_dataset_root(project_root: Path) -> Path:
@@ -38,12 +40,14 @@ def coca_dataset_root(project_root: Path) -> Path:
 # Dataset Presence Flag
 # ---------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
 def coca_dataset_available(coca_dataset_root: Path) -> bool:
     """
     Returns True if COCA dataset exists locally.
     """
     return coca_dataset_root.exists()
+
 
 # ---------------------------------------------------------------------
 # Evidence Output Directory

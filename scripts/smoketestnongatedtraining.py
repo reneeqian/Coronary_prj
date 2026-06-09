@@ -1,8 +1,5 @@
 from pathlib import Path
 
-from Coronary_prj.ingestors.coca_nongated_ingestor import COCANongatedIngestor
-from Coronary_prj.models.calcium_score_regressor import CalciumScoreRegressor
-from Coronary_prj.task_definitions.nongated_calcium_score_task import NongatedCalciumScoreTask
 from medical_image_ai_toolkit.dataobjects.datasources.deterministic_split import (
     DeterministicHoldoutSplit,
 )
@@ -12,6 +9,10 @@ from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource i
 from medical_image_ai_toolkit.pipeline.training_pipeline import TrainingPipeline
 from medical_image_ai_toolkit.training.training_config import TrainingConfig
 from regulatory_tools.requirements.yaml_requirement_provider import YamlRequirementProvider
+
+from Coronary_prj.ingestors.coca_nongated_ingestor import COCANongatedIngestor
+from Coronary_prj.models.calcium_score_regressor import CalciumScoreRegressor
+from Coronary_prj.task_definitions.nongated_calcium_score_task import NongatedCalciumScoreTask
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATASET_PATH = (
@@ -58,8 +59,10 @@ def main():
     model = CalciumScoreRegressor(base_channels=base_channels)
 
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"\nTraining CalciumScoreRegressor(base_channels={base_channels}) | "
-          f"params={total_params:,} | lr={learning_rate} | epochs={config.epochs}")
+    print(
+        f"\nTraining CalciumScoreRegressor(base_channels={base_channels}) | "
+        f"params={total_params:,} | lr={learning_rate} | epochs={config.epochs}"
+    )
 
     pipeline = TrainingPipeline(
         datasource,

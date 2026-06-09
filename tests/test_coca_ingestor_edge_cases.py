@@ -13,6 +13,7 @@ from Coronary_prj.ingestors.coca_gated_ingestor import (
 # Synthetic DICOM
 # =============================================================================
 
+
 class SimpleDicom:
     def __init__(self, z):
         self.ImagePositionPatient = [0.0, 0.0, float(z)]
@@ -26,6 +27,7 @@ class SimpleDicom:
 # =============================================================================
 # DAT-007 — Annotation slice index outside volume bounds
 # =============================================================================
+
 
 @pytest.mark.requirement("DAT-007")
 def test_annotation_slice_out_of_bounds(tmp_path, evidence_output_dir):
@@ -70,7 +72,10 @@ def test_annotation_slice_out_of_bounds(tmp_path, evidence_output_dir):
             "DAT-007",
         )
 
-    report.info("Annotation with slice index outside volume bounds is silently ignored; vector_rois=None", "DAT-007")
+    report.info(
+        "Annotation with slice index outside volume bounds is silently ignored; vector_rois=None",
+        "DAT-007",
+    )
     report.auto_save("DAT007_annotation_slice_out_of_bounds", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -78,6 +83,7 @@ def test_annotation_slice_out_of_bounds(tmp_path, evidence_output_dir):
 # =============================================================================
 # DAT-009 — Invalid ROI geometry ignored (<3 points)
 # =============================================================================
+
 
 @pytest.mark.requirement("DAT-009")
 def test_roi_with_insufficient_points_ignored(tmp_path, evidence_output_dir):
@@ -129,8 +135,7 @@ def test_roi_with_insufficient_points_ignored(tmp_path, evidence_output_dir):
 
     if sample.annotations.vector_rois is not None:
         report.error(
-            "Expected vector_rois=None for sub-3-point ROI, "
-            f"got: {sample.annotations.vector_rois}",
+            f"Expected vector_rois=None for sub-3-point ROI, got: {sample.annotations.vector_rois}",
             "DAT-009",
         )
 
@@ -142,6 +147,7 @@ def test_roi_with_insufficient_points_ignored(tmp_path, evidence_output_dir):
 # =============================================================================
 # DAT-010 — Dataset without annotation files
 # =============================================================================
+
 
 @pytest.mark.requirement("DAT-010")
 def test_dataset_without_annotations(tmp_path, evidence_output_dir):
@@ -172,9 +178,12 @@ def test_dataset_without_annotations(tmp_path, evidence_output_dir):
 # DAT-004 — Missing required DICOM metadata
 # =============================================================================
 
+
 @pytest.mark.requirement("DAT-004")
 def test_missing_image_position_patient(tmp_path, evidence_output_dir):
-    report = EvidenceReport(subject="DICOM missing ImagePositionPatient raises DatasetStructureError")
+    report = EvidenceReport(
+        subject="DICOM missing ImagePositionPatient raises DatasetStructureError"
+    )
 
     class BadDicom:
         PixelSpacing = [1.0, 1.0]
@@ -202,6 +211,7 @@ def test_missing_image_position_patient(tmp_path, evidence_output_dir):
 # DAT-004 — Successful slice retrieval with HU conversion
 # =============================================================================
 
+
 @pytest.mark.requirement("DAT-004")
 def test_get_slice_success(tmp_path, evidence_output_dir):
     report = EvidenceReport(subject="Slice retrieved with correct HU conversion")
@@ -228,9 +238,11 @@ def test_get_slice_success(tmp_path, evidence_output_dir):
     if slice_img.shape != (2, 2):
         report.error(f"Slice shape wrong: {slice_img.shape}", "DAT-004")
     if not np.all(slice_img == 7):
-        report.error(f"HU conversion wrong: expected 7, got {slice_img[0,0]}", "DAT-004")
+        report.error(f"HU conversion wrong: expected 7, got {slice_img[0, 0]}", "DAT-004")
 
-    report.info(f"Slice loaded with shape={slice_img.shape}; HU=pixel*slope+intercept=1*2+5=7 ✓", "DAT-004")
+    report.info(
+        f"Slice loaded with shape={slice_img.shape}; HU=pixel*slope+intercept=1*2+5=7 ✓", "DAT-004"
+    )
     report.auto_save("DAT004_get_slice_success", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -239,9 +251,12 @@ def test_get_slice_success(tmp_path, evidence_output_dir):
 # DAT-005 — Missing gated series directory
 # =============================================================================
 
+
 @pytest.mark.requirement("DAT-005")
 def test_no_series_directories(tmp_path, evidence_output_dir):
-    report = EvidenceReport(subject="Patient with no series directories raises DatasetStructureError")
+    report = EvidenceReport(
+        subject="Patient with no series directories raises DatasetStructureError"
+    )
 
     patient_dir = tmp_path / "patient" / "0"
     patient_dir.mkdir(parents=True)
@@ -261,6 +276,7 @@ def test_no_series_directories(tmp_path, evidence_output_dir):
 # =============================================================================
 # DAT-005 — No DICOM files
 # =============================================================================
+
 
 @pytest.mark.requirement("DAT-005")
 def test_no_dicom_files(tmp_path, evidence_output_dir):
@@ -285,6 +301,7 @@ def test_no_dicom_files(tmp_path, evidence_output_dir):
 # DAT-001 — Dataset structure validation
 # =============================================================================
 
+
 @pytest.mark.requirement("DAT-001")
 def test_no_patient_directories(tmp_path, evidence_output_dir):
     report = EvidenceReport(subject="Empty patient root raises DatasetStructureError")
@@ -307,6 +324,7 @@ def test_no_patient_directories(tmp_path, evidence_output_dir):
 # DAT-002 — Deterministic slice retrieval
 # =============================================================================
 
+
 @pytest.mark.requirement("DAT-002")
 def test_slice_determinism(tmp_path, evidence_output_dir):
     report = EvidenceReport(subject="Repeated slice retrieval produces identical arrays")
@@ -328,6 +346,8 @@ def test_slice_determinism(tmp_path, evidence_output_dir):
     if not np.array_equal(s1, s2):
         report.error("Repeated load returned different slice arrays", "DAT-002")
 
-    report.info("Two consecutive load_patient_sample() calls returned identical slice arrays", "DAT-002")
+    report.info(
+        "Two consecutive load_patient_sample() calls returned identical slice arrays", "DAT-002"
+    )
     report.auto_save("DAT002_slice_determinism", evidence_output_dir)
     assert not report.has_errors, report.summary()
