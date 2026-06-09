@@ -59,9 +59,7 @@ def test_coronary_task_implements_toolkit_interface(evidence_output_dir):
     report = EvidenceReport(subject="Task definition interface — toolkit contract")
 
     if not issubclass(CoronaryCalciumTask, TrainingTaskDefinition):
-        report.error(
-            "CoronaryCalciumTask does not subclass TrainingTaskDefinition", "TSK-001"
-        )
+        report.error("CoronaryCalciumTask does not subclass TrainingTaskDefinition", "TSK-001")
 
     task = CoronaryCalciumTask()
     for method in ("generate_training_samples", "compute_loss"):
@@ -99,14 +97,18 @@ def test_task_output_is_deterministic_for_same_input(evidence_output_dir):
                 report.error(f"Sample {i} 'target' differs between runs", "TSK-003")
                 break
 
-    report.info(f"Two generate_training_samples() runs produced {len(run_a)} identical samples", "TSK-003")
+    report.info(
+        f"Two generate_training_samples() runs produced {len(run_a)} identical samples", "TSK-003"
+    )
     report.auto_save("TSK003_task_determinism", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
 
 @pytest.mark.requirement("SYS-004")
 def test_coronary_calcium_task_is_instantiable(evidence_output_dir):
-    report = EvidenceReport(subject="SYS-004: CoronaryCalciumTask can be instantiated without error")
+    report = EvidenceReport(
+        subject="SYS-004: CoronaryCalciumTask can be instantiated without error"
+    )
 
     task = CoronaryCalciumTask()
 
@@ -141,6 +143,8 @@ def test_intended_use_statement_is_advisory(evidence_output_dir):
         if "radiologist" not in text:
             report.error("INTENDED_USE does not contain 'radiologist'", "SYS-007")
 
-    report.info("INTENDED_USE contains 'advisory' and 'radiologist' — output is non-diagnostic", "SYS-007")
+    report.info(
+        "INTENDED_USE contains 'advisory' and 'radiologist' — output is non-diagnostic", "SYS-007"
+    )
     report.auto_save("SYS007_intended_use", evidence_output_dir)
     assert not report.has_errors, report.summary()

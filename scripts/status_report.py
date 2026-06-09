@@ -8,6 +8,7 @@ Usage::
 Prints a console summary of the latest training, hyperparameter tuning,
 and model testing run metrics found under ``artifacts/``.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

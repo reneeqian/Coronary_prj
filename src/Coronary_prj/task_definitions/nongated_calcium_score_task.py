@@ -76,7 +76,5 @@ class NongatedCalciumScoreTask(TrainingTaskDefinition):
 
             yield {"input": img, "target": target}
 
-    def compute_loss(
-        self, prediction: torch.Tensor, target: torch.Tensor
-    ) -> torch.Tensor:
+    def compute_loss(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         return F.mse_loss(prediction.squeeze(), target.squeeze())

@@ -2,9 +2,6 @@ import json
 import sys
 from pathlib import Path
 
-from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
-from Coronary_prj.models.unet2d import UNet2D
-from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
 from medical_image_ai_toolkit.dataobjects.datasources.deterministic_split import (
     DeterministicHoldoutSplit,
 )
@@ -14,6 +11,10 @@ from medical_image_ai_toolkit.dataobjects.datasources.medical_image_datasource i
 from medical_image_ai_toolkit.pipeline.training_pipeline import TrainingPipeline
 from medical_image_ai_toolkit.training.training_config import TrainingConfig
 from regulatory_tools.requirements.yaml_requirement_provider import YamlRequirementProvider
+
+from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
+from Coronary_prj.models.unet2d import UNet2D
+from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATASET_PATH = (
@@ -53,7 +54,9 @@ def load_best_params_from_latest_sweep() -> tuple[dict, Path]:
     report = json.loads(report_path.read_text())
     best_trial = report.get("best_trial")
     if best_trial is None:
-        print("tuning_report.json has no best_trial entry — sweep may have had no completed trials.")
+        print(
+            "tuning_report.json has no best_trial entry — sweep may have had no completed trials."
+        )
         sys.exit(1)
 
     return best_trial["params"], latest_dir
@@ -93,7 +96,9 @@ def main():
 
     model = UNet2D(base_channels=base_channels)
 
-    print(f"\nTraining UNet2D(base_channels={base_channels}) | lr={learning_rate} | epochs={config.epochs}")
+    print(
+        f"\nTraining UNet2D(base_channels={base_channels}) | lr={learning_rate} | epochs={config.epochs}"
+    )
 
     pipeline = TrainingPipeline(
         datasource,

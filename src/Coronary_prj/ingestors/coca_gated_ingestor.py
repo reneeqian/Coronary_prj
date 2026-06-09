@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 class DatasetStructureError(RuntimeError):
     """Raised when the dataset structure or required contents are invalid."""
+
     pass
 
 
@@ -43,18 +44,12 @@ class COCAGatedIngestor(BaseIngestor):
         patient_root = self.dataset_root / "patient"
         try:
             if not patient_root.exists():
-                raise DatasetStructureError(
-                    f"Patient root does not exist: {patient_root}"
-                )
+                raise DatasetStructureError(f"Patient root does not exist: {patient_root}")
 
-            patient_dirs = [
-                p.name for p in patient_root.iterdir() if p.is_dir()
-            ]
+            patient_dirs = [p.name for p in patient_root.iterdir() if p.is_dir()]
 
             if not patient_dirs:
-                raise DatasetStructureError(
-                    f"No patient directories found in {patient_root}"
-                )
+                raise DatasetStructureError(f"No patient directories found in {patient_root}")
 
             return sorted(patient_dirs)
 
@@ -65,9 +60,7 @@ class COCAGatedIngestor(BaseIngestor):
         try:
             patient_dir = self.dataset_root / "patient" / patient_id
             if not patient_dir.exists():
-                raise DatasetStructureError(
-                    f"Patient directory not found: {patient_dir}"
-                )
+                raise DatasetStructureError(f"Patient directory not found: {patient_dir}")
 
             series_dir = self._resolve_gated_series_dir(patient_dir)
             volume, spacing, metadata = self._load_image_volume(series_dir)
@@ -109,7 +102,6 @@ class COCAGatedIngestor(BaseIngestor):
         Y_masks = []
 
         for slice_idx, rois in vector_rois.items():
-
             if slice_idx < 0 or slice_idx >= num_slices:
                 continue
 
@@ -118,7 +110,6 @@ class COCAGatedIngestor(BaseIngestor):
             mask = np.zeros((H, W), dtype=np.uint8)
 
             for roi in rois:
-
                 contour = roi.contour_px
 
                 if contour is None or len(contour) < 3:
@@ -160,9 +151,7 @@ class COCAGatedIngestor(BaseIngestor):
 
         series_dirs = sorted([p for p in patient_dir.iterdir() if p.is_dir()])
         if not series_dirs:
-            raise DatasetStructureError(
-                f"No series directories found in {patient_dir}"
-            )
+            raise DatasetStructureError(f"No series directories found in {patient_dir}")
 
         # For COCA, assume first directory is gated series
         return series_dirs[0]
@@ -190,14 +179,10 @@ class COCAGatedIngestor(BaseIngestor):
                 slices.append(image)
 
             except (InvalidDicomError, AttributeError, KeyError, ValueError) as e:
-                raise DatasetStructureError(
-                    f"Invalid or corrupt DICOM file: {f}"
-                ) from e
+                raise DatasetStructureError(f"Invalid or corrupt DICOM file: {f}") from e
 
         if not slices:
-            raise DatasetStructureError(
-                f"No valid DICOM slices loaded from {series_dir}"
-            )
+            raise DatasetStructureError(f"No valid DICOM slices loaded from {series_dir}")
 
         # Stack already-sorted slices
         volume = np.stack(slices, axis=0)
@@ -210,9 +195,7 @@ class COCAGatedIngestor(BaseIngestor):
             slice_thickness = float(ds0.SliceThickness)
 
         except Exception as e:
-            raise DatasetStructureError(
-                f"Missing spacing metadata in {series_dir}"
-            ) from e
+            raise DatasetStructureError(f"Missing spacing metadata in {series_dir}") from e
 
         spacing = (slice_thickness, pixel_spacing[0], pixel_spacing[1])
 
@@ -223,9 +206,7 @@ class COCAGatedIngestor(BaseIngestor):
 
         return volume, spacing, metadata
 
-    def _load_annotations(
-        self, patient_dir: Path, num_slices: int
-    ) -> AnnotationBundle:
+    def _load_annotations(self, patient_dir: Path, num_slices: int) -> AnnotationBundle:
 
         patient_id = patient_dir.name
         xml_file = self.dataset_root / "calcium_xml" / f"{patient_id}.xml"
@@ -255,9 +236,9 @@ class COCAGatedIngestor(BaseIngestor):
                         self.report.warn(
                             message="Invalid slice index in annotation",
                             requirement_tag="annotation_validation",
-                            context=f"file={xml_file} | raw_index={image_index} | computed_index={slice_idx} | num_slices={num_slices}"
+                            context=f"file={xml_file} | raw_index={image_index} | computed_index={slice_idx} | num_slices={num_slices}",
                         )
-                    #print(f"Warning: annotation slice index {slice_idx} out of bounds for {xml_file}")
+                    # print(f"Warning: annotation slice index {slice_idx} out of bounds for {xml_file}")
                     continue
 
                 for roi in rois:
@@ -298,7 +279,7 @@ class COCAGatedIngestor(BaseIngestor):
                             "max_hu": roi.get("Max"),
                             "min_hu": roi.get("Min"),
                             "area": roi.get("Area"),
-                        }
+                        },
                     )
 
                     vectors.setdefault(slice_idx, []).append(roi_obj)
@@ -309,16 +290,12 @@ class COCAGatedIngestor(BaseIngestor):
             return AnnotationBundle(vector_rois=vectors)
 
         except Exception as e:
-            raise DatasetStructureError(
-                f"Failed to parse COCA annotation XML: {xml_file}"
-            ) from e
+            raise DatasetStructureError(f"Failed to parse COCA annotation XML: {xml_file}") from e
 
     def _get_sorted_dicom_files(self, series_dir: Path) -> list[Path]:
         dicom_files = sorted(series_dir.glob("*.dcm"))
         if not dicom_files:
-            raise DatasetStructureError(
-                f"No DICOM files found in {series_dir}"
-            )
+            raise DatasetStructureError(f"No DICOM files found in {series_dir}")
 
         z_positions = []
         valid_dicom_files = []
@@ -327,9 +304,7 @@ class COCAGatedIngestor(BaseIngestor):
             try:
                 ds = pydicom.dcmread(f, stop_before_pixels=True)
             except Exception as e:
-                raise DatasetStructureError(
-                    f"Invalid DICOM file: {f}"
-                ) from e
+                raise DatasetStructureError(f"Invalid DICOM file: {f}") from e
 
             if not hasattr(ds, "ImagePositionPatient"):
                 skipped.append(f.name)
@@ -359,8 +334,9 @@ class COCAGatedIngestor(BaseIngestor):
         sorted_indices = np.argsort(z_positions)
         return [dicom_files[i] for i in sorted_indices]
 
-
-    def _polygon_to_mask(self, contour: np.ndarray, H: int, W: int) -> tuple[np.ndarray, np.ndarray]:
+    def _polygon_to_mask(
+        self, contour: np.ndarray, H: int, W: int
+    ) -> tuple[np.ndarray, np.ndarray]:
 
         x = contour[:, 0]
         y = contour[:, 1]

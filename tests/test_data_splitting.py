@@ -96,7 +96,10 @@ def test_split_is_reproducible_with_same_seed(evidence_output_dir):
     if train_a != train_b or val_a != val_b or test_a != test_b:
         report.error("Same seed produces different splits — split is not deterministic", "SYS-002")
     else:
-        report.info(f"Identical splits produced by two DeterministicHoldoutSplit(seed=42) instances over {len(ids)} IDs", "SYS-002")
+        report.info(
+            f"Identical splits produced by two DeterministicHoldoutSplit(seed=42) instances over {len(ids)} IDs",
+            "SYS-002",
+        )
 
     report.auto_save("SYS002_split_reproducibility", evidence_output_dir)
     assert not report.has_errors, report.summary()
@@ -144,6 +147,8 @@ def test_datasource_exposes_training_samples_via_task(tmp_path, evidence_output_
     if sample_count == 0:
         report.error("No training samples produced from the datasource", "TRN-005")
 
-    report.info(f"Generated {sample_count} training samples from datasource via task API", "TRN-005")
+    report.info(
+        f"Generated {sample_count} training samples from datasource via task API", "TRN-005"
+    )
     report.auto_save("TRN005_dataset_training_interface", evidence_output_dir)
     assert not report.has_errors, report.summary()

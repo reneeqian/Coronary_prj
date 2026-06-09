@@ -1,8 +1,5 @@
 from pathlib import Path
 
-from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
-from Coronary_prj.models.unet2d import UNet2D
-from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
 from medical_image_ai_toolkit.dataobjects.datasources.deterministic_split import (
     DeterministicHoldoutSplit,
 )
@@ -14,6 +11,10 @@ from medical_image_ai_toolkit.pipeline.hyperparameter_tuning_pipeline import (
 )
 from medical_image_ai_toolkit.training.training_config import TrainingConfig
 from medical_image_ai_toolkit.tuning.hyperparameter_space import HyperparameterSpace
+
+from Coronary_prj.ingestors.coca_gated_ingestor import COCAGatedIngestor
+from Coronary_prj.models.unet2d import UNet2D
+from Coronary_prj.task_definitions.coronary_calcium_task import CoronaryCalciumTask
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATASET_PATH = (

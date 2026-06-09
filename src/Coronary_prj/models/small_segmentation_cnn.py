@@ -2,7 +2,6 @@ import torch.nn as nn
 
 
 class SmallSegmentationCNN(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.net = nn.Sequential(

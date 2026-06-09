@@ -30,7 +30,9 @@ def test_requirements_yaml_valid_structure(evidence_output_dir):
     if not requirements or not isinstance(requirements, list):
         report.error("requirements list missing or empty", "DOC-002")
     else:
-        prefixes_present = {req.get("id", "").split("-")[0] for req in requirements if "-" in req.get("id", "")}
+        prefixes_present = {
+            req.get("id", "").split("-")[0] for req in requirements if "-" in req.get("id", "")
+        }
         required_prefixes = {"SYS", "DAT", "VER", "DOC"}
         missing = required_prefixes - prefixes_present
         if missing:
@@ -51,7 +53,9 @@ def test_readme_exists_with_heading(evidence_output_dir):
     project_root = Path(__file__).resolve().parents[1]
     readme_path = project_root / "README.md"
 
-    report = EvidenceReport(subject="DOC-001: README.md exists and contains at least one Markdown heading")
+    report = EvidenceReport(
+        subject="DOC-001: README.md exists and contains at least one Markdown heading"
+    )
 
     if not readme_path.exists():
         report.error("README.md not found in project root", "DOC-001")

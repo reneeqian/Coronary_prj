@@ -1,10 +1,10 @@
 """Tests for risk control requirements RSK-001 through RSK-004."""
+
 import math
 
 import numpy as np
 import pytest
 import torch
-
 from medical_image_ai_toolkit.dataobjects.annotation_bundle import AnnotationBundle
 from medical_image_ai_toolkit.dataobjects.patient_sample import PatientSample
 from regulatory_tools.evidence.evidence_report import EvidenceReport
@@ -37,15 +37,22 @@ _APPROVED_REGRESSION_MAX_MAE_AU = 100.0
 
 @pytest.mark.requirement("RSK-001")
 def test_segmentation_threshold_constant_is_sensible(evidence_output_dir):
-    report = EvidenceReport(subject="RSK-001: SEGMENTATION_MIN_DICE equals the approved clinical floor value 0.50")
+    report = EvidenceReport(
+        subject="RSK-001: SEGMENTATION_MIN_DICE equals the approved clinical floor value 0.50"
+    )
     if not (0.0 < SEGMENTATION_MIN_DICE < 1.0):
-        report.error(f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} is not in (0.0, 1.0)", "RSK-001")
+        report.error(
+            f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} is not in (0.0, 1.0)", "RSK-001"
+        )
     if SEGMENTATION_MIN_DICE != _APPROVED_SEGMENTATION_MIN_DICE:
         report.error(
             f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} does not match approved value {_APPROVED_SEGMENTATION_MIN_DICE}",
             "RSK-001",
         )
-    report.info(f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} equals approved floor {_APPROVED_SEGMENTATION_MIN_DICE}", "RSK-001")
+    report.info(
+        f"SEGMENTATION_MIN_DICE={SEGMENTATION_MIN_DICE} equals approved floor {_APPROVED_SEGMENTATION_MIN_DICE}",
+        "RSK-001",
+    )
     report.auto_save("RSK001_segmentation_threshold", evidence_output_dir)
     assert not report.has_errors, report.summary()
     assert SEGMENTATION_MIN_DICE == _APPROVED_SEGMENTATION_MIN_DICE
@@ -55,9 +62,12 @@ def test_segmentation_threshold_constant_is_sensible(evidence_output_dir):
 # RSK-002: negative calcium score clamped before log1p
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.requirement("RSK-002")
 def test_negative_score_clamped_before_log1p(evidence_output_dir):
-    report = EvidenceReport(subject="RSK-002: negative calcium scores are clamped before log1p transform")
+    report = EvidenceReport(
+        subject="RSK-002: negative calcium scores are clamped before log1p transform"
+    )
     sample = _make_sample(metadata={"lca": -5.0, "lad": 0.0, "lcx": 0.0, "rca": 0.0})
     task = NongatedCalciumScoreTask()
     slices = list(task.generate_training_samples(sample))
@@ -68,8 +78,13 @@ def test_negative_score_clamped_before_log1p(evidence_output_dir):
         if not torch.all(torch.isfinite(target)):
             report.error("target contains non-finite values after clamping", "RSK-002")
         if float(target[0]) < 0.0:
-            report.error(f"LCA target={float(target[0]):.4f} is negative — clamping failed", "RSK-002")
-        report.info(f"LCA target={float(target[0]):.4f} after clamping negative input -5.0; all finite", "RSK-002")
+            report.error(
+                f"LCA target={float(target[0]):.4f} is negative — clamping failed", "RSK-002"
+            )
+        report.info(
+            f"LCA target={float(target[0]):.4f} after clamping negative input -5.0; all finite",
+            "RSK-002",
+        )
     report.auto_save("RSK002_negative_score_clamped", evidence_output_dir)
     assert not report.has_errors, report.summary()
     assert slices
@@ -79,7 +94,9 @@ def test_negative_score_clamped_before_log1p(evidence_output_dir):
 
 @pytest.mark.requirement("RSK-002")
 def test_regression_threshold_constant_is_sensible(evidence_output_dir):
-    report = EvidenceReport(subject="RSK-002: REGRESSION_MAX_MAE_AU equals the approved clinical ceiling 100.0 AU")
+    report = EvidenceReport(
+        subject="RSK-002: REGRESSION_MAX_MAE_AU equals the approved clinical ceiling 100.0 AU"
+    )
     if not (REGRESSION_MAX_MAE_AU > 0.0):
         report.error(f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} is not positive", "RSK-002")
     if REGRESSION_MAX_MAE_AU != _APPROVED_REGRESSION_MAX_MAE_AU:
@@ -87,7 +104,10 @@ def test_regression_threshold_constant_is_sensible(evidence_output_dir):
             f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} does not match approved value {_APPROVED_REGRESSION_MAX_MAE_AU}",
             "RSK-002",
         )
-    report.info(f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} equals approved ceiling {_APPROVED_REGRESSION_MAX_MAE_AU}", "RSK-002")
+    report.info(
+        f"REGRESSION_MAX_MAE_AU={REGRESSION_MAX_MAE_AU} equals approved ceiling {_APPROVED_REGRESSION_MAX_MAE_AU}",
+        "RSK-002",
+    )
     report.auto_save("RSK002_regression_threshold", evidence_output_dir)
     assert not report.has_errors, report.summary()
     assert REGRESSION_MAX_MAE_AU == _APPROVED_REGRESSION_MAX_MAE_AU
@@ -97,17 +117,26 @@ def test_regression_threshold_constant_is_sensible(evidence_output_dir):
 # RSK-003: ingestor raises DatasetStructureError, not raw exception
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.requirement("RSK-003")
-def test_nongated_ingestor_raises_dataset_structure_error_on_missing_xlsx(tmp_path, evidence_output_dir):
-    report = EvidenceReport(subject="RSK-003: ingestor raises DatasetStructureError on missing scores.xlsx")
+def test_nongated_ingestor_raises_dataset_structure_error_on_missing_xlsx(
+    tmp_path, evidence_output_dir
+):
+    report = EvidenceReport(
+        subject="RSK-003: ingestor raises DatasetStructureError on missing scores.xlsx"
+    )
     raised = False
     try:
         COCANongatedIngestor(tmp_path)
     except DatasetStructureError:
         raised = True
     if not raised:
-        report.error("Expected DatasetStructureError when scores.xlsx is absent; none raised", "RSK-003")
-    report.info("DatasetStructureError raised for missing scores.xlsx — ingestor fails safely", "RSK-003")
+        report.error(
+            "Expected DatasetStructureError when scores.xlsx is absent; none raised", "RSK-003"
+        )
+    report.info(
+        "DatasetStructureError raised for missing scores.xlsx — ingestor fails safely", "RSK-003"
+    )
     report.auto_save("RSK003_missing_xlsx_error", evidence_output_dir)
     assert not report.has_errors, report.summary()
 
@@ -129,7 +158,10 @@ def test_ood_guard_warns_on_extreme_hu(evidence_output_dir):
     if not ood_warnings:
         report.error("Expected OOD WARN for slices with extreme HU; none found", "RSK-003")
     else:
-        report.info(f"OOD guard issued {len(ood_warnings)} WARN(s) for extreme HU input (mean≫400)", "RSK-003")
+        report.info(
+            f"OOD guard issued {len(ood_warnings)} WARN(s) for extreme HU input (mean≫400)",
+            "RSK-003",
+        )
     report.auto_save("rsk003_ood_guard", evidence_output_dir)
     assert ood_warnings, "Expected OOD WARN for slices with extreme HU"
 
@@ -138,9 +170,12 @@ def test_ood_guard_warns_on_extreme_hu(evidence_output_dir):
 # RSK-004: log1p target is always finite (no NaN from negative inputs)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.requirement("RSK-004")
 def test_log1p_target_is_always_finite(evidence_output_dir):
-    report = EvidenceReport(subject="RSK-004: log1p target is finite for zero, large, and negative inputs")
+    report = EvidenceReport(
+        subject="RSK-004: log1p target is finite for zero, large, and negative inputs"
+    )
     score_cases = [
         {"lca": 0.0, "lad": 0.0, "lcx": 0.0, "rca": 0.0},
         {"lca": 500.0, "lad": 1200.0, "lcx": 0.0, "rca": 300.0},
@@ -152,7 +187,10 @@ def test_log1p_target_is_always_finite(evidence_output_dir):
         for s in task.generate_training_samples(sample):
             if not torch.all(torch.isfinite(s["target"])):
                 report.error(f"Non-finite target for scores {scores}: {s['target']}", "RSK-004")
-    report.info(f"log1p targets are finite for all {len(score_cases)} score cases including negatives", "RSK-004")
+    report.info(
+        f"log1p targets are finite for all {len(score_cases)} score cases including negatives",
+        "RSK-004",
+    )
     report.auto_save("RSK004_log1p_finite", evidence_output_dir)
     assert not report.has_errors, report.summary()
     for scores in score_cases:
