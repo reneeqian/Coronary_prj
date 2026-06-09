@@ -21,6 +21,7 @@ dev = [
     "pytest-cov",
     "radon",
     "pip-audit",
+    "mypy==2.1.0",
 ]
 
 
